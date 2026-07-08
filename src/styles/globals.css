@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── The Coop Brand Palette ──────────────────────────────────────────── */
+    /* Gold  #C9A84C → hsl(44 54% 54%)                                       */
+    /* Brown #5C3D2E → hsl(20 33% 27%)                                       */
+    /* Cream #F5F3EF → hsl(40 23% 95%)                                       */
+
+    --background: 0 0% 100%;            /* #FFFFFF                           */
+    --foreground: 0 0% 18%;             /* #2D2D2D                           */
+    --card: 0 0% 100%;                  /* #FFFFFF                           */
+    --card-foreground: 0 0% 18%;        /* #2D2D2D                           */
+    --popover: 0 0% 100%;              /* #FFFFFF                           */
+    --popover-foreground: 0 0% 18%;    /* #2D2D2D                           */
+    --primary: 44 54% 54%;              /* #C9A84C  Gold                     */
+    --primary-foreground: 0 0% 100%;    /* #FFFFFF                           */
+    --secondary: 40 23% 95%;            /* #F5F3EF  Cream                    */
+    --secondary-foreground: 20 33% 27%; /* #5C3D2E  Brown                    */
+    --muted: 40 23% 95%;                /* #F5F3EF  Cream                    */
+    --muted-foreground: 0 0% 45%;       /* #737373                           */
+    --accent: 43 60% 58%;               /* #D4A853                           */
+    --accent-foreground: 0 0% 100%;     /* #FFFFFF                           */
+    --destructive: 0 72% 51%;           /* #DC2626                           */
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 72% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 44 54% 54%;              /* #C9A84C  Gold doubles as warning  */
+    --warning-foreground: 0 0% 100%;
+    --border: 0 0% 90%;                 /* #E6E6E6                           */
+    --input: 0 0% 90%;                  /* #E6E6E6                           */
+    --ring: 44 54% 54%;                 /* #C9A84C  Gold focus ring          */
+    --radius: 0.5rem;
+
+    /* Brand tokens for direct use */
+    --brand-gold: 44 54% 54%;           /* #C9A84C */
+    --brand-brown: 20 33% 27%;          /* #5C3D2E */
+    --brand-cream: 40 23% 95%;          /* #F5F3EF */
+  }
+
+  .dark {
+    /* Warm dark theme — deep espresso browns with gold accents */
+    --background: 20 18% 8%;            /* Deep dark brown                   */
+    --foreground: 40 20% 93%;           /* Warm cream                        */
+    --card: 20 18% 11%;                 /* Slightly lighter dark brown       */
+    --card-foreground: 40 20% 93%;      /* Warm cream                        */
+    --popover: 20 18% 11%;
+    --popover-foreground: 40 20% 93%;
+    --primary: 44 54% 54%;              /* #C9A84C  Gold — same in dark      */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 18% 16%;            /* Dark warm muted brown             */
+    --secondary-foreground: 40 20% 93%;
+    --muted: 20 18% 16%;
+    --muted-foreground: 40 10% 55%;
+    --accent: 20 18% 18%;               /* Subtle hover on dark              */
+    --accent-foreground: 40 20% 93%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 72% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 44 54% 54%;
+    --warning-foreground: 0 0% 100%;
+    --border: 20 18% 20%;
+    --input: 20 18% 20%;
+    --ring: 44 54% 54%;
+
+    --brand-gold: 44 54% 54%;
+    --brand-brown: 20 33% 27%;
+    --brand-cream: 40 23% 95%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+/* ── Pulse Report vital card glow animations ───────────────────────────────── */
+@keyframes vital-glow-green {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(34, 197, 94, 0.1); }
+  50%       { box-shadow: 0 0 22px 4px rgba(34, 197, 94, 0.28); }
+}
+@keyframes vital-glow-amber {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(245, 158, 11, 0.12); }
+  50%       { box-shadow: 0 0 22px 4px rgba(245, 158, 11, 0.32); }
+}
+@keyframes vital-glow-red {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.15); }
+  50%       { box-shadow: 0 0 26px 6px rgba(239, 68, 68, 0.4); }
+}
+
+.vital-green {
+  border-color: rgb(34, 197, 94);
+  animation: vital-glow-green 3s ease-in-out infinite;
+}
+.vital-amber {
+  border-color: rgb(245, 158, 11);
+  animation: vital-glow-amber 2s ease-in-out infinite;
+}
+.vital-red {
+  border-color: rgb(239, 68, 68);
+  animation: vital-glow-red 1.2s ease-in-out infinite;
+}
+.vital-grey {
+  border-color: hsl(var(--border));
+}
