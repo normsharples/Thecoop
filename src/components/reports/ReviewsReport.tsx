@@ -280,7 +280,7 @@ export default function ReviewsReport() {
                   stroke="hsl(var(--muted-foreground))"
                 />
                 <Tooltip
-                  formatter={(v: number) => [v.toFixed(1), "Avg Rating"]}
+                  formatter={(v) => [Number(v).toFixed(1), "Avg Rating"]}
                   contentStyle={{
                     background: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
@@ -323,7 +323,7 @@ export default function ReviewsReport() {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(v: number, name: string) => [v, name]}
+                    formatter={(v, name) => [Number(v), String(name)]}
                     contentStyle={{
                       background: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",

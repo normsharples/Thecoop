@@ -237,8 +237,7 @@ export default function FoodCostReport() {
     enabled: scopedIds.length > 0,
   });
 
-  // Convenience refs for single-restaurant view
-  const openingCount = !isAllRestaurants ? (openingCounts[0] ?? null) : null;
+  // Convenience ref for single-restaurant view
   const closingCount = !isAllRestaurants ? (closingCounts[0] ?? null) : null;
 
   // ── Totals ────────────────────────────────────────────────────────────────

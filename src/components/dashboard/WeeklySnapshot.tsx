@@ -6,7 +6,7 @@ import {
 import {
   format, startOfWeek, endOfWeek, subWeeks, subYears, subMonths, parseISO,
 } from "date-fns";
-import { cn, formatCurrency, formatPercent } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
@@ -95,7 +95,7 @@ export function WeeklySnapshot({ date }: { date: string }) {
     );
   }
 
-  const { sales, prevSales, prevYearSales, labour, reviews, targets } = data;
+  const { sales, prevSales, prevYearSales, reviews, targets } = data;
 
   // Revenue
   const weekRev = sales.reduce((s, r) => s + (r.net_sales ?? r.total_sales), 0);

@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
 import { TARGET_METRICS } from "@/hooks/useTargets";
-import type { SalesDaily, LabourDaily, Target } from "@/types";
+import type { SalesDaily, Target } from "@/types";
 
 export function DailySnapshot({ date }: { date: string }) {
   const { data: restaurants } = useRestaurants();

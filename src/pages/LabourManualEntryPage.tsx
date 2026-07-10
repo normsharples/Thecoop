@@ -62,7 +62,7 @@ export default function LabourManualEntryPage() {
     watch,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as any,
     defaultValues: {
       restaurant_id: accessibleRestaurants?.[0]?.id ?? "",
       date: format(new Date(), "yyyy-MM-dd"),
@@ -192,7 +192,7 @@ export default function LabourManualEntryPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
         {/* ── Override warning ─────────────────────────────────────────── */}
         {isOverride && (
           <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">

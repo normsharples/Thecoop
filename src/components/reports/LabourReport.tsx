@@ -384,7 +384,7 @@ export default function LabourReport() {
                 domain={[0, 50]}
               />
               <Tooltip
-                formatter={(v: number) => [`${v.toFixed(1)}%`, "Labour %"]}
+                formatter={(v) => [`${Number(v).toFixed(1)}%`, "Labour %"]}
                 contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
               />
               <Line type="monotone" dataKey="pct" stroke="#f97316" strokeWidth={2} dot={false} activeDot={{ r: 4 }} name="Labour %" />
@@ -408,7 +408,7 @@ export default function LabourReport() {
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                 <Tooltip
-                  formatter={(v: number) => [`${v.toFixed(1)}h`, ""]}
+                  formatter={(v) => [`${Number(v).toFixed(1)}h`, ""]}
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
                 />
                 <Legend />
@@ -428,7 +428,7 @@ export default function LabourReport() {
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                 <Tooltip
-                  formatter={(v: number) => [`${v.toFixed(1)}h`, ""]}
+                  formatter={(v) => [`${Number(v).toFixed(1)}h`, ""]}
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
                 />
                 <Legend />
@@ -548,12 +548,12 @@ function FiltersBar({
           ))}
           <div className="flex items-center gap-1.5">
             <input type="date" value={customRange?.from ?? ""}
-              onChange={(e) => setCustomRange((r) => ({ from: e.target.value, to: r?.to ?? e.target.value }))}
+              onChange={(e) => setCustomRange({ from: e.target.value, to: customRange?.to ?? e.target.value })}
               className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <span className="text-xs text-muted-foreground">→</span>
             <input type="date" value={customRange?.to ?? ""}
-              onChange={(e) => setCustomRange((r) => ({ from: r?.from ?? e.target.value, to: e.target.value }))}
+              onChange={(e) => setCustomRange({ from: customRange?.from ?? e.target.value, to: e.target.value })}
               className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
@@ -592,12 +592,12 @@ function FiltersBar({
           </div>
           <div className="flex items-center gap-1.5">
             <input type="date" value={customRange?.from ?? ""}
-              onChange={(e) => setCustomRange((r) => ({ from: e.target.value, to: r?.to ?? e.target.value }))}
+              onChange={(e) => setCustomRange({ from: e.target.value, to: customRange?.to ?? e.target.value })}
               className="h-8 flex-1 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <span className="text-xs text-muted-foreground">→</span>
             <input type="date" value={customRange?.to ?? ""}
-              onChange={(e) => setCustomRange((r) => ({ from: r?.from ?? e.target.value, to: e.target.value }))}
+              onChange={(e) => setCustomRange({ from: customRange?.from ?? e.target.value, to: e.target.value })}
               className="h-8 flex-1 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>

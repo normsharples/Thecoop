@@ -24,7 +24,6 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -965,7 +964,7 @@ function CountEntryPanel({
 
 function CountDetail({
   countId,
-  foodCostItems,
+  foodCostItems: _foodCostItems,
   onSubmit,
 }: {
   countId: string;

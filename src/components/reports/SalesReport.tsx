@@ -307,8 +307,6 @@ export default function SalesReport() {
       .sort((a,b)=>b.amount-a.amount);
   }, [salesData]);
 
-  const totalProductAmount = productData.reduce((s,p)=>s+p.amount,0);
-
   // ── Hourly data ───────────────────────────────────────────────────────────
   const hourData = useMemo(() => {
     const totals: Record<number,number> = {};
@@ -482,7 +480,7 @@ export default function SalesReport() {
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))"/>
                       <XAxis dataKey="date" tick={{fontSize:11}} stroke="hsl(var(--muted-foreground))"/>
                       <YAxis tickFormatter={v=>`$${formatNumber(v)}`} tick={{fontSize:11}} stroke="hsl(var(--muted-foreground))"/>
-                      <Tooltip formatter={(v:number)=>[formatCurrency(v),""]}
+                      <Tooltip formatter={(v)=>[formatCurrency(Number(v)),""]}
                         contentStyle={{background:"hsl(var(--card))",border:"1px solid hsl(var(--border))",borderRadius:"8px",fontSize:"12px"}}/>
                       <Legend/>
                       {visibleRestaurantNames.map((name,i)=>(
@@ -504,7 +502,7 @@ export default function SalesReport() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false}/>
                         <XAxis type="number" tickFormatter={v=>`$${formatNumber(v)}`} tick={{fontSize:11}} stroke="hsl(var(--muted-foreground))"/>
                         <YAxis type="category" dataKey="name" width={90} tick={{fontSize:11}} stroke="hsl(var(--muted-foreground))"/>
-                        <Tooltip formatter={(v:number)=>[formatCurrency(v),"Sales"]}
+                        <Tooltip formatter={(v)=>[formatCurrency(Number(v)),"Sales"]}
                           contentStyle={{background:"hsl(var(--card))",border:"1px solid hsl(var(--border))",borderRadius:"8px",fontSize:"12px"}}/>
                         <Bar dataKey="amount" radius={[0,4,4,0]}>
                           {categoryData.map((_,i)=><Cell key={i} fill={CATEGORY_COLORS[i%CATEGORY_COLORS.length]}/>)}
@@ -521,7 +519,7 @@ export default function SalesReport() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))"/>
                         <XAxis dataKey="hour" tick={{fontSize:10}} stroke="hsl(var(--muted-foreground))"/>
                         <YAxis tickFormatter={v=>`$${formatNumber(v)}`} tick={{fontSize:11}} stroke="hsl(var(--muted-foreground))"/>
-                        <Tooltip formatter={(v:number)=>[formatCurrency(v),"Sales"]}
+                        <Tooltip formatter={(v)=>[formatCurrency(Number(v)),"Sales"]}
                           contentStyle={{background:"hsl(var(--card))",border:"1px solid hsl(var(--border))",borderRadius:"8px",fontSize:"12px"}}/>
                         <Bar dataKey="amount" fill="#f97316" radius={[4,4,0,0]}/>
                       </BarChart>
@@ -605,7 +603,7 @@ export default function SalesReport() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false}/>
                     <XAxis type="number" tickFormatter={v=>`$${formatNumber(v)}`} tick={{fontSize:11}} stroke="hsl(var(--muted-foreground))"/>
                     <YAxis type="category" dataKey="name" width={110} tick={{fontSize:11}} stroke="hsl(var(--muted-foreground))"/>
-                    <Tooltip formatter={(v:number)=>[formatCurrency(v),"Sales"]}
+                    <Tooltip formatter={(v)=>[formatCurrency(Number(v)),"Sales"]}
                       contentStyle={{background:"hsl(var(--card))",border:"1px solid hsl(var(--border))",borderRadius:"8px",fontSize:"12px"}}/>
                     <Bar dataKey="amount" radius={[0,4,4,0]}>
                       {categoryData.map((_,i)=><Cell key={i} fill={CATEGORY_COLORS[i%CATEGORY_COLORS.length]}/>)}
@@ -717,7 +715,7 @@ export default function SalesReport() {
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false}/>
                       <XAxis dataKey="date" tick={{fontSize:11}} stroke="hsl(var(--muted-foreground))"/>
                       <YAxis tickFormatter={v=>`$${formatNumber(v)}`} tick={{fontSize:11}} stroke="hsl(var(--muted-foreground))" width={55}/>
-                      <Tooltip formatter={(v:number)=>[formatCurrency(v),""]}
+                      <Tooltip formatter={(v)=>[formatCurrency(Number(v)),""]}
                         contentStyle={{background:"hsl(var(--card))",border:"1px solid hsl(var(--border))",borderRadius:"8px",fontSize:"12px"}}/>
                       <Legend/>
                       <Bar dataKey="discounts" name="Discounts" fill="#f59e0b" radius={[4,4,0,0]}/>

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { format, startOfWeek, endOfWeek, subWeeks, parseISO } from "date-fns";
 import { Receipt, Users, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { cn, formatCurrency, formatPercent } from "@/lib/utils";
+import { cn, formatPercent } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
