@@ -10,6 +10,7 @@ import { WeeklySnapshot } from "@/components/dashboard/WeeklySnapshot";
 import { WeeklyStatsCards } from "@/components/dashboard/WeeklyStatsCards";
 import { WeeklySecondaryCards } from "@/components/dashboard/WeeklySecondaryCards";
 import { DeliveryUptimeCard } from "@/components/dashboard/DeliveryUptimeCard";
+import { WebAppSalesCard } from "@/components/dashboard/WebAppSalesCard";
 import { WeeklyRevenueTrend } from "@/components/dashboard/WeeklyRevenueTrend";
 import { RecentReviews } from "@/components/dashboard/RecentReviews";
 import { QuickLinks } from "@/components/dashboard/QuickLinks";
@@ -33,6 +34,12 @@ export default function DashboardPage() {
   const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(anchor, { weekStartsOn: 1 });
   const weekLabel = `${format(weekStart, "d MMM")} – ${format(weekEnd, "d MMM yyyy")}`;
+
+  const prevDayStr = format(subDays(anchor, 1), "yyyy-MM-dd");
+  const prevWeekStart = format(subWeeks(weekStart, 1), "yyyy-MM-dd");
+  const prevWeekEnd = format(subWeeks(weekEnd, 1), "yyyy-MM-dd");
+  const weekStartStr = format(weekStart, "yyyy-MM-dd");
+  const weekEndStr = format(weekEnd, "yyyy-MM-dd");
 
   function prevWeek() {
     setSelectedDate(format(subWeeks(weekStart, 1), "yyyy-MM-dd"));
@@ -138,6 +145,11 @@ export default function DashboardPage() {
           <DailySnapshot date={selectedDate} />
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <DailySecondaryCards date={selectedDate} />
+            <WebAppSalesCard
+              from={selectedDate} to={selectedDate}
+              prevFrom={prevDayStr} prevTo={prevDayStr}
+              comparisonLabel="vs prev day"
+            />
             <DeliveryUptimeCard />
           </div>
           <QuickStatsCards date={selectedDate} />
@@ -150,6 +162,11 @@ export default function DashboardPage() {
           <WeeklySnapshot date={selectedDate} />
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <WeeklySecondaryCards date={selectedDate} />
+            <WebAppSalesCard
+              from={weekStartStr} to={weekEndStr}
+              prevFrom={prevWeekStart} prevTo={prevWeekEnd}
+              comparisonLabel="vs prev week"
+            />
             <DeliveryUptimeCard />
           </div>
           <WeeklyStatsCards date={selectedDate} />

@@ -87,6 +87,9 @@ export interface SalesDaily {
   discounts_count: number;
   refunds_amount: number;
   refunds_count: number;
+  online_sales: number | null;
+  online_transaction_count: number | null;
+  online_average_transaction: number | null;
   created_at: string;
 }
 

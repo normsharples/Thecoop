@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import {
   DollarSign, Receipt, TrendingUp, TrendingDown, Minus,
-  Download, PlusCircle, Loader2, PieChart, Tag,
+  Download, PlusCircle, Loader2, PieChart, Tag, Smartphone,
   ChevronDown, SlidersHorizontal,
 } from "lucide-react";
 import {
@@ -26,7 +26,7 @@ import type { SalesDaily, Restaurant } from "@/types";
 const RESTAURANT_COLORS = ["#f97316", "#3b82f6", "#22c55e"];
 const CATEGORY_COLORS   = ["#f97316","#3b82f6","#22c55e","#eab308","#a855f7","#ec4899","#14b8a6","#f43f5e"];
 
-type SubPage = "overview" | "sales-mix" | "discounts";
+type SubPage = "overview" | "sales-mix" | "channel" | "discounts";
 type Preset  = "today" | "yesterday" | "last7" | "thisWeek" | "lastWeek" | "thisMonth" | "last30" | "last90";
 
 interface DateRange { from: string; to: string }
@@ -34,6 +34,7 @@ interface DateRange { from: string; to: string }
 const SUB_PAGES: { key: SubPage; label: string; icon: React.ReactNode }[] = [
   { key: "overview",   label: "Overview",             icon: <TrendingUp className="h-3.5 w-3.5" /> },
   { key: "sales-mix",  label: "Sales Mix",             icon: <PieChart className="h-3.5 w-3.5" /> },
+  { key: "channel",    label: "Digital Sales",          icon: <Smartphone className="h-3.5 w-3.5" /> },
   { key: "discounts",  label: "Discounts & Refunds",   icon: <Tag className="h-3.5 w-3.5" /> },
 ];
 
@@ -257,8 +258,29 @@ export default function SalesReport() {
       discountCount:  { cur: sum(cur,"discounts_count"),   prev: sum(prv,"discounts_count") },
       refunds:        { cur: sum(cur,"refunds_amount"),    prev: sum(prv,"refunds_amount"),    prevYear: sum(prvY,"refunds_amount") },
       refundCount:    { cur: sum(cur,"refunds_count"),     prev: sum(prv,"refunds_count") },
+      webAppSales:       { cur: sum(cur,"online_sales"),             prev: sum(prv,"online_sales"),             prevYear: sum(prvY,"online_sales") },
+      webAppTransactions:{ cur: sum(cur,"online_transaction_count"), prev: sum(prv,"online_transaction_count") },
     };
   }, [salesData, prevData, prevYearData]);
+
+  // ── Channel (Web / App) data ─────────────────────────────────────────────
+  const channelTrendData = useMemo(() => {
+    if (!salesData) return [];
+    const dateMap = new Map<string,{webApp:number;inStore:number}>();
+    for (const row of salesData) {
+      if (!dateMap.has(row.date)) dateMap.set(row.date,{webApp:0,inStore:0});
+      const e = dateMap.get(row.date)!;
+      const webApp = Number(row.online_sales ?? 0);
+      e.webApp += webApp;
+      e.inStore += Number(row.total_sales) - webApp;
+    }
+    return Array.from(dateMap.entries()).sort(([a],[b])=>a.localeCompare(b))
+      .map(([date,v])=>({ date: format(parseISO(date),"d MMM"), ...v }));
+  }, [salesData]);
+
+  const hasChannelData = (salesData??[]).some(r=>(r.online_sales??0)>0);
+  const webAppPctOfGross = kpis.grossSales.cur>0 ? (kpis.webAppSales.cur/kpis.grossSales.cur)*100 : 0;
+  const webAppAvgTx = kpis.webAppTransactions.cur>0 ? kpis.webAppSales.cur/kpis.webAppTransactions.cur : 0;
 
   // ── Trend chart ───────────────────────────────────────────────────────────
   const trendData = useMemo(() => {
@@ -656,6 +678,84 @@ export default function SalesReport() {
                     </tr>
                   </tfoot>
                 </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ════════════════════════ BY CHANNEL ═══════════════════════════════ */}
+      {!isLoading && subPage==="channel" && (
+        <div className="space-y-6">
+          {!hasChannelData ? (
+            <div className="rounded-xl border border-border bg-card p-12 text-center">
+              <Smartphone className="h-10 w-10 text-muted-foreground mx-auto mb-3"/>
+              <p className="text-sm font-medium text-foreground mb-1">No web / app sales data</p>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                Web / App Sales (Bite) figures will appear here once captured via the Lightspeed
+                integration or added through Manual Entry.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <KpiCard label="Web / App Sales"  value={kpis.webAppSales.cur}      prev={kpis.webAppSales.prev}      prevYear={showYearComparison?kpis.webAppSales.prevYear:undefined} prevLabel={prevLabel} icon={<Smartphone className="h-5 w-5"/>} prefix="$"/>
+                <KpiCard label="Web / App Transactions" value={kpis.webAppTransactions.cur} prev={kpis.webAppTransactions.prev} prevLabel={prevLabel} icon={<Receipt className="h-5 w-5"/>}/>
+                <SmallKpi label="Avg Web / App Transaction" value={formatCurrency(webAppAvgTx)} />
+                <SmallKpi label="% of Gross Sales" value={formatPercent(webAppPctOfGross)} sub="from Web / App orders" />
+              </div>
+
+              {channelTrendData.length>0 && (
+                <div className="rounded-xl border border-border bg-card p-6">
+                  <h3 className="text-sm font-semibold mb-4">Web / App Sales vs In-Store</h3>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={channelTrendData} margin={{top:8,right:8,left:0,bottom:0}}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false}/>
+                      <XAxis dataKey="date" tick={{fontSize:11}} stroke="hsl(var(--muted-foreground))"/>
+                      <YAxis tickFormatter={v=>`$${formatNumber(v)}`} tick={{fontSize:11}} stroke="hsl(var(--muted-foreground))" width={55}/>
+                      <Tooltip formatter={(v)=>[formatCurrency(Number(v)),""]}
+                        contentStyle={{background:"hsl(var(--card))",border:"1px solid hsl(var(--border))",borderRadius:"8px",fontSize:"12px"}}/>
+                      <Legend/>
+                      <Bar dataKey="webApp"  name="Web / App Sales" stackId="a" fill="#f97316" radius={[0,0,0,0]}/>
+                      <Bar dataKey="inStore" name="In-Store"        stackId="a" fill="#3b82f6" radius={[4,4,0,0]}/>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-border">
+                  <h3 className="text-sm font-semibold">Daily Breakdown</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        {["Date","Restaurant","Gross Sales","Web / App Sales","% of Gross","Web / App Tx","Avg Tx"].map(h=>(
+                          <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {(salesData??[]).map(row=>{
+                        const r = restaurants?.find(x=>x.id===row.restaurant_id);
+                        const webApp = row.online_sales ?? 0;
+                        const pct = row.total_sales>0 ? (webApp/row.total_sales)*100 : 0;
+                        return (
+                          <tr key={row.id} className="hover:bg-muted/10 transition-colors">
+                            <td className="px-4 py-3 text-sm">{format(parseISO(row.date),"d MMM yyyy")}</td>
+                            <td className="px-4 py-3 text-sm font-medium">{r?.name??"—"}</td>
+                            <td className="px-4 py-3 text-sm tabular-nums">{formatCurrency(row.total_sales)}</td>
+                            <td className="px-4 py-3 text-sm tabular-nums font-medium">{webApp>0?formatCurrency(webApp):"—"}</td>
+                            <td className="px-4 py-3 text-sm tabular-nums text-muted-foreground">{webApp>0?formatPercent(pct):"—"}</td>
+                            <td className="px-4 py-3 text-sm text-muted-foreground">{row.online_transaction_count||"—"}</td>
+                            <td className="px-4 py-3 text-sm tabular-nums text-muted-foreground">{row.online_average_transaction?formatCurrency(row.online_average_transaction):"—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </>
           )}
