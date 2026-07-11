@@ -92,7 +92,7 @@ export function WeeklyStatsCards({ date }: { date: string }) {
       if (!ids.length) return [];
       const { data, error } = await supabase
         .from("labour_daily")
-        .select("restaurant_id, total_cost, labour_percent")
+        .select("restaurant_id, total_cost, labour_percent, total_hours")
         .gte("date", wsStr)
         .lte("date", weStr)
         .in("restaurant_id", ids);
@@ -146,6 +146,8 @@ export function WeeklyStatsCards({ date }: { date: string }) {
             : null;
         const totalLabourCost = storeLabour.reduce((s, r) => s + r.total_cost, 0);
         const labourPct = weeklyRevenue > 0 ? (totalLabourCost / weeklyRevenue) * 100 : null;
+        const totalLabourHours = storeLabour.reduce((s, r) => s + Number(r.total_hours), 0);
+        const spmh = totalLabourHours > 0 ? weeklyGross / totalLabourHours : null;
         const avgRating = storeReviews.length
           ? storeReviews.reduce((s, r) => s + r.rating, 0) / storeReviews.length
           : null;
@@ -186,6 +188,12 @@ export function WeeklyStatsCards({ date }: { date: string }) {
                     {labourPct !== null ? formatPercent(labourPct) : "—"}
                   </span>
                 </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground">Sales / Hour</span>
+                <span className="text-sm font-medium">
+                  {spmh !== null ? formatCurrency(spmh) : "—"}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs uppercase tracking-wider text-muted-foreground">Avg Rating</span>

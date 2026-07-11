@@ -24,6 +24,7 @@ import {
   Loader2,
   ChevronDown,
   SlidersHorizontal,
+  Gauge,
 } from "lucide-react";
 import {
   format,
@@ -39,7 +40,7 @@ import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
-import type { LabourDaily, Restaurant } from "@/types";
+import type { LabourDaily, Restaurant, SalesDaily } from "@/types";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -165,21 +166,27 @@ function KpiCard({
   );
 }
 
-function exportCSV(data: LabourDaily[], restaurants: Restaurant[]) {
+function exportCSV(data: LabourDaily[], restaurants: Restaurant[], salesByKey: Map<string, number>) {
   const headers = [
     "Date", "Restaurant", "Actual Hours", "Scheduled Hours",
-    "Overtime Hours", "Labour Cost", "Labour %", "Source"
+    "Overtime Hours", "Labour Cost", "Labour %", "Sales", "SPMH", "Source"
   ];
-  const rows = data.map((r) => [
-    r.date,
-    restaurants.find((x) => x.id === r.restaurant_id)?.name ?? "",
-    r.total_hours,
-    r.scheduled_hours ?? "",
-    r.overtime_hours ?? "",
-    r.total_cost,
-    r.labour_percent,
-    r.source,
-  ]);
+  const rows = data.map((r) => {
+    const sales = salesByKey.get(`${r.restaurant_id}|${r.date}`) ?? null;
+    const spmh  = sales !== null && Number(r.total_hours) > 0 ? sales / Number(r.total_hours) : null;
+    return [
+      r.date,
+      restaurants.find((x) => x.id === r.restaurant_id)?.name ?? "",
+      r.total_hours,
+      r.scheduled_hours ?? "",
+      r.overtime_hours ?? "",
+      r.total_cost,
+      r.labour_percent,
+      sales ?? "",
+      spmh !== null ? spmh.toFixed(2) : "",
+      r.source,
+    ];
+  });
   const csv = [headers, ...rows].map((row) => row.map(String).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const url  = URL.createObjectURL(blob);
@@ -250,6 +257,48 @@ export default function LabourReport() {
     enabled: !!restaurantIds.length,
   });
 
+  // Sales for the same window — needed to compute Sales per Man Hour (SPMH).
+  const { data: salesData } = useQuery({
+    queryKey: ["labour-report-sales", dateRange, restaurantIds],
+    queryFn: async () => {
+      if (!restaurantIds.length) return [];
+      const { data, error } = await supabase
+        .from("sales_daily")
+        .select("restaurant_id, date, total_sales")
+        .gte("date", dateRange.from)
+        .lte("date", dateRange.to)
+        .in("restaurant_id", restaurantIds);
+      if (error) throw error;
+      return data as Pick<SalesDaily, "restaurant_id" | "date" | "total_sales">[];
+    },
+    enabled: !!restaurantIds.length,
+  });
+
+  const { data: prevSalesData } = useQuery({
+    queryKey: ["labour-report-sales-prev", prevRange, restaurantIds],
+    queryFn: async () => {
+      if (!restaurantIds.length) return [];
+      const { data, error } = await supabase
+        .from("sales_daily")
+        .select("total_sales")
+        .gte("date", prevRange.from)
+        .lte("date", prevRange.to)
+        .in("restaurant_id", restaurantIds);
+      if (error) throw error;
+      return data as Pick<SalesDaily, "total_sales">[];
+    },
+    enabled: !!restaurantIds.length,
+  });
+
+  // (restaurant_id|date) → gross sales, so each labour row can be paired with its day's sales.
+  const salesByKey = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of salesData ?? []) {
+      m.set(`${r.restaurant_id}|${r.date}`, Number(r.total_sales));
+    }
+    return m;
+  }, [salesData]);
+
   const kpis = useMemo(() => {
     const cur = labourData ?? [];
     const prv = prevData ?? [];
@@ -263,8 +312,27 @@ export default function LabourReport() {
     const prevAvgPct   = prv.length > 0
       ? prv.reduce((s, r) => s + Number(r.labour_percent ?? 0), 0) / prv.length : 0;
     const prevOT       = prv.reduce((s, r) => s + Number(r.overtime_hours ?? 0), 0);
-    return { totalHours, totalCost, avgLabourPct, totalOT, prevHours, prevCost, prevAvgPct, prevOT };
-  }, [labourData, prevData]);
+
+    // SPMH = gross sales ÷ hours. Actual uses total_hours (always present);
+    // rostered uses scheduled_hours and only counts sales on days that have a roster.
+    const totalSales = (salesData ?? []).reduce((s, r) => s + Number(r.total_sales), 0);
+    let rosteredHours = 0;
+    let rosteredSales = 0;
+    for (const r of cur) {
+      if (r.scheduled_hours == null) continue;
+      rosteredHours += Number(r.scheduled_hours);
+      rosteredSales += salesByKey.get(`${r.restaurant_id}|${r.date}`) ?? 0;
+    }
+    const spmhActual   = totalHours    > 0 ? totalSales    / totalHours    : null;
+    const spmhRostered = rosteredHours > 0 ? rosteredSales / rosteredHours : null;
+    const prevSales    = (prevSalesData ?? []).reduce((s, r) => s + Number(r.total_sales), 0);
+    const prevSpmhActual = prevHours > 0 ? prevSales / prevHours : null;
+
+    return {
+      totalHours, totalCost, avgLabourPct, totalOT, prevHours, prevCost, prevAvgPct, prevOT,
+      totalSales, spmhActual, spmhRostered, prevSpmhActual,
+    };
+  }, [labourData, prevData, salesData, prevSalesData, salesByKey]);
 
   const labourPctTrend = useMemo(() => {
     const dateMap = new Map<string, number[]>();
@@ -279,6 +347,23 @@ export default function LabourReport() {
         pct: Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 10) / 10,
       }));
   }, [labourData]);
+
+  // Sales per Man Hour per day = that day's gross sales ÷ actual hours.
+  const spmhTrend = useMemo(() => {
+    const dateMap = new Map<string, { sales: number; hours: number }>();
+    for (const row of labourData ?? []) {
+      const e = dateMap.get(row.date) ?? { sales: 0, hours: 0 };
+      e.hours += Number(row.total_hours);
+      e.sales += salesByKey.get(`${row.restaurant_id}|${row.date}`) ?? 0;
+      dateMap.set(row.date, e);
+    }
+    return Array.from(dateMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, v]) => ({
+        date: format(parseISO(date), "d MMM"),
+        spmh: v.hours > 0 ? Math.round((v.sales / v.hours) * 100) / 100 : 0,
+      }));
+  }, [labourData, salesByKey]);
 
   const rosterActualData = useMemo(() => {
     const dateMap = new Map<string, { scheduled: number; actual: number }>();
@@ -348,24 +433,28 @@ export default function LabourReport() {
         preset={preset} setPreset={(p) => { setPreset(p); setCustomRange(null); }}
         customRange={customRange} setCustomRange={setCustomRange}
         onManualEntry={() => navigate("/reports/labour/manual-entry")}
-        onExport={() => labourData && restaurants && exportCSV(labourData, restaurants)}
+        onExport={() => labourData && restaurants && exportCSV(labourData, restaurants, salesByKey)}
         hasData={!!labourData?.length}
       />
 
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {[1,2,3,4].map((i) => (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          {[1,2,3,4,5,6].map((i) => (
             <div key={i} className="rounded-xl border border-border bg-card p-6 animate-pulse h-32" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           <KpiCard label="Total Hours"   value={kpis.totalHours}   prev={kpis.prevHours}
             icon={<Clock className="h-5 w-5" />} formatFn={(v) => `${v.toFixed(1)}h`} />
           <KpiCard label="Labour Cost"   value={kpis.totalCost}    prev={kpis.prevCost}
             icon={<Users className="h-5 w-5" />} formatFn={(v) => formatCurrency(v)} />
           <KpiCard label="Labour Cost %" value={kpis.avgLabourPct} prev={kpis.prevAvgPct}
             icon={<TrendingUp className="h-5 w-5" />} formatFn={(v) => formatPercent(v)} rag />
+          <KpiCard label="Sales / Hour (Actual)" value={kpis.spmhActual} prev={kpis.prevSpmhActual}
+            icon={<Gauge className="h-5 w-5" />} formatFn={(v) => formatCurrency(v)} />
+          <KpiCard label="Sales / Hour (Rostered)" value={kpis.spmhRostered} prev={null}
+            icon={<Gauge className="h-5 w-5" />} formatFn={(v) => formatCurrency(v)} />
           <KpiCard label="Overtime Hrs"  value={kpis.totalOT}      prev={kpis.prevOT}
             icon={<Clock className="h-5 w-5" />} formatFn={(v) => `${v.toFixed(1)}h`} />
         </div>
@@ -395,6 +484,29 @@ export default function LabourReport() {
             <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-4 rounded bg-amber-500" /> 30–35% — near target</span>
             <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-4 rounded bg-red-500" /> Over 35% — over target</span>
           </div>
+        </div>
+      )}
+
+      {spmhTrend.some((d) => d.spmh > 0) && (
+        <div className="rounded-xl border border-border bg-card p-6">
+          <h3 className="text-sm font-semibold mb-1">Sales per Man Hour Trend</h3>
+          <p className="text-xs text-muted-foreground mb-4">Gross sales ÷ actual hours worked</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={spmhTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+              <YAxis
+                tickFormatter={(v) => formatCurrency(Number(v))}
+                tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))"
+                width={70}
+              />
+              <Tooltip
+                formatter={(v) => [formatCurrency(Number(v)), "Sales / hour"]}
+                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
+              />
+              <Line type="monotone" dataKey="spmh" stroke="#22c55e" strokeWidth={2} dot={false} activeDot={{ r: 4 }} name="Sales / hour" />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       )}
 
@@ -450,7 +562,7 @@ export default function LabourReport() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  {["Date","Restaurant","Actual Hrs","Scheduled","Overtime","Cost","Labour %","Source"].map((h) => (
+                  {["Date","Restaurant","Actual Hrs","Scheduled","Overtime","Cost","Labour %","Sales","SPMH","Source"].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground font-medium">{h}</th>
                   ))}
                 </tr>
@@ -459,6 +571,9 @@ export default function LabourReport() {
                 {labourData.map((row) => {
                   const restaurant = restaurants?.find((r) => r.id === row.restaurant_id);
                   const pctStatus  = labourPctStatus(Number(row.labour_percent));
+                  const rowSales   = salesByKey.get(`${row.restaurant_id}|${row.date}`) ?? null;
+                  const rowSpmh    = rowSales !== null && Number(row.total_hours) > 0
+                    ? rowSales / Number(row.total_hours) : null;
                   return (
                     <tr key={row.id} className="hover:bg-muted/10 transition-colors">
                       <td className="px-4 py-3 text-sm">{format(parseISO(row.date), "d MMM yyyy")}</td>
@@ -481,6 +596,12 @@ export default function LabourReport() {
                         )}>
                           {formatPercent(Number(row.labour_percent))}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {rowSales !== null ? formatCurrency(rowSales) : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium">
+                        {rowSpmh !== null ? formatCurrency(rowSpmh) : "—"}
                       </td>
                       <td className="px-4 py-3"><SourceBadge source={row.source} /></td>
                     </tr>

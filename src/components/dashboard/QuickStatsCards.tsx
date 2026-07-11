@@ -129,6 +129,11 @@ export function QuickStatsCards({ date }: { date?: string }) {
         const labourPct = labour?.labour_percent ?? null;
         const rating = avgRating;
 
+        const labourHours = labour?.total_hours ?? null;
+        const grossSales = sales?.total_sales ?? null;
+        const spmh = grossSales !== null && labourHours && labourHours > 0
+          ? grossSales / labourHours : null;
+
         const currentSales = sales?.net_sales ?? sales?.total_sales ?? null;
         const priorSales = prevYearSales?.net_sales ?? prevYearSales?.total_sales ?? null;
         const yoyPct =
@@ -172,6 +177,12 @@ export function QuickStatsCards({ date }: { date?: string }) {
                     {labourPct !== null ? formatPercent(labourPct) : "—"}
                   </span>
                 </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground">Sales / Hour</span>
+                <span className="text-sm font-medium">
+                  {spmh !== null ? formatCurrency(spmh) : "—"}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs uppercase tracking-wider text-muted-foreground">Avg Rating</span>
