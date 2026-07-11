@@ -90,6 +90,9 @@ export interface SalesDaily {
   online_sales: number | null;
   online_transaction_count: number | null;
   online_average_transaction: number | null;
+  delivery_sales: number | null;
+  delivery_transaction_count: number | null;
+  delivery_average_transaction: number | null;
   created_at: string;
 }
 

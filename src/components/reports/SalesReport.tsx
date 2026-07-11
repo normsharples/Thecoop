@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import {
   DollarSign, Receipt, TrendingUp, TrendingDown, Minus,
-  Download, PlusCircle, Loader2, PieChart, Tag, Smartphone,
+  Download, PlusCircle, Loader2, PieChart, Tag, Smartphone, Truck,
   ChevronDown, SlidersHorizontal,
 } from "lucide-react";
 import {
@@ -260,27 +260,35 @@ export default function SalesReport() {
       refundCount:    { cur: sum(cur,"refunds_count"),     prev: sum(prv,"refunds_count") },
       webAppSales:       { cur: sum(cur,"online_sales"),             prev: sum(prv,"online_sales"),             prevYear: sum(prvY,"online_sales") },
       webAppTransactions:{ cur: sum(cur,"online_transaction_count"), prev: sum(prv,"online_transaction_count") },
+      deliverySales:       { cur: sum(cur,"delivery_sales"),             prev: sum(prv,"delivery_sales"),             prevYear: sum(prvY,"delivery_sales") },
+      deliveryTransactions:{ cur: sum(cur,"delivery_transaction_count"), prev: sum(prv,"delivery_transaction_count") },
     };
   }, [salesData, prevData, prevYearData]);
 
-  // ── Channel (Web / App) data ─────────────────────────────────────────────
+  // ── Digital channel (Web / App + Delivery) data ──────────────────────────
   const channelTrendData = useMemo(() => {
     if (!salesData) return [];
-    const dateMap = new Map<string,{webApp:number;inStore:number}>();
+    const dateMap = new Map<string,{webApp:number;delivery:number;inStore:number}>();
     for (const row of salesData) {
-      if (!dateMap.has(row.date)) dateMap.set(row.date,{webApp:0,inStore:0});
+      if (!dateMap.has(row.date)) dateMap.set(row.date,{webApp:0,delivery:0,inStore:0});
       const e = dateMap.get(row.date)!;
       const webApp = Number(row.online_sales ?? 0);
+      const delivery = Number(row.delivery_sales ?? 0);
       e.webApp += webApp;
-      e.inStore += Number(row.total_sales) - webApp;
+      e.delivery += delivery;
+      e.inStore += Number(row.total_sales) - webApp - delivery;
     }
     return Array.from(dateMap.entries()).sort(([a],[b])=>a.localeCompare(b))
       .map(([date,v])=>({ date: format(parseISO(date),"d MMM"), ...v }));
   }, [salesData]);
 
-  const hasChannelData = (salesData??[]).some(r=>(r.online_sales??0)>0);
+  const hasChannelData = (salesData??[]).some(r=>(r.online_sales??0)>0||(r.delivery_sales??0)>0);
   const webAppPctOfGross = kpis.grossSales.cur>0 ? (kpis.webAppSales.cur/kpis.grossSales.cur)*100 : 0;
   const webAppAvgTx = kpis.webAppTransactions.cur>0 ? kpis.webAppSales.cur/kpis.webAppTransactions.cur : 0;
+  const deliveryPctOfGross = kpis.grossSales.cur>0 ? (kpis.deliverySales.cur/kpis.grossSales.cur)*100 : 0;
+  const deliveryAvgTx = kpis.deliveryTransactions.cur>0 ? kpis.deliverySales.cur/kpis.deliveryTransactions.cur : 0;
+  const digitalSalesTotal = kpis.webAppSales.cur + kpis.deliverySales.cur;
+  const digitalPctOfGross = kpis.grossSales.cur>0 ? (digitalSalesTotal/kpis.grossSales.cur)*100 : 0;
 
   // ── Trend chart ───────────────────────────────────────────────────────────
   const trendData = useMemo(() => {
@@ -684,30 +692,39 @@ export default function SalesReport() {
         </div>
       )}
 
-      {/* ════════════════════════ BY CHANNEL ═══════════════════════════════ */}
+      {/* ════════════════════════ DIGITAL SALES ════════════════════════════ */}
       {!isLoading && subPage==="channel" && (
         <div className="space-y-6">
           {!hasChannelData ? (
             <div className="rounded-xl border border-border bg-card p-12 text-center">
               <Smartphone className="h-10 w-10 text-muted-foreground mx-auto mb-3"/>
-              <p className="text-sm font-medium text-foreground mb-1">No web / app sales data</p>
+              <p className="text-sm font-medium text-foreground mb-1">No digital sales data</p>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Web / App Sales (Bite) figures will appear here once captured via the Lightspeed
-                integration or added through Manual Entry.
+                Web / App Sales (Bite) and Delivery figures will appear here once captured via the
+                Lightspeed integration or added through Manual Entry.
               </p>
             </div>
           ) : (
             <>
+              {/* Headline KPIs */}
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <KpiCard label="Web / App Sales"  value={kpis.webAppSales.cur}      prev={kpis.webAppSales.prev}      prevYear={showYearComparison?kpis.webAppSales.prevYear:undefined} prevLabel={prevLabel} icon={<Smartphone className="h-5 w-5"/>} prefix="$"/>
-                <KpiCard label="Web / App Transactions" value={kpis.webAppTransactions.cur} prev={kpis.webAppTransactions.prev} prevLabel={prevLabel} icon={<Receipt className="h-5 w-5"/>}/>
+                <KpiCard label="Digital Sales"   value={digitalSalesTotal||null}   prev={(kpis.webAppSales.prev+kpis.deliverySales.prev)||null} prevLabel={prevLabel} icon={<DollarSign className="h-5 w-5"/>} prefix="$"/>
+                <KpiCard label="Web / App Sales" value={kpis.webAppSales.cur}       prev={kpis.webAppSales.prev}   prevYear={showYearComparison?kpis.webAppSales.prevYear:undefined} prevLabel={prevLabel} icon={<Smartphone className="h-5 w-5"/>} prefix="$"/>
+                <KpiCard label="Delivery Sales"  value={kpis.deliverySales.cur}     prev={kpis.deliverySales.prev} prevYear={showYearComparison?kpis.deliverySales.prevYear:undefined} prevLabel={prevLabel} icon={<Truck className="h-5 w-5"/>} prefix="$"/>
+                <SmallKpi label="% of Gross Sales" value={formatPercent(digitalPctOfGross)} sub="from digital orders" />
+              </div>
+
+              {/* Per-channel detail */}
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <SmallKpi label="Web / App Transactions" value={kpis.webAppTransactions.cur.toLocaleString("en-AU")} sub={`${formatPercent(webAppPctOfGross)} of gross`} />
                 <SmallKpi label="Avg Web / App Transaction" value={formatCurrency(webAppAvgTx)} />
-                <SmallKpi label="% of Gross Sales" value={formatPercent(webAppPctOfGross)} sub="from Web / App orders" />
+                <SmallKpi label="Delivery Transactions" value={kpis.deliveryTransactions.cur.toLocaleString("en-AU")} sub={`${formatPercent(deliveryPctOfGross)} of gross`} />
+                <SmallKpi label="Avg Delivery Transaction" value={formatCurrency(deliveryAvgTx)} />
               </div>
 
               {channelTrendData.length>0 && (
                 <div className="rounded-xl border border-border bg-card p-6">
-                  <h3 className="text-sm font-semibold mb-4">Web / App Sales vs In-Store</h3>
+                  <h3 className="text-sm font-semibold mb-4">Digital Sales vs In-Store</h3>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={channelTrendData} margin={{top:8,right:8,left:0,bottom:0}}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false}/>
@@ -716,8 +733,9 @@ export default function SalesReport() {
                       <Tooltip formatter={(v)=>[formatCurrency(Number(v)),""]}
                         contentStyle={{background:"hsl(var(--card))",border:"1px solid hsl(var(--border))",borderRadius:"8px",fontSize:"12px"}}/>
                       <Legend/>
-                      <Bar dataKey="webApp"  name="Web / App Sales" stackId="a" fill="#f97316" radius={[0,0,0,0]}/>
-                      <Bar dataKey="inStore" name="In-Store"        stackId="a" fill="#3b82f6" radius={[4,4,0,0]}/>
+                      <Bar dataKey="webApp"   name="Web / App Sales" stackId="a" fill="#f97316" radius={[0,0,0,0]}/>
+                      <Bar dataKey="delivery" name="Delivery Sales"  stackId="a" fill="#22c55e" radius={[0,0,0,0]}/>
+                      <Bar dataKey="inStore"  name="In-Store"        stackId="a" fill="#3b82f6" radius={[4,4,0,0]}/>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -731,7 +749,7 @@ export default function SalesReport() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
-                        {["Date","Restaurant","Gross Sales","Web / App Sales","% of Gross","Web / App Tx","Avg Tx"].map(h=>(
+                        {["Date","Restaurant","Gross Sales","Web / App","Delivery","Digital Total","% of Gross"].map(h=>(
                           <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">{h}</th>
                         ))}
                       </tr>
@@ -740,16 +758,18 @@ export default function SalesReport() {
                       {(salesData??[]).map(row=>{
                         const r = restaurants?.find(x=>x.id===row.restaurant_id);
                         const webApp = row.online_sales ?? 0;
-                        const pct = row.total_sales>0 ? (webApp/row.total_sales)*100 : 0;
+                        const delivery = row.delivery_sales ?? 0;
+                        const digital = webApp + delivery;
+                        const pct = row.total_sales>0 ? (digital/row.total_sales)*100 : 0;
                         return (
                           <tr key={row.id} className="hover:bg-muted/10 transition-colors">
                             <td className="px-4 py-3 text-sm">{format(parseISO(row.date),"d MMM yyyy")}</td>
                             <td className="px-4 py-3 text-sm font-medium">{r?.name??"—"}</td>
                             <td className="px-4 py-3 text-sm tabular-nums">{formatCurrency(row.total_sales)}</td>
-                            <td className="px-4 py-3 text-sm tabular-nums font-medium">{webApp>0?formatCurrency(webApp):"—"}</td>
-                            <td className="px-4 py-3 text-sm tabular-nums text-muted-foreground">{webApp>0?formatPercent(pct):"—"}</td>
-                            <td className="px-4 py-3 text-sm text-muted-foreground">{row.online_transaction_count||"—"}</td>
-                            <td className="px-4 py-3 text-sm tabular-nums text-muted-foreground">{row.online_average_transaction?formatCurrency(row.online_average_transaction):"—"}</td>
+                            <td className="px-4 py-3 text-sm tabular-nums">{webApp>0?formatCurrency(webApp):"—"}</td>
+                            <td className="px-4 py-3 text-sm tabular-nums">{delivery>0?formatCurrency(delivery):"—"}</td>
+                            <td className="px-4 py-3 text-sm tabular-nums font-medium">{digital>0?formatCurrency(digital):"—"}</td>
+                            <td className="px-4 py-3 text-sm tabular-nums text-muted-foreground">{digital>0?formatPercent(pct):"—"}</td>
                           </tr>
                         );
                       })}

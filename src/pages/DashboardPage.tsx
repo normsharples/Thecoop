@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, subDays, addDays, subWeeks, startOfWeek, endOfWeek, parseISO } from "date-fns";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Smartphone, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AlertsBanner } from "@/components/dashboard/AlertsBanner";
 import { DailySnapshot } from "@/components/dashboard/DailySnapshot";
@@ -10,7 +10,7 @@ import { WeeklySnapshot } from "@/components/dashboard/WeeklySnapshot";
 import { WeeklyStatsCards } from "@/components/dashboard/WeeklyStatsCards";
 import { WeeklySecondaryCards } from "@/components/dashboard/WeeklySecondaryCards";
 import { DeliveryUptimeCard } from "@/components/dashboard/DeliveryUptimeCard";
-import { WebAppSalesCard } from "@/components/dashboard/WebAppSalesCard";
+import { ChannelSalesCard } from "@/components/dashboard/ChannelSalesCard";
 import { WeeklyRevenueTrend } from "@/components/dashboard/WeeklyRevenueTrend";
 import { RecentReviews } from "@/components/dashboard/RecentReviews";
 import { QuickLinks } from "@/components/dashboard/QuickLinks";
@@ -145,7 +145,14 @@ export default function DashboardPage() {
           <DailySnapshot date={selectedDate} />
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <DailySecondaryCards date={selectedDate} />
-            <WebAppSalesCard
+            <ChannelSalesCard
+              label="Web / App Sales" field="online_sales" icon={Smartphone}
+              from={selectedDate} to={selectedDate}
+              prevFrom={prevDayStr} prevTo={prevDayStr}
+              comparisonLabel="vs prev day"
+            />
+            <ChannelSalesCard
+              label="Delivery Sales" field="delivery_sales" icon={Truck}
               from={selectedDate} to={selectedDate}
               prevFrom={prevDayStr} prevTo={prevDayStr}
               comparisonLabel="vs prev day"
@@ -162,7 +169,14 @@ export default function DashboardPage() {
           <WeeklySnapshot date={selectedDate} />
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <WeeklySecondaryCards date={selectedDate} />
-            <WebAppSalesCard
+            <ChannelSalesCard
+              label="Web / App Sales" field="online_sales" icon={Smartphone}
+              from={weekStartStr} to={weekEndStr}
+              prevFrom={prevWeekStart} prevTo={prevWeekEnd}
+              comparisonLabel="vs prev week"
+            />
+            <ChannelSalesCard
+              label="Delivery Sales" field="delivery_sales" icon={Truck}
               from={weekStartStr} to={weekEndStr}
               prevFrom={prevWeekStart} prevTo={prevWeekEnd}
               comparisonLabel="vs prev week"
