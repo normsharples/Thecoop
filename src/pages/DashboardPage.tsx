@@ -9,7 +9,6 @@ import { QuickStatsCards } from "@/components/dashboard/QuickStatsCards";
 import { WeeklySnapshot } from "@/components/dashboard/WeeklySnapshot";
 import { WeeklyStatsCards } from "@/components/dashboard/WeeklyStatsCards";
 import { WeeklySecondaryCards } from "@/components/dashboard/WeeklySecondaryCards";
-import { DeliveryUptimeCard } from "@/components/dashboard/DeliveryUptimeCard";
 import { ChannelSalesCard } from "@/components/dashboard/ChannelSalesCard";
 import { WeeklyRevenueTrend } from "@/components/dashboard/WeeklyRevenueTrend";
 import { RecentReviews } from "@/components/dashboard/RecentReviews";
@@ -157,7 +156,6 @@ export default function DashboardPage() {
               prevFrom={prevDayStr} prevTo={prevDayStr}
               comparisonLabel="vs prev day"
             />
-            <DeliveryUptimeCard />
           </div>
           <QuickStatsCards date={selectedDate} />
         </>
@@ -181,7 +179,6 @@ export default function DashboardPage() {
               prevFrom={prevWeekStart} prevTo={prevWeekEnd}
               comparisonLabel="vs prev week"
             />
-            <DeliveryUptimeCard />
           </div>
           <WeeklyStatsCards date={selectedDate} />
         </>
