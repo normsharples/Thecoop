@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useGoogleRatings, combineRatings, totalReviewCount } from "@/hooks/useGoogleRatings";
 import { formatDistanceToNow } from "date-fns";
 
 function StarRating({ rating }: { rating: number }) {
@@ -30,6 +31,12 @@ export function RecentReviews() {
     ? [selectedRestaurantId]
     : restaurants?.map((r) => r.id) ?? [];
 
+  // Current overall Google rating across the shown store(s).
+  const { data: ratingMap } = useGoogleRatings(restaurantIds);
+  const storeRatings = Object.values(ratingMap ?? {});
+  const overallRating = combineRatings(storeRatings);
+  const overallReviews = totalReviewCount(storeRatings);
+
   const { data: reviews, isLoading } = useQuery({
     queryKey: ["recent-reviews", selectedRestaurantId],
     queryFn: async () => {
@@ -48,7 +55,18 @@ export function RecentReviews() {
 
   return (
     <div className="rounded-xl border border-border bg-card p-6">
-      <h3 className="text-base font-semibold">Recent Reviews</h3>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-base font-semibold">Recent Reviews</h3>
+        {overallRating !== null && (
+          <div className="flex items-center gap-1.5 text-sm">
+            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+            <span className="font-semibold">{overallRating.toFixed(1)}</span>
+            <span className="text-xs text-muted-foreground">
+              Google{overallReviews !== null ? ` · ${overallReviews.toLocaleString()} reviews` : ""}
+            </span>
+          </div>
+        )}
+      </div>
       <div className="mt-4 space-y-4">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (

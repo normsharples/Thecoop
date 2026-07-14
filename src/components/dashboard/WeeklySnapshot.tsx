@@ -4,12 +4,13 @@ import {
   TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
 import {
-  format, startOfWeek, endOfWeek, subWeeks, subYears, subMonths, parseISO,
+  format, startOfWeek, endOfWeek, subWeeks, subYears, parseISO,
 } from "date-fns";
 import { cn, formatCurrency } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useGoogleRatings, combineRatings, totalReviewCount } from "@/hooks/useGoogleRatings";
 import { TARGET_METRICS } from "@/hooks/useTargets";
 import type { Target, SalesDaily, LabourDaily } from "@/types";
 
@@ -42,7 +43,9 @@ export function WeeklySnapshot({ date }: { date: string }) {
   const prevWeekEnd = subWeeks(weekEnd, 1);
   const prevYearWeekStart = subYears(weekStart, 1);
   const prevYearWeekEnd = subYears(weekEnd, 1);
-  const reviewStart = format(subMonths(anchor, 1), "yyyy-MM-dd");
+
+  // Current overall Google rating per store (from the daily snapshot table).
+  const { data: ratingMap } = useGoogleRatings(restaurantIds);
 
   const wsStr = format(weekStart, "yyyy-MM-dd");
   const weStr = format(weekEnd, "yyyy-MM-dd");
@@ -62,14 +65,12 @@ export function WeeklySnapshot({ date }: { date: string }) {
         { data: prevSales },
         { data: prevYearSales },
         { data: labour },
-        { data: reviews },
         { data: targetRows },
       ] = await Promise.all([
         supabase.from("sales_daily").select("*").gte("date", wsStr).lte("date", weStr).in("restaurant_id", restaurantIds),
         supabase.from("sales_daily").select("*").gte("date", pwsStr).lte("date", pweStr).in("restaurant_id", restaurantIds),
         supabase.from("sales_daily").select("net_sales, total_sales, transaction_count").gte("date", pyWsStr).lte("date", pyWeStr).in("restaurant_id", restaurantIds),
         supabase.from("labour_daily").select("*").gte("date", wsStr).lte("date", weStr).in("restaurant_id", restaurantIds),
-        supabase.from("google_reviews").select("rating").in("restaurant_id", restaurantIds).gte("review_date", reviewStart).lte("review_date", weStr),
         supabase.from("targets").select("*").in("restaurant_id", restaurantIds),
       ]);
       return {
@@ -77,7 +78,6 @@ export function WeeklySnapshot({ date }: { date: string }) {
         prevSales: (prevSales ?? []) as SalesDaily[],
         prevYearSales: (prevYearSales ?? []) as SalesDaily[],
         labour: (labour ?? []) as LabourDaily[],
-        reviews: (reviews ?? []) as { rating: number }[],
         targets: (targetRows ?? []) as Target[],
       };
     },
@@ -95,7 +95,7 @@ export function WeeklySnapshot({ date }: { date: string }) {
     );
   }
 
-  const { sales, prevSales, prevYearSales, reviews, targets } = data;
+  const { sales, prevSales, prevYearSales, targets } = data;
 
   // Revenue
   const weekRev = sales.reduce((s, r) => s + (r.net_sales ?? r.total_sales), 0);
@@ -120,10 +120,10 @@ export function WeeklySnapshot({ date }: { date: string }) {
   const prevAvgTx = prevTx > 0 ? prevRev / prevTx : null;
   const avgTxTrend = weekAvgTx !== null && prevAvgTx !== null ? ((weekAvgTx - prevAvgTx) / prevAvgTx) * 100 : null;
 
-  // Rating
-  const avgRating = reviews.length > 0
-    ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
-    : null;
+  // Rating — current overall Google rating across the shown store(s).
+  const storeRatings = Object.values(ratingMap ?? {});
+  const avgRating = combineRatings(storeRatings);
+  const ratingReviews = totalReviewCount(storeRatings);
 
   type StatStatus = "success" | "warning" | "destructive";
 
@@ -159,12 +159,12 @@ export function WeeklySnapshot({ date }: { date: string }) {
       status: (avgTxTrend !== null && avgTxTrend >= 0 ? "success" : "warning") as StatStatus,
     },
     {
-      label: "Avg Rating",
+      label: "Google Rating",
       value: avgRating !== null ? avgRating.toFixed(1) : "—",
       grossValue: undefined as string | undefined,
       trend: null as number | null,
-      trendLabel: "30-day avg",
-      subLabel: undefined,
+      trendLabel: "current",
+      subLabel: ratingReviews !== null ? `${ratingReviews.toLocaleString()} reviews` : undefined,
       icon: <Star className="h-4 w-4" />,
       status: (avgRating !== null
         ? avgRating >= 4.5 ? "success" : avgRating >= 4.0 ? "warning" : "destructive"
@@ -213,7 +213,7 @@ export function WeeklySnapshot({ date }: { date: string }) {
                 stat.status === "warning" && "text-amber-500",
                 stat.status === "destructive" && "text-red-500",
               )}>
-                {stat.label === "Avg Rating"
+                {stat.label === "Google Rating"
                   ? (avgRating !== null
                     ? avgRating >= 4.5 ? "Excellent" : avgRating >= 4.0 ? "Good" : "Needs work"
                     : "No data")

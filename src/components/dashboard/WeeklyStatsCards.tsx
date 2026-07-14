@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfWeek, endOfWeek, subMonths, subYears, parseISO } from "date-fns";
+import { format, startOfWeek, endOfWeek, subYears, parseISO } from "date-fns";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useGoogleRatings } from "@/hooks/useGoogleRatings";
 import type { SalesDaily, LabourDaily } from "@/types";
 
 type Status = "success" | "warning" | "destructive";
@@ -40,7 +41,6 @@ export function WeeklyStatsCards({ date }: { date: string }) {
   const anchor = parseISO(date);
   const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(anchor, { weekStartsOn: 1 });
-  const reviewStart = format(subMonths(anchor, 1), "yyyy-MM-dd");
 
   const wsStr = format(weekStart, "yyyy-MM-dd");
   const weStr = format(weekEnd, "yyyy-MM-dd");
@@ -102,22 +102,8 @@ export function WeeklyStatsCards({ date }: { date: string }) {
     enabled: !!visibleRestaurants?.length,
   });
 
-  const { data: reviewsData } = useQuery({
-    queryKey: ["weekly-stats-reviews", wsStr, selectedRestaurantId],
-    queryFn: async () => {
-      const ids = visibleRestaurants?.map((r) => r.id) ?? [];
-      if (!ids.length) return [];
-      const { data, error } = await supabase
-        .from("google_reviews")
-        .select("restaurant_id, rating")
-        .in("restaurant_id", ids)
-        .gte("review_date", reviewStart)
-        .lte("review_date", weStr);
-      if (error) throw error;
-      return data as { restaurant_id: string; rating: number }[];
-    },
-    enabled: !!visibleRestaurants?.length,
-  });
+  // Current overall Google rating per store (from the daily snapshot table).
+  const { data: ratingMap } = useGoogleRatings(visibleRestaurants?.map((r) => r.id) ?? []);
 
   if (restaurantsLoading) {
     return (
@@ -135,7 +121,6 @@ export function WeeklyStatsCards({ date }: { date: string }) {
         const storeSales = salesData?.filter((s) => s.restaurant_id === restaurant.id) ?? [];
         const prevYearStoreSales = prevYearSalesData?.filter((s) => s.restaurant_id === restaurant.id) ?? [];
         const storeLabour = labourData?.filter((l) => l.restaurant_id === restaurant.id) ?? [];
-        const storeReviews = reviewsData?.filter((r) => r.restaurant_id === restaurant.id) ?? [];
 
         const weeklyRevenue = storeSales.reduce((s, r) => s + (r.net_sales ?? r.total_sales), 0);
         const prevYearRevenue = prevYearStoreSales.reduce((s, r) => s + (r.net_sales ?? r.total_sales), 0);
@@ -148,9 +133,7 @@ export function WeeklyStatsCards({ date }: { date: string }) {
         const labourPct = weeklyRevenue > 0 ? (totalLabourCost / weeklyRevenue) * 100 : null;
         const totalLabourHours = storeLabour.reduce((s, r) => s + Number(r.total_hours), 0);
         const spmh = totalLabourHours > 0 ? weeklyGross / totalLabourHours : null;
-        const avgRating = storeReviews.length
-          ? storeReviews.reduce((s, r) => s + r.rating, 0) / storeReviews.length
-          : null;
+        const avgRating = ratingMap?.[restaurant.id]?.rating ?? null;
 
         return (
           <div key={restaurant.id} className="rounded-xl border border-border bg-card p-4">
@@ -196,7 +179,7 @@ export function WeeklyStatsCards({ date }: { date: string }) {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground">Avg Rating</span>
+                <span className="text-xs uppercase tracking-wider text-muted-foreground">Google Rating</span>
                 <div className="flex items-center gap-2">
                   {avgRating !== null && <StatusDot status={ratingStatus(avgRating)} />}
                   <span className="text-sm font-medium">

@@ -3,11 +3,12 @@ import {
   DollarSign, CalendarDays, CreditCard, Star,
   TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
-import { format, subDays, subYears, subMonths, parseISO } from "date-fns";
+import { format, subDays, subYears, parseISO } from "date-fns";
 import { cn, formatCurrency } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useGoogleRatings, combineRatings, totalReviewCount } from "@/hooks/useGoogleRatings";
 import { TARGET_METRICS } from "@/hooks/useTargets";
 import type { SalesDaily, Target } from "@/types";
 
@@ -21,7 +22,9 @@ export function DailySnapshot({ date }: { date: string }) {
 
   const prevDay = format(subDays(parseISO(date), 1), "yyyy-MM-dd");
   const lyDay = format(subYears(parseISO(date), 1), "yyyy-MM-dd");
-  const reviewStart = format(subMonths(parseISO(date), 1), "yyyy-MM-dd");
+
+  // Current overall Google rating per store (from the daily snapshot table).
+  const { data: ratingMap } = useGoogleRatings(restaurantIds);
 
   // 0=Mon…6=Sun to match targets.day_of_week
   const dow = parseISO(date).getDay() === 0 ? 6 : parseISO(date).getDay() - 1;
@@ -34,20 +37,17 @@ export function DailySnapshot({ date }: { date: string }) {
         { data: sales },
         { data: prevSales },
         { data: lySales },
-        { data: reviews },
         { data: targetRows },
       ] = await Promise.all([
         supabase.from("sales_daily").select("net_sales, total_sales, transaction_count").eq("date", date).in("restaurant_id", restaurantIds),
         supabase.from("sales_daily").select("net_sales, total_sales, transaction_count").eq("date", prevDay).in("restaurant_id", restaurantIds),
         supabase.from("sales_daily").select("net_sales, total_sales, transaction_count").eq("date", lyDay).in("restaurant_id", restaurantIds),
-        supabase.from("google_reviews").select("rating").in("restaurant_id", restaurantIds).gte("review_date", reviewStart).lte("review_date", date),
         supabase.from("targets").select("*").in("restaurant_id", restaurantIds),
       ]);
       return {
         sales: (sales ?? []) as SalesDaily[],
         prevSales: (prevSales ?? []) as SalesDaily[],
         lySales: (lySales ?? []) as SalesDaily[],
-        reviews: (reviews ?? []) as { rating: number }[],
         targets: (targetRows ?? []) as Target[],
       };
     },
@@ -65,7 +65,7 @@ export function DailySnapshot({ date }: { date: string }) {
     );
   }
 
-  const { sales, prevSales, lySales, reviews, targets } = data;
+  const { sales, prevSales, lySales, targets } = data;
 
   const dayRev = sales.reduce((s, r) => s + (r.net_sales ?? r.total_sales), 0);
   const prevDayRev = prevSales.reduce((s, r) => s + (r.net_sales ?? r.total_sales), 0);
@@ -89,9 +89,10 @@ export function DailySnapshot({ date }: { date: string }) {
     return t ? sum + t.value : sum;
   }, 0) || null;
 
-  const avgRating = reviews.length > 0
-    ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
-    : null;
+  // Current overall Google rating across the shown store(s).
+  const storeRatings = Object.values(ratingMap ?? {});
+  const avgRating = combineRatings(storeRatings);
+  const ratingReviews = totalReviewCount(storeRatings);
 
   type StatStatus = "success" | "warning" | "destructive";
 
@@ -127,12 +128,12 @@ export function DailySnapshot({ date }: { date: string }) {
       status: (avgTxTrend !== null && avgTxTrend >= 0 ? "success" : "warning") as StatStatus,
     },
     {
-      label: "Avg Rating",
+      label: "Google Rating",
       value: avgRating !== null ? avgRating.toFixed(1) : "—",
       grossValue: undefined as string | undefined,
       trend: null as number | null,
-      trendLabel: "30-day avg",
-      subLabel: undefined,
+      trendLabel: "current",
+      subLabel: ratingReviews !== null ? `${ratingReviews.toLocaleString()} reviews` : undefined,
       icon: <Star className="h-4 w-4" />,
       status: (avgRating !== null
         ? avgRating >= 4.5 ? "success" : avgRating >= 4.0 ? "warning" : "destructive"
@@ -181,7 +182,7 @@ export function DailySnapshot({ date }: { date: string }) {
                 stat.status === "warning" && "text-amber-500",
                 stat.status === "destructive" && "text-red-500",
               )}>
-                {stat.label === "Avg Rating"
+                {stat.label === "Google Rating"
                   ? (avgRating !== null
                     ? avgRating >= 4.5 ? "Excellent" : avgRating >= 4.0 ? "Good" : "Needs work"
                     : "No data")

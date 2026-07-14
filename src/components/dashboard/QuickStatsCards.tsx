@@ -3,6 +3,7 @@ import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useGoogleRatings } from "@/hooks/useGoogleRatings";
 import { format, parseISO, subYears } from "date-fns";
 
 type Status = "success" | "warning" | "destructive";
@@ -90,20 +91,8 @@ export function QuickStatsCards({ date }: { date?: string }) {
     enabled: !!visibleRestaurants?.length,
   });
 
-  const { data: reviewsData } = useQuery({
-    queryKey: ["reviews-avg", selectedRestaurantId],
-    queryFn: async () => {
-      const ids = visibleRestaurants?.map((r) => r.id) ?? [];
-      if (ids.length === 0) return [];
-      const { data, error } = await supabase
-        .from("google_reviews")
-        .select("restaurant_id, rating")
-        .in("restaurant_id", ids);
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!visibleRestaurants?.length,
-  });
+  // Current overall Google rating per store (from the daily snapshot table).
+  const { data: ratingMap } = useGoogleRatings(visibleRestaurants?.map((r) => r.id) ?? []);
 
   if (restaurantsLoading) {
     return (
@@ -121,13 +110,8 @@ export function QuickStatsCards({ date }: { date?: string }) {
         const sales = salesData?.find((s) => s.restaurant_id === restaurant.id);
         const prevYearSales = prevYearSalesData?.find((s) => s.restaurant_id === restaurant.id);
         const labour = labourData?.find((l) => l.restaurant_id === restaurant.id);
-        const restaurantReviews = reviewsData?.filter((r) => r.restaurant_id === restaurant.id);
-        const avgRating = restaurantReviews?.length
-          ? restaurantReviews.reduce((sum, r) => sum + r.rating, 0) / restaurantReviews.length
-          : null;
-
         const labourPct = labour?.labour_percent ?? null;
-        const rating = avgRating;
+        const rating = ratingMap?.[restaurant.id]?.rating ?? null;
 
         const labourHours = labour?.total_hours ?? null;
         const grossSales = sales?.total_sales ?? null;
@@ -185,7 +169,7 @@ export function QuickStatsCards({ date }: { date?: string }) {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground">Avg Rating</span>
+                <span className="text-xs uppercase tracking-wider text-muted-foreground">Google Rating</span>
                 <div className="flex items-center gap-2">
                   {rating !== null && <StatusDot status={ratingStatus(rating)} />}
                   <span className="text-sm font-medium">
