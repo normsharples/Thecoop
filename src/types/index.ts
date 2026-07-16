@@ -12,6 +12,7 @@ export interface Restaurant {
 export interface Profile {
   id: string;
   email: string;
+  username: string | null;
   full_name: string;
   role: "superadmin" | "area_manager" | "manager" | "staff";
   restaurant_access: string[];

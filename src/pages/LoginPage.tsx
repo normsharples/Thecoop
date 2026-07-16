@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 const loginSchema = z.object({
-  email: z.email("Please enter a valid email"),
+  identifier: z.string().min(1, "Enter your username or email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
@@ -29,7 +29,7 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsSubmitting(true);
-    const { error } = await signIn(data.email, data.password);
+    const { error } = await signIn(data.identifier, data.password);
     if (error) {
       toast.error(error.message);
       setIsSubmitting(false);
@@ -57,19 +57,20 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-foreground">
-                Email
+              <label htmlFor="identifier" className="text-sm font-medium text-foreground">
+                Username or email
               </label>
               <input
-                id="email"
-                type="email"
-                autoComplete="email"
+                id="identifier"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
                 className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50"
-                placeholder="you@pollorotisserie.com.au"
-                {...register("email")}
+                placeholder="username"
+                {...register("identifier")}
               />
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email.message}</p>
+              {errors.identifier && (
+                <p className="text-xs text-destructive">{errors.identifier.message}</p>
               )}
             </div>
 

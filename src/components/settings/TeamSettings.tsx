@@ -6,6 +6,8 @@ import {
   UserPlus,
   X,
   Users,
+  Trash2,
+  KeyRound,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod/v4";
@@ -18,17 +20,45 @@ import { ROLE_LABELS } from "@/lib/constants";
 import { getInitials } from "@/lib/utils";
 import type { Profile } from "@/types";
 
-const inviteSchema = z.object({
-  email: z.email("Valid email required"),
+const createSchema = z.object({
+  username: z
+    .string()
+    .min(3, "At least 3 characters")
+    .regex(
+      /^[a-z0-9._-]+$/,
+      "Lowercase letters, numbers, dots, underscores or hyphens only"
+    ),
   full_name: z.string().min(2, "Name is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum(["superadmin", "area_manager", "manager", "staff"]),
   restaurant_access: z.array(z.string()),
 });
 
-type InviteFormData = z.infer<typeof inviteSchema>;
+type CreateFormData = z.infer<typeof createSchema>;
+
+// Invokes the superadmin-only admin-users edge function.
+async function invokeAdminUsers(body: Record<string, unknown>) {
+  const { data, error } = await supabase.functions.invoke("admin-users", { body });
+  if (error) {
+    // Surface the function's JSON { error } message rather than a generic 4xx.
+    let message = error.message;
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const payload = await ctx.json();
+        if (payload?.error) message = payload.error;
+      } catch {
+        /* keep original message */
+      }
+    }
+    throw new Error(message);
+  }
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
 
 export default function TeamSettings() {
-  const [showInvite, setShowInvite] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const queryClient = useQueryClient();
   const { profile: currentUser } = useAuth();
@@ -46,39 +76,14 @@ export default function TeamSettings() {
     },
   });
 
-  const inviteMutation = useMutation({
-    mutationFn: async (formData: InviteFormData) => {
-      // Step 1: Create the Supabase auth user.
-      // This fires the on_auth_user_created trigger which inserts the profile row.
-      // Supabase sends a confirmation email; the user clicks it and sets their password.
-      // The random password here is never usable — they must go through the email link.
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: crypto.randomUUID(),
-        options: { data: { full_name: formData.full_name } },
-      });
-      if (signUpError) throw signUpError;
-
-      const userId = data.user?.id;
-      if (!userId) throw new Error("Account already exists for this email address.");
-
-      // Step 2: Upsert the profile with the correct role and access.
-      // The trigger may have already created it with defaults; this overrides them.
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .upsert({
-          id: userId,
-          email: formData.email,
-          full_name: formData.full_name,
-          role: formData.role,
-          restaurant_access: formData.restaurant_access,
-        });
-      if (profileError) throw profileError;
+  const createMutation = useMutation({
+    mutationFn: async (formData: CreateFormData) => {
+      await invokeAdminUsers({ action: "create", ...formData });
     },
     onSuccess: () => {
-      toast.success("Invite sent — they'll receive an email to confirm and set their password");
+      toast.success("User created");
       queryClient.invalidateQueries({ queryKey: ["users"] });
-      setShowInvite(false);
+      setShowCreate(false);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -111,6 +116,32 @@ export default function TeamSettings() {
     },
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ id, password }: { id: string; password: string }) => {
+      await invokeAdminUsers({ action: "reset_password", id, password });
+    },
+    onSuccess: () => {
+      toast.success("Password updated");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await invokeAdminUsers({ action: "delete", id });
+    },
+    onSuccess: () => {
+      toast.success("User deleted");
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setEditingUser(null);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -121,21 +152,21 @@ export default function TeamSettings() {
           </p>
         </div>
         <button
-          onClick={() => setShowInvite(true)}
+          onClick={() => setShowCreate(true)}
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <UserPlus className="h-4 w-4" />
-          Invite User
+          Add User
         </button>
       </div>
 
-      {/* Invite Modal */}
-      {showInvite && (
-        <InviteModal
+      {/* Create Modal */}
+      {showCreate && (
+        <CreateModal
           restaurants={restaurants ?? []}
-          onClose={() => setShowInvite(false)}
-          onSubmit={(data) => inviteMutation.mutate(data)}
-          isSubmitting={inviteMutation.isPending}
+          onClose={() => setShowCreate(false)}
+          onSubmit={(data) => createMutation.mutate(data)}
+          isSubmitting={createMutation.isPending}
         />
       )}
 
@@ -147,7 +178,13 @@ export default function TeamSettings() {
           currentUserId={currentUser?.id ?? ""}
           onClose={() => setEditingUser(null)}
           onSubmit={(data) => updateMutation.mutate(data)}
+          onResetPassword={(password) =>
+            resetPasswordMutation.mutate({ id: editingUser.id, password })
+          }
+          onDelete={() => deleteMutation.mutate(editingUser.id)}
           isSubmitting={updateMutation.isPending}
+          isResettingPassword={resetPasswordMutation.isPending}
+          isDeleting={deleteMutation.isPending}
           allUsers={users ?? []}
         />
       )}
@@ -189,7 +226,9 @@ export default function TeamSettings() {
                           <p className="text-sm font-medium text-foreground">
                             {user.full_name}
                           </p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {user.username ?? user.email}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -245,7 +284,7 @@ export default function TeamSettings() {
   );
 }
 
-function InviteModal({
+function CreateModal({
   restaurants,
   onClose,
   onSubmit,
@@ -253,7 +292,7 @@ function InviteModal({
 }: {
   restaurants: { id: string; name: string }[];
   onClose: () => void;
-  onSubmit: (data: InviteFormData) => void;
+  onSubmit: (data: CreateFormData) => void;
   isSubmitting: boolean;
 }) {
   const {
@@ -262,8 +301,8 @@ function InviteModal({
     watch,
     setValue,
     formState: { errors },
-  } = useForm<InviteFormData>({
-    resolver: zodResolver(inviteSchema),
+  } = useForm<CreateFormData>({
+    resolver: zodResolver(createSchema),
     defaultValues: { restaurant_access: [], role: "manager" },
   });
 
@@ -281,9 +320,9 @@ function InviteModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 mx-4">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-foreground">Invite User</h3>
+          <h3 className="text-lg font-semibold text-foreground">Add User</h3>
           <button onClick={onClose} className="rounded-md p-1 hover:bg-accent">
             <X className="h-4 w-4 text-muted-foreground" />
           </button>
@@ -301,15 +340,32 @@ function InviteModal({
             )}
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Email</label>
+            <label className="text-sm font-medium text-foreground">Username</label>
             <input
-              type="email"
+              autoCapitalize="none"
+              autoComplete="off"
               className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="jane@pollorotisserie.com.au"
-              {...register("email")}
+              placeholder="jane"
+              {...register("username")}
             />
-            {errors.email && (
-              <p className="text-xs text-destructive">{errors.email.message}</p>
+            {errors.username && (
+              <p className="text-xs text-destructive">{errors.username.message}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              They'll sign in with this username.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Password</label>
+            <input
+              type="text"
+              autoComplete="new-password"
+              className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Set a password"
+              {...register("password")}
+            />
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password.message}</p>
             )}
           </div>
           <div className="space-y-2">
@@ -359,7 +415,7 @@ function InviteModal({
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              Send Invite
+              Create User
             </button>
           </div>
         </form>
@@ -374,7 +430,11 @@ function EditModal({
   currentUserId,
   onClose,
   onSubmit,
+  onResetPassword,
+  onDelete,
   isSubmitting,
+  isResettingPassword,
+  isDeleting,
   allUsers,
 }: {
   user: Profile;
@@ -382,11 +442,17 @@ function EditModal({
   currentUserId: string;
   onClose: () => void;
   onSubmit: (data: { id: string; role: string; restaurant_access: string[] }) => void;
+  onResetPassword: (password: string) => void;
+  onDelete: () => void;
   isSubmitting: boolean;
+  isResettingPassword: boolean;
+  isDeleting: boolean;
   allUsers: Profile[];
 }) {
   const [role, setRole] = useState(user.role);
   const [access, setAccess] = useState<string[]>(user.restaurant_access);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const isSelf = user.id === currentUserId;
   const isLastSuperadmin =
@@ -407,9 +473,18 @@ function EditModal({
     onSubmit({ id: user.id, role, restaurant_access: access });
   };
 
+  const handleResetPassword = () => {
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    onResetPassword(newPassword);
+    setNewPassword("");
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 mx-4">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-foreground">
             Edit {user.full_name}
@@ -476,6 +551,86 @@ function EditModal({
               Save Changes
             </button>
           </div>
+
+          {/* Reset password */}
+          <div className="space-y-2 border-t border-border pt-4">
+            <label className="text-sm font-medium text-foreground">
+              Reset Password
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="New password"
+              />
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                disabled={isResettingPassword || newPassword.length === 0}
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50 transition-colors whitespace-nowrap"
+              >
+                {isResettingPassword ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <KeyRound className="h-4 w-4" />
+                )}
+                Set
+              </button>
+            </div>
+          </div>
+
+          {/* Delete user */}
+          {!isSelf && (
+            <div className="space-y-2 border-t border-border pt-4">
+              <label className="text-sm font-medium text-destructive">
+                Danger Zone
+              </label>
+              {confirmDelete ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Permanently delete {user.full_name}? Their login and profile
+                    will be removed. This can't be undone.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onDelete}
+                      disabled={isDeleting}
+                      className="inline-flex items-center gap-2 rounded-lg bg-destructive px-3 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
+                    >
+                      {isDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
+                      Delete Permanently
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={isLastSuperadmin}
+                  className="inline-flex items-center gap-2 rounded-lg border border-destructive/40 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete User
+                </button>
+              )}
+              {isLastSuperadmin && (
+                <p className="text-xs text-warning">
+                  Cannot delete the last superadmin
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

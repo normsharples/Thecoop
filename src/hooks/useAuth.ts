@@ -12,7 +12,7 @@ interface AuthState {
 }
 
 export function useAuth(): AuthState & {
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (identifier: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 } {
   const [state, setState] = useState<{
@@ -86,7 +86,11 @@ export function useAuth(): AuthState & {
     };
   }, [queryClient]);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (identifier: string, password: string) => {
+    // Usernames map to a synthetic email; real emails (containing "@") pass through as-is.
+    const email = identifier.includes("@")
+      ? identifier.trim()
+      : `${identifier.trim().toLowerCase()}@thecoop.local`;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error ? new Error(error.message) : null };
   };
