@@ -71,6 +71,7 @@ const navItems: NavItem[] = [
       { label: "Wastage", path: "/reports/wastage" },
       { label: "Records", path: "/reports/records" },
       { label: "Cash Ups", path: "/reports/cash-ups" },
+      { label: "Payouts", path: "/reports/payouts" },
     ],
   },
   // { label: "Leaderboard", path: "/leaderboard", icon: "Trophy" },

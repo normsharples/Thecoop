@@ -10,6 +10,7 @@ const reportTabs = [
   { label: "P&L", path: "/reports/pnl" },
   { label: "Records", path: "/reports/records" },
   { label: "Cash Ups", path: "/reports/cash-ups" },
+  { label: "Payouts", path: "/reports/payouts" },
 ];
 
 export default function ReportsPage() {

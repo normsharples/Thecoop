@@ -28,6 +28,7 @@ const FoodCostReport = lazy(() => import("@/components/reports/FoodCostReport"))
 const PnLReport = lazy(() => import("@/components/reports/PnLReport"));
 const SalesRecordsReport = lazy(() => import("@/components/reports/SalesRecordsReport"));
 const CashUpsReport = lazy(() => import("@/components/reports/CashUpsReport"));
+const PayoutReport = lazy(() => import("@/components/reports/PayoutReport"));
 
 const TeamSettings = lazy(() => import("@/components/settings/TeamSettings"));
 const QuickLinksSettings = lazy(() => import("@/components/settings/QuickLinksSettings"));
@@ -69,6 +70,7 @@ const router = createBrowserRouter([
           { path: "pnl", element: <PnLReport /> },
           { path: "records", element: <SalesRecordsReport /> },
           { path: "cash-ups", element: <CashUpsReport /> },
+          { path: "payouts", element: <PayoutReport /> },
         ],
       },
       { path: "leaderboard", element: <LeaderboardPage /> },
