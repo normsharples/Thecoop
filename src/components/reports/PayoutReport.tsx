@@ -28,7 +28,7 @@ const STORES: {
   {
     venue: "Pollo",
     label: "Pollo (Geelong West)",
-    channels: ["Uber Eats", "DoorDash", "Bite"],
+    channels: ["Lightspeed", "Uber Eats", "DoorDash", "Bite"],
     color: {
       gradient: "from-orange-500 to-amber-500",
       bg: "bg-orange-500/10",
@@ -40,7 +40,7 @@ const STORES: {
   {
     venue: "Pollo - Torquay",
     label: "Pollo - Torquay",
-    channels: ["Uber Eats", "Bite"],
+    channels: ["Lightspeed", "Uber Eats", "Bite"],
     color: {
       gradient: "from-blue-500 to-indigo-500",
       bg: "bg-blue-500/10",
@@ -69,6 +69,7 @@ const STORE_COLORS = [
 ];
 
 const CHANNEL_ICONS: Record<string, string> = {
+  Lightspeed: "⚡",
   "Uber Eats": "🟢",
   DoorDash: "🔴",
   Bite: "🟡",
