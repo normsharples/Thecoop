@@ -38,6 +38,7 @@ import {
   PiggyBank,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   SlidersHorizontal,
   Layers,
   Landmark,
@@ -46,6 +47,7 @@ import { supabase } from "@/lib/supabase";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
+import { canonicalCategory, OVERHEAD_NODES, CAT, type PnlNode } from "@/lib/pnlCategories";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -54,6 +56,11 @@ const COGS_TARGET = 30; // % of revenue
 const LABOUR_TARGET = 30; // % of revenue
 const MARGIN_TARGET = 100 - COGS_TARGET - LABOUR_TARGET; // 40% operating (prime cost) margin target
 const NET_MARGIN_TARGET = 10; // % of revenue, typical restaurant net margin target after overheads
+
+// channel_payouts keys fees by `venue` text; the P&L scopes by restaurant_id.
+// Map the two here so transaction fees can be attributed to the right restaurant.
+const VENUE_TO_RNAME: Record<string, string> = { "Pollo": "Geelong West", "Pollo - Torquay": "Torquay" };
+const RNAME_TO_VENUE: Record<string, string> = { "Geelong West": "Pollo", "Torquay": "Pollo - Torquay" };
 
 type Preset = "thisWeek" | "lastWeek" | "thisMonth" | "last30" | "last3m";
 interface DateRange { from: string; to: string }
@@ -217,29 +224,80 @@ function PctTooltip({ active, payload, label }: any) {
   );
 }
 
-function StatementRow({ label, value, sub, indent = false, bold = false, negative = false, tone }: {
-  label: string; value: string; sub?: string; indent?: boolean; bold?: boolean; negative?: boolean;
-  tone?: string;
+// ─── Hierarchical P&L statement ───────────────────────────────────────────────
+
+type LineKind = "revTotal" | "revChild" | "cost" | "subtotal" | "netTotal";
+interface PnlLine {
+  key: string;
+  label: string;
+  amount: number;
+  prev: number;
+  depth: number;
+  kind: LineKind;
+  note?: string;
+  children?: PnlLine[];
+}
+
+function changePct(amount: number, prev: number): number | null {
+  return prev > 0 ? ((amount - prev) / prev) * 100 : null;
+}
+
+function TreeRow({ line, revenue, expanded, onToggle }: {
+  line: PnlLine; revenue: number; expanded: Set<string>; onToggle: (k: string) => void;
 }) {
+  const hasChildren = !!line.children?.length;
+  const open = expanded.has(line.key);
+  const pct = revenue > 0 ? (line.amount / revenue) * 100 : null;
+  const change = changePct(line.amount, line.prev);
+  const isCost = line.kind === "cost";
+  const bold = line.kind === "revTotal" || line.kind === "subtotal" || line.kind === "netTotal";
+  const goodUp = !isCost; // revenue/subtotals: up is good; costs: down is good
+  const changeGood = change != null && (goodUp ? change > 0 : change < 0);
+
   return (
-    <div className={cn(
-      "flex items-center justify-between px-4 py-2.5",
-      bold && "bg-muted/30 border-t border-border"
-    )}>
-      <div className={cn(indent && "pl-4")}>
-        <p className={cn("text-sm", bold ? "font-semibold text-foreground" : "text-foreground/90")}>
-          {label}
-        </p>
-        {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+    <>
+      <div
+        className={cn(
+          "flex items-center justify-between gap-3 pr-4 py-2.5 transition-colors",
+          bold && "bg-muted/30",
+          (line.kind === "subtotal" || line.kind === "netTotal") && "border-t border-border",
+          hasChildren && "cursor-pointer hover:bg-accent/30"
+        )}
+        style={{ paddingLeft: 16 + line.depth * 20 }}
+        onClick={hasChildren ? () => onToggle(line.key) : undefined}
+      >
+        <div className="flex items-center gap-1.5 min-w-0">
+          {hasChildren ? (
+            <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", open && "rotate-90")} />
+          ) : (
+            <span className="w-3.5 shrink-0" />
+          )}
+          <span className={cn("text-sm truncate", bold ? "font-semibold text-foreground" : "text-foreground/90")}>
+            {line.label}
+          </span>
+          {line.note && <span className="text-[10px] text-muted-foreground italic hidden sm:inline">· {line.note}</span>}
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="text-xs text-muted-foreground tabular-nums w-11 text-right hidden sm:inline">
+            {pct != null ? formatPercent(pct) : ""}
+          </span>
+          <span className={cn("text-[11px] tabular-nums w-14 text-right hidden md:inline", change == null ? "text-muted-foreground/50" : changeGood ? "text-green-500" : "text-red-500")}>
+            {change != null ? `${change > 0 ? "+" : ""}${formatPercent(change)}` : "—"}
+          </span>
+          <span className={cn(
+            "text-sm tabular-nums w-24 text-right",
+            bold ? "font-bold" : "font-medium",
+            line.kind === "netTotal" ? (line.amount >= 0 ? "text-green-500" : "text-red-500")
+              : isCost ? "text-red-500" : "text-foreground"
+          )}>
+            {isCost && line.amount !== 0 ? "− " : ""}{formatCurrency(Math.abs(line.amount))}
+          </span>
+        </div>
       </div>
-      <p className={cn(
-        "text-sm tabular-nums",
-        bold ? "font-bold" : "font-medium",
-        tone ?? (negative ? "text-red-500" : "text-foreground")
-      )}>
-        {negative && value !== "—" ? `− ${value}` : value}
-      </p>
-    </div>
+      {hasChildren && open && line.children!.map((c) => (
+        <TreeRow key={c.key} line={c} revenue={revenue} expanded={expanded} onToggle={onToggle} />
+      ))}
+    </>
   );
 }
 
@@ -249,6 +307,12 @@ export default function PnLReport() {
   const [preset, setPreset] = useState<Preset>("thisMonth");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statementOpen, setStatementOpen] = useState(true);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleKey = (k: string) => setExpanded((prev) => {
+    const next = new Set(prev);
+    next.has(k) ? next.delete(k) : next.add(k);
+    return next;
+  });
   const { selectedRestaurantId } = useSelectedRestaurant();
   const { data: restaurants = [] } = useRestaurants();
 
@@ -262,7 +326,7 @@ export default function PnLReport() {
   function scopeInvoices(from: string, to: string) {
     let q = supabase
       .from("invoices")
-      .select("restaurant_id, supplier_name, amount, invoice_date")
+      .select("restaurant_id, supplier_name, amount, category, invoice_date")
       .gte("invoice_date", from)
       .lte("invoice_date", to);
     if (selectedRestaurantId) q = q.eq("restaurant_id", selectedRestaurantId);
@@ -271,7 +335,7 @@ export default function PnLReport() {
   function scopeSales(from: string, to: string) {
     let q = supabase
       .from("sales_daily")
-      .select("restaurant_id, date, total_sales, net_sales")
+      .select("restaurant_id, date, total_sales, net_sales, online_sales, delivery_sales")
       .gte("date", from)
       .lte("date", to);
     if (selectedRestaurantId) q = q.eq("restaurant_id", selectedRestaurantId);
@@ -293,6 +357,19 @@ export default function PnLReport() {
       .gte("expense_date", from)
       .lte("expense_date", to);
     if (selectedRestaurantId) q = q.eq("restaurant_id", selectedRestaurantId);
+    return q;
+  }
+  // Transaction fees (Uber Eats, Lightspeed, …) live in channel_payouts, keyed by venue.
+  function scopeFees(from: string, to: string) {
+    let q = supabase
+      .from("channel_payouts")
+      .select("venue, channel, date, fees, payout_amount")
+      .gte("date", from)
+      .lte("date", to);
+    if (selectedRestaurantId) {
+      const rname = restaurants.find((r) => r.id === selectedRestaurantId)?.name ?? "";
+      q = q.eq("venue", RNAME_TO_VENUE[rname] ?? "__none__");
+    }
     return q;
   }
 
@@ -324,14 +401,76 @@ export default function PnLReport() {
     queryFn: async () => { const { data, error } = await scopeLabour(prev.from, prev.to); if (error) throw error; return data ?? []; },
   });
 
-  const { data: oneOffExpenses = [], isLoading: expensesLoading } = useQuery({
+  // Weekly payroll actuals (manual) — the source of truth for Labour COST.
+  function scopeWeeklyLabour(from: string, to: string) {
+    let q = supabase
+      .from("weekly_labour")
+      .select("restaurant_id, week_start, actual_labour, payroll_tax, overtime, penalty_rates")
+      .gte("week_start", from)
+      .lte("week_start", to);
+    if (selectedRestaurantId) q = q.eq("restaurant_id", selectedRestaurantId);
+    return q;
+  }
+  const { data: weeklyLabour = [] } = useQuery({
+    queryKey: ["pnl-weekly-labour", selectedRestaurantId, range.from, range.to],
+    queryFn: async () => { const { data, error } = await scopeWeeklyLabour(range.from, range.to); if (error) throw error; return data ?? []; },
+  });
+  const { data: prevWeeklyLabour = [] } = useQuery({
+    queryKey: ["pnl-weekly-labour", selectedRestaurantId, prev.from, prev.to],
+    queryFn: async () => { const { data, error } = await scopeWeeklyLabour(prev.from, prev.to); if (error) throw error; return data ?? []; },
+  });
+
+  const { data: rawOneOffExpenses = [], isLoading: expensesLoading } = useQuery({
     queryKey: ["pnl-expenses", selectedRestaurantId, range.from, range.to],
     queryFn: async () => { const { data, error } = await scopeExpenses(range.from, range.to); if (error) throw error; return data ?? []; },
   });
-  const { data: prevOneOffExpenses = [] } = useQuery({
+  const { data: rawPrevOneOffExpenses = [] } = useQuery({
     queryKey: ["pnl-expenses", selectedRestaurantId, prev.from, prev.to],
     queryFn: async () => { const { data, error } = await scopeExpenses(prev.from, prev.to); if (error) throw error; return data ?? []; },
   });
+
+  // Transaction fees from channel_payouts, surfaced as two P&L expense lines:
+  //   "Transaction Fees – Lightspeed" (POS card fees) and
+  //   "Transaction Fees – Delivery"   (Uber Eats + DoorDash + Bite).
+  const { data: channelFees = [] } = useQuery({
+    queryKey: ["pnl-fees", selectedRestaurantId, range.from, range.to],
+    queryFn: async () => { const { data, error } = await scopeFees(range.from, range.to); if (error) throw error; return data ?? []; },
+  });
+  const { data: prevChannelFees = [] } = useQuery({
+    queryKey: ["pnl-fees", selectedRestaurantId, prev.from, prev.to],
+    queryFn: async () => { const { data, error } = await scopeFees(prev.from, prev.to); if (error) throw error; return data ?? []; },
+  });
+
+  // Turn per-day channel fee rows into expense-shaped lines (one per restaurant/date/line),
+  // so they flow through the existing overhead, weekly, by-restaurant and category logic.
+  function feesToExpenseRows(rows: any[]) {
+    const acc = new Map<string, any>();
+    for (const f of rows) {
+      const rid = restaurants.find((r) => r.name === VENUE_TO_RNAME[f.venue])?.id;
+      if (!rid) continue;
+      const line = f.channel === "Lightspeed" ? "Lightspeed" : "Delivery";
+      const key = `${rid}|${f.date}|${line}`;
+      const existing = acc.get(key)?.amount ?? 0;
+      acc.set(key, {
+        restaurant_id: rid,
+        category: `Transaction Fees – ${line}`,
+        description: line,
+        amount: existing + Number(f.fees ?? 0),
+        expense_date: f.date,
+      });
+    }
+    return [...acc.values()].filter((e) => e.amount > 0);
+  }
+  const feeExpenseRows = useMemo(() => feesToExpenseRows(channelFees), [channelFees, restaurants]);
+  const prevFeeExpenseRows = useMemo(() => feesToExpenseRows(prevChannelFees), [prevChannelFees, restaurants]);
+  // Transaction fees are kept SEPARATE from overheads — their own P&L block, and
+  // their own deduction from Net Profit (see netProfit / weekly / by-restaurant below).
+  const oneOffExpenses = rawOneOffExpenses;
+  const prevOneOffExpenses = rawPrevOneOffExpenses;
+  const lightspeedFees = useMemo(() => feeExpenseRows.filter((e) => e.description === "Lightspeed").reduce((s, e) => s + e.amount, 0), [feeExpenseRows]);
+  const deliveryFees = useMemo(() => feeExpenseRows.filter((e) => e.description === "Delivery").reduce((s, e) => s + e.amount, 0), [feeExpenseRows]);
+  const transactionFees = lightspeedFees + deliveryFees;
+  const prevTransactionFees = useMemo(() => prevFeeExpenseRows.reduce((s, e) => s + e.amount, 0), [prevFeeExpenseRows]);
 
   const { data: recurringExpenses = [], isLoading: recurringLoading } = useQuery<RecurringExpenseRow[]>({
     queryKey: ["pnl-recurring-expenses", scopedIds.join(",")],
@@ -362,63 +501,48 @@ export default function PnLReport() {
     return map;
   }, [suppliers]);
 
-  // Stock counts — used to sharpen COGS to a stock-adjusted figure when available
-  type CountRow = { id: string; restaurant_id: string; count_date: string; stock_count_lines: { total_value: number }[] };
-  function latestPerRestaurant(rows: CountRow[]): CountRow[] {
-    const seen = new Set<string>();
-    const result: CountRow[] = [];
-    for (const row of rows) {
-      if (!seen.has(row.restaurant_id)) { seen.add(row.restaurant_id); result.push(row); }
-    }
-    return result;
-  }
-  const { data: openingCounts = [] } = useQuery<CountRow[]>({
-    queryKey: ["pnl-stock-opening", scopedIds.join(","), range.from],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stock_counts")
-        .select("id, restaurant_id, count_date, stock_count_lines(total_value)")
-        .in("restaurant_id", scopedIds)
-        .eq("status", "approved")
-        .lt("count_date", range.from)
-        .order("count_date", { ascending: false });
-      if (error) throw error;
-      return latestPerRestaurant((data ?? []) as CountRow[]);
-    },
-    enabled: scopedIds.length > 0,
-  });
-  const { data: closingCounts = [] } = useQuery<CountRow[]>({
-    queryKey: ["pnl-stock-closing", scopedIds.join(","), range.from, range.to],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stock_counts")
-        .select("id, restaurant_id, count_date, stock_count_lines(total_value)")
-        .in("restaurant_id", scopedIds)
-        .eq("status", "approved")
-        .gte("count_date", range.from)
-        .lte("count_date", range.to)
-        .order("count_date", { ascending: false });
-      if (error) throw error;
-      return latestPerRestaurant((data ?? []) as CountRow[]);
-    },
-    enabled: scopedIds.length > 0,
-  });
-
-  function sumCountValue(counts: CountRow[]): number {
-    return counts.reduce((s, c) => s + c.stock_count_lines.reduce((ls, l) => ls + l.total_value, 0), 0);
-  }
-  const openingValue = openingCounts.length > 0 ? sumCountValue(openingCounts) : null;
-  const closingValue = closingCounts.length > 0 ? sumCountValue(closingCounts) : null;
-  const hasStockData = openingValue !== null && closingValue !== null;
-
   // ── Totals ────────────────────────────────────────────────────────────────
-  const grossSales = useMemo(() => salesRows.reduce((s: number, r: any) => s + Number(r.total_sales ?? 0), 0), [salesRows]);
   const revenue = useMemo(() => salesRows.reduce((s: number, r: any) => s + Number(r.net_sales ?? r.total_sales ?? 0), 0), [salesRows]);
 
   const purchases = useMemo(() => invoices.reduce((s: number, i: any) => s + Number(i.amount ?? 0), 0), [invoices]);
-  const labourCost = useMemo(() => labourRows.reduce((s: number, r: any) => s + Number(r.total_cost ?? 0), 0), [labourRows]);
 
-  const cogs = hasStockData ? openingValue! + purchases - closingValue! : purchases;
+  // ── Revenue channel split (Instore / Delivery[Uber,Doordash] / Web-App / Catering) ──
+  function revenueSplit(rows: any[], payouts: any[]) {
+    const total = rows.reduce((s, r) => s + Number(r.total_sales ?? 0), 0);
+    const online = rows.reduce((s, r) => s + Number(r.online_sales ?? 0), 0);
+    const delivery = rows.reduce((s, r) => s + Number(r.delivery_sales ?? 0), 0);
+    const instore = Math.max(total - online - delivery, 0);
+    // Split delivery into Uber vs Doordash by their payout share within the period.
+    const uberPayout = payouts.filter((p) => /uber/i.test(p.channel)).reduce((s, p) => s + Number(p.payout_amount ?? 0), 0);
+    const doorPayout = payouts.filter((p) => /door/i.test(p.channel)).reduce((s, p) => s + Number(p.payout_amount ?? 0), 0);
+    const denom = uberPayout + doorPayout;
+    const uber = denom > 0 ? delivery * (uberPayout / denom) : 0;
+    const doordash = denom > 0 ? delivery * (doorPayout / denom) : delivery;
+    return { total, instore, delivery, uber, doordash, webApp: online, catering: 0 };
+  }
+  const rev = useMemo(() => revenueSplit(salesRows, channelFees), [salesRows, channelFees]);
+  const prevRev = useMemo(() => revenueSplit(prevSalesRows, prevChannelFees), [prevSalesRows, prevChannelFees]);
+
+  // ── COGS split (Food vs Paper) from invoice categories ──
+  function paperOf(rows: any[]) { return rows.filter((i) => canonicalCategory(i.category) === CAT.PAPER).reduce((s, i) => s + Number(i.amount ?? 0), 0); }
+  const paperCost = useMemo(() => paperOf(invoices), [invoices]);
+  const foodCost = Math.max(purchases - paperCost, 0);
+  const prevPaperCost = useMemo(() => paperOf(prevInvoices), [prevInvoices]);
+
+  // ── Labour: Deputy owns HOURS, weekly payroll owns COST ──
+  const labourHours = useMemo(() => labourRows.reduce((s: number, r: any) => s + Number(r.total_hours ?? 0), 0), [labourRows]);
+  const labourCostDeputy = useMemo(() => labourRows.reduce((s: number, r: any) => s + Number(r.total_cost ?? 0), 0), [labourRows]);
+  function sumWL(rows: any[], key: string) { return rows.reduce((s, r) => s + Number(r[key] ?? 0), 0); }
+  const wlActual = useMemo(() => sumWL(weeklyLabour, "actual_labour"), [weeklyLabour]);
+  const wlTax = useMemo(() => sumWL(weeklyLabour, "payroll_tax"), [weeklyLabour]);
+  const wlOvertime = useMemo(() => sumWL(weeklyLabour, "overtime"), [weeklyLabour]);
+  const wlPenalty = useMemo(() => sumWL(weeklyLabour, "penalty_rates"), [weeklyLabour]);
+  const hasWeeklyLabour = weeklyLabour.length > 0;
+  const labourManualTotal = wlActual + wlTax + wlOvertime + wlPenalty;
+  // Effective labour cost used everywhere in the P&L: manual payroll if entered, else Deputy.
+  const labourCost = hasWeeklyLabour ? labourManualTotal : labourCostDeputy;
+
+  const cogs = purchases; // invoice-based: Food Cost + Paper Cost
   const cogsPct = revenue > 0 ? (cogs / revenue) * 100 : null;
   const grossProfit = revenue - cogs;
   const grossMarginPct = revenue > 0 ? (grossProfit / revenue) * 100 : null;
@@ -437,13 +561,17 @@ export default function PnLReport() {
   const totalOverheads = oneOffOverhead + recurringOverhead;
   const overheadPct = revenue > 0 ? (totalOverheads / revenue) * 100 : null;
 
-  const netProfit = operatingProfit - totalOverheads;
+  const netProfit = operatingProfit - totalOverheads - transactionFees;
   const netMarginPct = revenue > 0 ? (netProfit / revenue) * 100 : null;
 
   // Previous period comparisons (gross purchases — stock counts not diffed per prior period)
   const prevRevenue = useMemo(() => prevSalesRows.reduce((s: number, r: any) => s + Number(r.net_sales ?? r.total_sales ?? 0), 0), [prevSalesRows]);
   const prevPurchases = useMemo(() => prevInvoices.reduce((s: number, i: any) => s + Number(i.amount ?? 0), 0), [prevInvoices]);
-  const prevLabourCost = useMemo(() => prevLabourRows.reduce((s: number, r: any) => s + Number(r.total_cost ?? 0), 0), [prevLabourRows]);
+  const prevLabourCost = useMemo(() => {
+    const manual = prevWeeklyLabour.reduce((s: number, r: any) => s + Number(r.actual_labour ?? 0) + Number(r.payroll_tax ?? 0) + Number(r.overtime ?? 0) + Number(r.penalty_rates ?? 0), 0);
+    if (prevWeeklyLabour.length > 0) return manual;
+    return prevLabourRows.reduce((s: number, r: any) => s + Number(r.total_cost ?? 0), 0);
+  }, [prevWeeklyLabour, prevLabourRows]);
   const prevOperatingProfit = prevRevenue - prevPurchases - prevLabourCost;
   const prevOperatingMarginPct = prevRevenue > 0 ? (prevOperatingProfit / prevRevenue) * 100 : null;
   const marginDelta = operatingMarginPct != null && prevOperatingMarginPct != null ? operatingMarginPct - prevOperatingMarginPct : null;
@@ -455,9 +583,106 @@ export default function PnLReport() {
     [recurringExpenses, prev]
   );
   const prevTotalOverheads = prevOneOffOverhead + prevRecurringOverhead;
-  const prevNetProfit = prevOperatingProfit - prevTotalOverheads;
+  const prevNetProfit = prevOperatingProfit - prevTotalOverheads - prevTransactionFees;
   const prevNetMarginPct = prevRevenue > 0 ? (prevNetProfit / prevRevenue) * 100 : null;
   const netMarginDelta = netMarginPct != null && prevNetMarginPct != null ? netMarginPct - prevNetMarginPct : null;
+
+  // ── Overheads grouped by canonical category (one-off + recurring, prorated) ──
+  function overheadMap(oneOff: any[], from: Date, to: Date): Map<string, number> {
+    const map = new Map<string, number>();
+    oneOff.forEach((e: any) => {
+      const c = canonicalCategory(e.category);
+      map.set(c, (map.get(c) ?? 0) + Number(e.amount ?? 0));
+    });
+    recurringExpenses.forEach((t) => {
+      const occ = countOccurrences(parseISO(t.start_date), t.end_date ? parseISO(t.end_date) : null, t.frequency, from, to);
+      if (occ === 0) return;
+      const c = canonicalCategory(t.category);
+      map.set(c, (map.get(c) ?? 0) + occ * t.amount);
+    });
+    return map;
+  }
+  const ohMap = useMemo(() => overheadMap(oneOffExpenses, parseISO(range.from), parseISO(range.to)), [oneOffExpenses, recurringExpenses, range]);
+  const prevOhMap = useMemo(() => overheadMap(prevOneOffExpenses, parseISO(prev.from), parseISO(prev.to)), [prevOneOffExpenses, recurringExpenses, prev]);
+  const catSum = (map: Map<string, number>, cats: string[]) => cats.reduce((s, c) => s + (map.get(c) ?? 0), 0);
+
+  // ── Structured statement model (revenue + expense tree) ──────────────────────
+  const statementLines: PnlLine[] = useMemo(() => {
+    // Scale channel split so children reconcile to net Revenue (net vs gross sales).
+    const f = rev.total > 0 ? revenue / rev.total : 1;
+    const pf = prevRev.total > 0 ? prevRevenue / prevRev.total : 1;
+
+    const revenueLine: PnlLine = {
+      key: "revenue", label: "Revenue", amount: revenue, prev: prevRevenue, depth: 0, kind: "revTotal",
+      children: [
+        { key: "r-instore", label: "Instore", amount: rev.instore * f, prev: prevRev.instore * pf, depth: 1, kind: "revChild" },
+        {
+          key: "r-delivery", label: "Delivery", amount: rev.delivery * f, prev: prevRev.delivery * pf, depth: 1, kind: "revChild",
+          children: [
+            { key: "r-uber", label: "Uber", amount: rev.uber * f, prev: prevRev.uber * pf, depth: 2, kind: "revChild" },
+            { key: "r-door", label: "Doordash", amount: rev.doordash * f, prev: prevRev.doordash * pf, depth: 2, kind: "revChild" },
+          ],
+        },
+        { key: "r-web", label: "Web / App", amount: rev.webApp * f, prev: prevRev.webApp * pf, depth: 1, kind: "revChild" },
+        { key: "r-catering", label: "Catering", amount: 0, prev: 0, depth: 1, kind: "revChild", note: "Coming soon" },
+      ],
+    };
+
+    const cogsLine: PnlLine = {
+      key: "cogs", label: "Cost of Goods Sold", amount: cogs, prev: prevPurchases, depth: 0, kind: "cost",
+      children: [
+        { key: "c-food", label: "Food Cost", amount: foodCost, prev: Math.max(prevPurchases - prevPaperCost, 0), depth: 1, kind: "cost" },
+        { key: "c-paper", label: "Paper Cost", amount: paperCost, prev: prevPaperCost, depth: 1, kind: "cost" },
+      ],
+    };
+    const grossLine: PnlLine = { key: "gross", label: "Gross Profit", amount: grossProfit, prev: prevRevenue - prevPurchases, depth: 0, kind: "subtotal" };
+
+    const labourLine: PnlLine = {
+      key: "labour", label: "Labour", amount: labourCost, prev: prevLabourCost, depth: 0, kind: "cost",
+      note: hasWeeklyLabour ? `${labourHours.toFixed(0)} hrs (Deputy)` : "Deputy estimate — enter payroll in Data Management",
+      children: hasWeeklyLabour ? [
+        { key: "l-actual", label: "Actual Labour", amount: wlActual, prev: sumWL(prevWeeklyLabour, "actual_labour"), depth: 1, kind: "cost" },
+        { key: "l-tax", label: "Payroll Tax", amount: wlTax, prev: sumWL(prevWeeklyLabour, "payroll_tax"), depth: 1, kind: "cost" },
+        { key: "l-ot", label: "Overtime", amount: wlOvertime, prev: sumWL(prevWeeklyLabour, "overtime"), depth: 1, kind: "cost" },
+        { key: "l-penalty", label: "Penalty Rates", amount: wlPenalty, prev: sumWL(prevWeeklyLabour, "penalty_rates"), depth: 1, kind: "cost" },
+      ] : undefined,
+    };
+    const operatingLine: PnlLine = { key: "operating", label: "Operating Profit", amount: operatingProfit, prev: prevOperatingProfit, depth: 0, kind: "subtotal" };
+
+    const buildOverhead = (node: PnlNode, depth: number): PnlLine => {
+      if (node.children) {
+        const children = node.children.map((c) => buildOverhead(c, depth + 1));
+        return {
+          key: "oh-" + node.key, label: node.label, depth, kind: "cost",
+          amount: children.reduce((s, c) => s + c.amount, 0),
+          prev: children.reduce((s, c) => s + c.prev, 0),
+          children,
+        };
+      }
+      const cats = node.cats ?? [];
+      return { key: "oh-" + node.key, label: node.label, depth, kind: "cost", amount: catSum(ohMap, cats), prev: catSum(prevOhMap, cats) };
+    };
+    const overheadChildren = OVERHEAD_NODES.map((n) => buildOverhead(n, 1));
+    const uncat = ohMap.get(CAT.UNCATEGORISED) ?? 0;
+    if (uncat > 0) {
+      overheadChildren.push({ key: "oh-uncat", label: "Uncategorised", amount: uncat, prev: prevOhMap.get(CAT.UNCATEGORISED) ?? 0, depth: 1, kind: "cost", note: "Fix in Admin → Expenses" });
+    }
+    const overheadLine: PnlLine = { key: "overheads", label: "Overhead Expenses", amount: totalOverheads, prev: prevTotalOverheads, depth: 0, kind: "cost", children: overheadChildren };
+
+    const prevLsFees = prevFeeExpenseRows.filter((e) => e.description === "Lightspeed").reduce((s, e) => s + e.amount, 0);
+    const prevDelFees = prevFeeExpenseRows.filter((e) => e.description === "Delivery").reduce((s, e) => s + e.amount, 0);
+    const feesLine: PnlLine = {
+      key: "fees", label: "Transaction Fees", amount: transactionFees, prev: prevTransactionFees, depth: 0, kind: "cost",
+      children: [
+        { key: "f-ls", label: "Lightspeed (card)", amount: lightspeedFees, prev: prevLsFees, depth: 1, kind: "cost" },
+        { key: "f-del", label: "Delivery commissions", amount: deliveryFees, prev: prevDelFees, depth: 1, kind: "cost" },
+      ],
+    };
+
+    const netLine: PnlLine = { key: "net", label: "Net Profit", amount: netProfit, prev: prevNetProfit, depth: 0, kind: "netTotal" };
+
+    return [revenueLine, cogsLine, grossLine, labourLine, operatingLine, overheadLine, feesLine, netLine];
+  }, [rev, prevRev, revenue, prevRevenue, cogs, prevPurchases, foodCost, paperCost, prevPaperCost, grossProfit, labourCost, prevLabourCost, labourHours, hasWeeklyLabour, wlActual, wlTax, wlOvertime, wlPenalty, prevWeeklyLabour, operatingProfit, prevOperatingProfit, ohMap, prevOhMap, totalOverheads, prevTotalOverheads, transactionFees, prevTransactionFees, lightspeedFees, deliveryFees, prevFeeExpenseRows, netProfit, prevNetProfit]);
 
   // ── Weekly trend ─────────────────────────────────────────────────────────────
   const weeklyData = useMemo(() => {
@@ -470,23 +695,31 @@ export default function PnLReport() {
         .reduce((s: number, r: any) => s + Number(r.net_sales ?? r.total_sales ?? 0), 0);
       const wPurchases = invoices.filter((i: any) => isWithinInterval(parseISO(i.invoice_date), { start: wStart, end: wEnd }))
         .reduce((s: number, i: any) => s + Number(i.amount ?? 0), 0);
-      const wLabour = labourRows.filter((r: any) => isWithinInterval(parseISO(r.date), { start: wStart, end: wEnd }))
-        .reduce((s: number, r: any) => s + Number(r.total_cost ?? 0), 0);
+      // Use manual payroll when available (matches main P&L source hierarchy)
+      const wkFmt = format(wStart, "yyyy-MM-dd");
+      const wlMatch = weeklyLabour.filter((r: any) => r.week_start === wkFmt);
+      const wLabour = wlMatch.length > 0
+        ? wlMatch.reduce((s: number, r: any) => s + Number(r.actual_labour ?? 0) + Number(r.payroll_tax ?? 0) + Number(r.overtime ?? 0) + Number(r.penalty_rates ?? 0), 0)
+        : labourRows.filter((r: any) => isWithinInterval(parseISO(r.date), { start: wStart, end: wEnd }))
+          .reduce((s: number, r: any) => s + Number(r.total_cost ?? 0), 0);
       const wOneOffOverhead = oneOffExpenses.filter((e: any) => isWithinInterval(parseISO(e.expense_date), { start: wStart, end: wEnd }))
         .reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0);
       const wOverhead = wOneOffOverhead + recurringAmountInRange(recurringExpenses, wStart, wEnd);
-      const wProfit = wRevenue - wPurchases - wLabour - wOverhead;
+      const wFees = feeExpenseRows.filter((e) => isWithinInterval(parseISO(e.expense_date), { start: wStart, end: wEnd }))
+        .reduce((s, e) => s + e.amount, 0);
+      const wProfit = wRevenue - wPurchases - wLabour - wOverhead - wFees;
       return {
         week: format(wStart, "d MMM"),
         revenue: wRevenue,
         purchases: wPurchases,
         labour: wLabour,
         overhead: wOverhead,
+        fees: wFees,
         profit: wProfit,
         margin: wRevenue > 0 ? (wProfit / wRevenue) * 100 : null,
       };
     });
-  }, [salesRows, invoices, labourRows, oneOffExpenses, recurringExpenses, range]);
+  }, [salesRows, invoices, labourRows, weeklyLabour, oneOffExpenses, recurringExpenses, feeExpenseRows, range]);
 
   // ── By restaurant (all-view) ──────────────────────────────────────────────────
   const restaurantData = useMemo(() => {
@@ -497,19 +730,21 @@ export default function PnLReport() {
       const rLabour = labourRows.filter((row: any) => row.restaurant_id === r.id).reduce((s: number, row: any) => s + Number(row.total_cost ?? 0), 0);
       const rOneOffOverhead = oneOffExpenses.filter((e: any) => e.restaurant_id === r.id).reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0);
       const rOverhead = rOneOffOverhead + recurringAmountInRange(recurringExpenses, parseISO(range.from), parseISO(range.to), r.id);
-      const rProfit = rRevenue - rPurchases - rLabour - rOverhead;
+      const rFees = feeExpenseRows.filter((e) => e.restaurant_id === r.id).reduce((s, e) => s + e.amount, 0);
+      const rProfit = rRevenue - rPurchases - rLabour - rOverhead - rFees;
       return {
         name: r.name,
         revenue: rRevenue,
         purchases: rPurchases,
         labour: rLabour,
         overhead: rOverhead,
+        fees: rFees,
         profit: rProfit,
         margin: rRevenue > 0 ? (rProfit / rRevenue) * 100 : null,
       };
-    }).filter((row) => row.revenue > 0 || row.purchases > 0 || row.labour > 0 || row.overhead > 0)
+    }).filter((row) => row.revenue > 0 || row.purchases > 0 || row.labour > 0 || row.overhead > 0 || row.fees > 0)
       .sort((a, b) => b.revenue - a.revenue);
-  }, [isAllRestaurants, restaurants, salesRows, invoices, labourRows, oneOffExpenses, recurringExpenses, range]);
+  }, [isAllRestaurants, restaurants, salesRows, invoices, labourRows, oneOffExpenses, recurringExpenses, feeExpenseRows, range]);
 
   // ── COGS by category ───────────────────────────────────────────────────────
   const categoryData = useMemo(() => {
@@ -544,7 +779,7 @@ export default function PnLReport() {
   }, [oneOffExpenses, recurringExpenses, range, totalOverheads]);
 
   const isLoading = invLoading || salesLoading || labourLoading || expensesLoading || recurringLoading;
-  const hasData = revenue > 0 || purchases > 0 || labourCost > 0 || totalOverheads > 0;
+  const hasData = revenue > 0 || purchases > 0 || labourCost > 0 || totalOverheads > 0 || transactionFees > 0;
 
   return (
     <div className="space-y-6">
@@ -616,9 +851,9 @@ export default function PnLReport() {
           deltaGoodDirection="up"
         />
         <KpiCard
-          label={hasStockData ? "Net COGS" : "COGS (Purchases)"}
+          label="COGS"
           value={formatCurrency(cogs)}
-          sub={hasStockData ? "Stock-adjusted · Opening + Purchases − Closing" : `${invoices.length} invoice${invoices.length !== 1 ? "s" : ""}`}
+          sub={`Food + Paper · ${invoices.length} invoice${invoices.length !== 1 ? "s" : ""}`}
           highlight={cogsPct != null ? costText(cogsPct, COGS_TARGET) : undefined}
         />
         <KpiCard
@@ -667,7 +902,7 @@ export default function PnLReport() {
         <KpiCard
           label="Net Profit"
           value={formatCurrency(netProfit)}
-          sub="Operating Profit − Overheads"
+          sub="Operating Profit − Overheads − Transaction Fees"
           highlight={netProfit >= 0 ? "text-green-500" : "text-red-500"}
         />
         <KpiCard
@@ -703,61 +938,28 @@ export default function PnLReport() {
         </button>
 
         {statementOpen && (
-          <div className="divide-y divide-border">
-            <StatementRow label="Gross Sales" value={formatCurrency(grossSales)} />
-            <StatementRow label="Revenue (Net Sales)" value={formatCurrency(revenue)} bold />
-
-            <StatementRow
-              label={hasStockData ? "Net Cost of Goods Sold" : "Cost of Goods Sold"}
-              sub={hasStockData ? "Opening stock + purchases − closing stock" : "From invoices entered in Admin → Invoices"}
-              value={formatCurrency(cogs)}
-              negative
-              tone={cogsPct != null ? costText(cogsPct, COGS_TARGET) : undefined}
-            />
-            <StatementRow
-              label="Gross Profit"
-              sub={grossMarginPct != null ? `${formatPercent(grossMarginPct)} margin` : undefined}
-              value={formatCurrency(grossProfit)}
-              bold
-              tone={grossMarginPct != null ? marginText(grossMarginPct) : undefined}
-            />
-
-            <StatementRow
-              label="Labour Cost"
-              sub="From rostered/actual hours in Labour reports"
-              value={formatCurrency(labourCost)}
-              negative
-              tone={labourPct != null ? costText(labourPct, LABOUR_TARGET) : undefined}
-            />
-            <StatementRow
-              label="Operating Profit"
-              sub={operatingMarginPct != null ? `${formatPercent(operatingMarginPct)} margin · Prime Cost basis` : undefined}
-              value={formatCurrency(operatingProfit)}
-              bold
-              tone={operatingMarginPct != null ? marginText(operatingMarginPct) : undefined}
-            />
-
-            <StatementRow
-              label="Overhead Expenses"
-              sub="One-off + recurring expenses from Admin → Expenses"
-              value={formatCurrency(totalOverheads)}
-              negative
-            />
-            <StatementRow
-              label="Net Profit"
-              sub={netMarginPct != null ? `${formatPercent(netMarginPct)} margin` : undefined}
-              value={formatCurrency(netProfit)}
-              bold
-              tone={netProfit >= 0 ? "text-green-500" : "text-red-500"}
-            />
-          </div>
+          <>
+            {/* Column headers */}
+            <div className="flex items-center justify-between gap-3 pr-4 pl-4 py-2 border-b border-border bg-muted/10">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Line item</span>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-11 text-right hidden sm:inline">% Rev</span>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-14 text-right hidden md:inline">vs prev</span>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-24 text-right">Amount</span>
+              </div>
+            </div>
+            <div>
+              {statementLines.map((l) => (
+                <TreeRow key={l.key} line={l} revenue={revenue} expanded={expanded} onToggle={toggleKey} />
+              ))}
+            </div>
+          </>
         )}
 
         <div className="px-4 py-2.5 bg-muted/20 border-t border-border">
           <p className="text-[11px] text-muted-foreground">
-            {totalOverheads > 0 || recurringExpenses.length > 0
-              ? "Reflects sales, purchases, labour and overhead expenses tracked in the Coop."
-              : "Reflects sales, purchases and labour tracked in the Coop. Add rent, utilities, insurance and other overheads in Admin → Expenses for a complete Net Profit figure — until then, Net Profit equals Operating Profit."}
+            Revenue auto-fills from sales syncs. COGS splits from invoice categories, Labour cost from weekly payroll
+            (Admin → Data Management), overheads from Admin → Expenses. Click any row to expand its detail.
           </p>
         </div>
       </div>
@@ -822,6 +1024,7 @@ export default function PnLReport() {
                       <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">COGS</th>
                       <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Labour</th>
                       <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Overhead</th>
+                      <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground hidden lg:table-cell">Fees</th>
                       <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Net Profit</th>
                       <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Margin</th>
                     </tr>
@@ -834,6 +1037,7 @@ export default function PnLReport() {
                         <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatCurrency(row.purchases)}</td>
                         <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatCurrency(row.labour)}</td>
                         <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatCurrency(row.overhead)}</td>
+                        <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground hidden lg:table-cell">{formatCurrency(row.fees)}</td>
                         <td className={cn("px-4 py-2.5 text-xs text-right font-semibold tabular-nums", row.profit >= 0 ? "text-green-500" : "text-red-500")}>
                           {formatCurrency(row.profit)}
                         </td>
@@ -850,6 +1054,7 @@ export default function PnLReport() {
                       <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground">{formatCurrency(purchases)}</td>
                       <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground">{formatCurrency(labourCost)}</td>
                       <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground">{formatCurrency(totalOverheads)}</td>
+                      <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground hidden lg:table-cell">{formatCurrency(transactionFees)}</td>
                       <td className={cn("px-4 py-2.5 text-xs text-right font-bold tabular-nums", netProfit >= 0 ? "text-green-500" : "text-red-500")}>
                         {formatCurrency(netProfit)}
                       </td>
@@ -877,6 +1082,7 @@ export default function PnLReport() {
                         <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">COGS</th>
                         <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Labour</th>
                         <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Overhead</th>
+                        <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground hidden lg:table-cell">Fees</th>
                         <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Net Profit</th>
                         <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Margin</th>
                       </tr>
@@ -889,6 +1095,7 @@ export default function PnLReport() {
                           <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatCurrency(row.purchases)}</td>
                           <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatCurrency(row.labour)}</td>
                           <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatCurrency(row.overhead)}</td>
+                          <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground hidden lg:table-cell">{formatCurrency(row.fees)}</td>
                           <td className={cn("px-4 py-2.5 text-xs text-right font-semibold tabular-nums", row.profit >= 0 ? "text-green-500" : "text-red-500")}>
                             {formatCurrency(row.profit)}
                           </td>
@@ -906,6 +1113,7 @@ export default function PnLReport() {
                           <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground">{formatCurrency(purchases)}</td>
                           <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground">{formatCurrency(labourCost)}</td>
                           <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground">{formatCurrency(totalOverheads)}</td>
+                          <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground hidden lg:table-cell">{formatCurrency(transactionFees)}</td>
                           <td className={cn("px-4 py-2.5 text-xs text-right font-bold tabular-nums", netProfit >= 0 ? "text-green-500" : "text-red-500")}>
                             {formatCurrency(netProfit)}
                           </td>
@@ -947,6 +1155,42 @@ export default function PnLReport() {
                 <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
                   <span className="text-xs font-medium text-muted-foreground">{categoryData.length} categor{categoryData.length !== 1 ? "ies" : "y"}</span>
                   <span className="text-xs font-bold tabular-nums text-foreground">{formatCurrency(purchases)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Transaction fees (Lightspeed + Delivery), deducted from Net Profit */}
+            {transactionFees > 0 && (
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+                  <Receipt className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Transaction Fees</h3>
+                </div>
+                <div className="p-4 space-y-3">
+                  {[
+                    { label: "Lightspeed", cost: lightspeedFees },
+                    { label: "Delivery", cost: deliveryFees },
+                  ].filter((l) => l.cost > 0).map((l) => {
+                    const pct = transactionFees > 0 ? (l.cost / transactionFees) * 100 : 0;
+                    return (
+                      <div key={l.label}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-foreground truncate max-w-[160px]">{l.label}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs text-muted-foreground">{formatPercent(pct)}</span>
+                            <span className="text-xs font-medium tabular-nums text-foreground">{formatCurrency(l.cost)}</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
+                  <span className="text-xs font-medium text-muted-foreground">Total transaction fees</span>
+                  <span className="text-xs font-bold tabular-nums text-foreground">{formatCurrency(transactionFees)}</span>
                 </div>
               </div>
             )}
