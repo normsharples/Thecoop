@@ -285,20 +285,31 @@ export default function PurchaseOrdersPage() {
       try {
         const { data: items } = await supabase
           .from("supplier_items")
-          .select("description, unit, typical_price")
+          .select("description, unit, typical_price, alt_prices")
           .eq("supplier_id", supplierRow.id)
           .order("display_order");
 
         if (items && items.length > 0) {
-          replace(
-            items.map((item) => ({
+          const lineItems: Array<{ description: string; quantity: number; unit: string; unit_price: number }> = [];
+          for (const item of items) {
+            lineItems.push({
               description: item.description,
               quantity: 0,
               unit: item.unit,
               unit_price: item.typical_price,
-            }))
-          );
-          toast.info(`${items.length} items loaded from ${supplierName} — enter quantities`);
+            });
+            const alts = (item.alt_prices as Array<{ unit: string; price: number }>) ?? [];
+            for (const alt of alts) {
+              lineItems.push({
+                description: item.description,
+                quantity: 0,
+                unit: alt.unit,
+                unit_price: alt.price,
+              });
+            }
+          }
+          replace(lineItems);
+          toast.info(`${lineItems.length} items loaded from ${supplierName} — enter quantities`);
         }
       } finally {
         setLoadingItems(false);

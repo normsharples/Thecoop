@@ -131,6 +131,7 @@ export default function InvoicesPage() {
   const [showForm, setShowForm] = useState(false);
   const [prefillPO, setPrefillPO] = useState<PurchaseOrder | null>(null);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [totalOverride, setTotalOverride] = useState<string>("");
 
   const { profile } = useAuth();
   const { canViewSalesData } = usePermissions();
@@ -285,21 +286,32 @@ export default function InvoicesPage() {
       try {
         const { data: items } = await supabase
           .from("supplier_items")
-          .select("description, unit, typical_price")
+          .select("description, unit, typical_price, alt_prices")
           .eq("supplier_id", row.id)
           .order("display_order");
 
         if (items && items.length > 0) {
-          replace(
-            items.map((item) => ({
+          const lineItems: Array<{ description: string; quantity: number; unit: string; unit_price: number }> = [];
+          for (const item of items) {
+            lineItems.push({
               description: item.description,
               quantity: 0,
               unit: item.unit,
               unit_price: item.typical_price,
-            }))
-          );
+            });
+            const alts = (item.alt_prices as Array<{ unit: string; price: number }>) ?? [];
+            for (const alt of alts) {
+              lineItems.push({
+                description: item.description,
+                quantity: 0,
+                unit: alt.unit,
+                unit_price: alt.price,
+              });
+            }
+          }
+          replace(lineItems);
           toast.info(
-            `${items.length} items loaded from ${supplierName} — enter quantities`
+            `${lineItems.length} items loaded from ${supplierName} — enter quantities`
           );
         }
       } finally {
@@ -311,6 +323,7 @@ export default function InvoicesPage() {
 
   function openFormWithPO(po: PurchaseOrder) {
     setPrefillPO(po);
+    setTotalOverride("");
     reset({
       supplier_name: po.supplier_name,
       custom_supplier: "",
@@ -333,6 +346,7 @@ export default function InvoicesPage() {
 
   function openBlankForm() {
     setPrefillPO(null);
+    setTotalOverride("");
     reset({
       supplier_name: "",
       custom_supplier: "",
@@ -360,13 +374,17 @@ export default function InvoicesPage() {
       if (activeItems.length === 0)
         throw new Error("Enter quantities for at least one item");
 
-      const amount =
+      const calculatedAmount =
         Math.round(
           activeItems.reduce(
             (s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0),
             0
           ) * 100
         ) / 100;
+
+      const amount = totalOverride !== ""
+        ? Math.round(parseFloat(totalOverride) * 100) / 100
+        : calculatedAmount;
 
       if (amount <= 0) throw new Error("Total must be greater than 0");
 
@@ -395,6 +413,7 @@ export default function InvoicesPage() {
     },
     onSuccess: () => {
       toast.success("Invoice added");
+      setTotalOverride("");
       reset({
         supplier_name: "",
         custom_supplier: "",
@@ -673,9 +692,26 @@ export default function InvoicesPage() {
                   <Plus className="h-3.5 w-3.5 mr-1" />
                   Add Item
                 </Button>
-                <p className="text-sm font-semibold text-foreground tabular-nums">
-                  Total: {formatCurrency(runningTotal)}
-                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">Total:</span>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder={runningTotal.toFixed(2)}
+                      value={totalOverride}
+                      onChange={(e) => setTotalOverride(e.target.value)}
+                      className="pl-6 w-28 h-8 text-sm font-semibold tabular-nums"
+                    />
+                  </div>
+                  {totalOverride !== "" && parseFloat(totalOverride) !== runningTotal && (
+                    <span className="text-xs text-muted-foreground">
+                      (items: {formatCurrency(runningTotal)})
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

@@ -56,6 +56,11 @@ interface Supplier {
   created_at: string;
 }
 
+export interface PriceVariant {
+  unit: string;
+  price: number;
+}
+
 export interface SupplierItem {
   id: string;
   supplier_id: string;
@@ -63,6 +68,7 @@ export interface SupplierItem {
   unit: string;
   typical_price: number;
   display_order: number;
+  alt_prices: PriceVariant[];
 }
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -233,7 +239,8 @@ function SupplierDialog({
 function SupplierItemsPanel({ supplier }: { supplier: Supplier }) {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<ItemFormValues>({ description: "", unit: "kg", typical_price: 0 });
+  const [editValues, setEditValues] = useState<ItemFormValues & { alt_prices: PriceVariant[] }>({ description: "", unit: "kg", typical_price: 0, alt_prices: [] });
+  const [newAltPrices, setNewAltPrices] = useState<PriceVariant[]>([]);
 
   const { data: items = [], isLoading } = useQuery<SupplierItem[]>({
     queryKey: ["supplier_items", supplier.id],
@@ -270,6 +277,7 @@ function SupplierItemsPanel({ supplier }: { supplier: Supplier }) {
         unit,
         typical_price: price,
         display_order: items.length,
+        alt_prices: newAltPrices.filter((p) => p.unit.trim()),
       });
       if (siError) throw siError;
 
@@ -286,17 +294,19 @@ function SupplierItemsPanel({ supplier }: { supplier: Supplier }) {
       queryClient.invalidateQueries({ queryKey: ["supplier_items", supplier.id] });
       queryClient.invalidateQueries({ queryKey: ["food-cost-items"] });
       reset({ description: "", unit: "kg", typical_price: 0 });
+      setNewAltPrices([]);
       toast.success("Item added and created as a food cost item");
     },
     onError: (err) => toast.error((err as Error).message),
   });
 
   const { mutate: updateItem, isPending: isSaving } = useMutation({
-    mutationFn: async ({ id, values }: { id: string; values: ItemFormValues }) => {
+    mutationFn: async ({ id, values }: { id: string; values: ItemFormValues & { alt_prices: PriceVariant[] } }) => {
       const { error } = await supabase.from("supplier_items").update({
         description: values.description.trim(),
         unit: values.unit.trim(),
         typical_price: Number(values.typical_price),
+        alt_prices: values.alt_prices.filter((p) => p.unit.trim()),
       }).eq("id", id);
       if (error) throw error;
     },
@@ -322,7 +332,12 @@ function SupplierItemsPanel({ supplier }: { supplier: Supplier }) {
 
   function startEdit(item: SupplierItem) {
     setEditingId(item.id);
-    setEditValues({ description: item.description, unit: item.unit, typical_price: item.typical_price });
+    setEditValues({
+      description: item.description,
+      unit: item.unit,
+      typical_price: item.typical_price,
+      alt_prices: item.alt_prices ?? [],
+    });
   }
 
   function saveEdit() {
@@ -395,8 +410,53 @@ function SupplierItemsPanel({ supplier }: { supplier: Supplier }) {
                           onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") setEditingId(null); }}
                         />
                       </div>
+                      {/* Alt price rows */}
+                      {editValues.alt_prices.map((alt, ai) => (
+                        <div key={ai} className="flex items-center gap-1 mt-1">
+                          <Input
+                            value={alt.unit}
+                            onChange={(e) => {
+                              const updated = [...editValues.alt_prices];
+                              updated[ai] = { ...updated[ai], unit: e.target.value };
+                              setEditValues((v) => ({ ...v, alt_prices: updated }));
+                            }}
+                            placeholder="unit"
+                            className="h-6 text-xs w-16"
+                          />
+                          <div className="relative flex-1">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={alt.price}
+                              onChange={(e) => {
+                                const updated = [...editValues.alt_prices];
+                                updated[ai] = { ...updated[ai], price: Number(e.target.value) };
+                                setEditValues((v) => ({ ...v, alt_prices: updated }));
+                              }}
+                              className="h-6 text-xs pl-5 text-right"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEditValues((v) => ({ ...v, alt_prices: v.alt_prices.filter((_, i) => i !== ai) }))}
+                            className="rounded p-0.5 text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setEditValues((v) => ({ ...v, alt_prices: [...v.alt_prices, { unit: "", price: 0 }] }))}
+                        className="mt-1 inline-flex items-center gap-0.5 text-xs text-primary hover:text-primary/80 transition-colors"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add Price
+                      </button>
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-2 py-1.5 align-top">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={saveEdit}
@@ -422,7 +482,16 @@ function SupplierItemsPanel({ supplier }: { supplier: Supplier }) {
                     <td className="px-3 py-2 text-foreground">{item.description}</td>
                     <td className="px-3 py-2 text-muted-foreground">{item.unit}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                      ${item.typical_price.toFixed(2)}
+                      <span>${item.typical_price.toFixed(2)}</span>
+                      {(item.alt_prices ?? []).length > 0 && (
+                        <div className="mt-0.5 space-y-0.5">
+                          {item.alt_prices.map((alt, i) => (
+                            <div key={i} className="text-xs text-muted-foreground/70">
+                              {alt.unit} @ ${alt.price.toFixed(2)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="px-2 py-2">
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -453,38 +522,87 @@ function SupplierItemsPanel({ supplier }: { supplier: Supplier }) {
       {/* Add item form */}
       <form
         onSubmit={handleSubmit((v) => addItem(v))}
-        className="grid grid-cols-[1fr_80px_100px_auto] gap-2 items-start"
+        className="space-y-2"
       >
-        <div>
+        <div className="grid grid-cols-[1fr_80px_100px_auto] gap-2 items-start">
+          <div>
+            <Input
+              placeholder="e.g. Chicken breast"
+              {...register("description")}
+              className={cn("h-8 text-sm", errors.description && "border-destructive")}
+            />
+            {errors.description && (
+              <p className="text-xs text-destructive mt-0.5">{errors.description.message}</p>
+            )}
+          </div>
           <Input
-            placeholder="e.g. Chicken breast"
-            {...register("description")}
-            className={cn("h-8 text-sm", errors.description && "border-destructive")}
+            placeholder="kg"
+            {...register("unit")}
+            className={cn("h-8 text-sm", errors.unit && "border-destructive")}
           />
-          {errors.description && (
-            <p className="text-xs text-destructive mt-0.5">{errors.description.message}</p>
-          )}
+          <div className="relative">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              className={cn("pl-6 h-8 text-sm", errors.typical_price && "border-destructive")}
+              {...register("typical_price")}
+            />
+          </div>
+          <Button type="submit" size="sm" disabled={isSubmitting} className="h-8">
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Add
+          </Button>
         </div>
-        <Input
-          placeholder="kg"
-          {...register("unit")}
-          className={cn("h-8 text-sm", errors.unit && "border-destructive")}
-        />
-        <div className="relative">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            className={cn("pl-6 h-8 text-sm", errors.typical_price && "border-destructive")}
-            {...register("typical_price")}
-          />
-        </div>
-        <Button type="submit" size="sm" disabled={isSubmitting} className="h-8">
-          <Plus className="h-3.5 w-3.5 mr-1" />
-          Add
-        </Button>
+        {/* Alt prices for new item */}
+        {newAltPrices.map((alt, i) => (
+          <div key={i} className="grid grid-cols-[1fr_80px_100px_auto] gap-2 items-center">
+            <span className="text-xs text-muted-foreground pl-1 italic">alt price</span>
+            <Input
+              value={alt.unit}
+              onChange={(e) => {
+                const updated = [...newAltPrices];
+                updated[i] = { ...updated[i], unit: e.target.value };
+                setNewAltPrices(updated);
+              }}
+              placeholder="carton"
+              className="h-7 text-sm"
+            />
+            <div className="relative">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={alt.price || ""}
+                onChange={(e) => {
+                  const updated = [...newAltPrices];
+                  updated[i] = { ...updated[i], price: Number(e.target.value) };
+                  setNewAltPrices(updated);
+                }}
+                placeholder="0.00"
+                className="pl-6 h-7 text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setNewAltPrices((p) => p.filter((_, idx) => idx !== i))}
+              className="rounded p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => setNewAltPrices((p) => [...p, { unit: "", price: 0 }])}
+          className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+        >
+          <Plus className="h-3 w-3" />
+          Add Price
+        </button>
       </form>
     </div>
   );
@@ -656,7 +774,7 @@ function SupplierRow({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("supplier_items")
-        .select("id, supplier_id, description, unit, typical_price, display_order")
+        .select("id, supplier_id, description, unit, typical_price, display_order, alt_prices")
         .eq("supplier_id", s.id)
         .order("display_order");
       if (error) throw error;
