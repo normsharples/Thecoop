@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v4";
@@ -22,6 +22,7 @@ import {
   Clock,
   ShoppingCart,
   Plus,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -36,10 +37,13 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ENTRY_CATEGORY_GROUPS, ENTRY_CATEGORIES, canonicalCategory } from "@/lib/pnlCategories";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +64,7 @@ interface Invoice {
   restaurant_id: string;
   supplier_name: string;
   amount: number;
+  category: string | null;
   invoice_date: string;
   notes: string | null;
   po_id: string | null;
@@ -78,7 +83,7 @@ interface SupplierRow {
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Required"),
-  quantity: z.coerce.number().positive("Must be > 0"),
+  quantity: z.coerce.number().min(0, "Must be ≥ 0"),
   unit: z.string().min(1, "Required"),
   unit_price: z.coerce.number().min(0, "Must be ≥ 0"),
 });
@@ -86,6 +91,7 @@ const lineItemSchema = z.object({
 const invoiceSchema = z.object({
   supplier_name: z.string().min(1, "Select or enter a supplier"),
   custom_supplier: z.string().optional(),
+  category: z.string().min(1, "Select a category"),
   invoice_date: z.string().min(1, "Date is required"),
   notes: z.string().optional(),
   po_id: z.string().optional(),
@@ -124,6 +130,7 @@ export default function InvoicesPage() {
   const [weekAnchor, setWeekAnchor] = useState(new Date());
   const [showForm, setShowForm] = useState(false);
   const [prefillPO, setPrefillPO] = useState<PurchaseOrder | null>(null);
+  const [loadingItems, setLoadingItems] = useState(false);
 
   const { profile } = useAuth();
   const { canViewSalesData } = usePermissions();
@@ -241,6 +248,7 @@ export default function InvoicesPage() {
     defaultValues: {
       supplier_name: "",
       custom_supplier: "",
+      category: "",
       invoice_date: format(new Date(), "yyyy-MM-dd"),
       notes: "",
       po_id: "",
@@ -251,10 +259,54 @@ export default function InvoicesPage() {
   const { fields, append, remove, replace } = useFieldArray({ control, name: "line_items" });
   const watchedItems = watch("line_items");
   const supplierValue = watch("supplier_name");
+  const categoryValue = watch("category");
 
   const runningTotal = (watchedItems ?? []).reduce(
     (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unit_price) || 0),
     0
+  );
+
+  const onSupplierChange = useCallback(
+    async (supplierName: string) => {
+      setValue("supplier_name", supplierName);
+
+      // Auto-set category from supplier profile if it maps to a valid entry category
+      const row = supplierRows.find((s) => s.name === supplierName);
+      if (row?.category) {
+        const mapped = canonicalCategory(row.category);
+        if (ENTRY_CATEGORIES.includes(mapped)) {
+          setValue("category", mapped, { shouldValidate: true });
+        }
+      }
+
+      if (supplierName === "__custom__" || !row) return;
+
+      setLoadingItems(true);
+      try {
+        const { data: items } = await supabase
+          .from("supplier_items")
+          .select("description, unit, typical_price")
+          .eq("supplier_id", row.id)
+          .order("display_order");
+
+        if (items && items.length > 0) {
+          replace(
+            items.map((item) => ({
+              description: item.description,
+              quantity: 0,
+              unit: item.unit,
+              unit_price: item.typical_price,
+            }))
+          );
+          toast.info(
+            `${items.length} items loaded from ${supplierName} — enter quantities`
+          );
+        }
+      } finally {
+        setLoadingItems(false);
+      }
+    },
+    [supplierRows, setValue, replace]
   );
 
   function openFormWithPO(po: PurchaseOrder) {
@@ -262,6 +314,7 @@ export default function InvoicesPage() {
     reset({
       supplier_name: po.supplier_name,
       custom_supplier: "",
+      category: "",
       invoice_date: format(new Date(), "yyyy-MM-dd"),
       notes: `Re: ${po.po_number}`,
       po_id: po.id,
@@ -283,6 +336,7 @@ export default function InvoicesPage() {
     reset({
       supplier_name: "",
       custom_supplier: "",
+      category: "",
       invoice_date: format(new Date(), "yyyy-MM-dd"),
       notes: "",
       po_id: "",
@@ -300,12 +354,19 @@ export default function InvoicesPage() {
           : values.supplier_name;
       if (!supplier) throw new Error("Supplier name is required");
 
-      const amount = Math.round(
-        (values.line_items ?? []).reduce(
-          (s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0),
-          0
-        ) * 100
-      ) / 100;
+      const activeItems = (values.line_items ?? []).filter(
+        (i) => Number(i.quantity) > 0
+      );
+      if (activeItems.length === 0)
+        throw new Error("Enter quantities for at least one item");
+
+      const amount =
+        Math.round(
+          activeItems.reduce(
+            (s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0),
+            0
+          ) * 100
+        ) / 100;
 
       if (amount <= 0) throw new Error("Total must be greater than 0");
 
@@ -315,6 +376,7 @@ export default function InvoicesPage() {
           restaurant_id: selectedRestaurantId,
           supplier_name: supplier,
           amount,
+          category: values.category,
           invoice_date: values.invoice_date,
           notes: values.notes || null,
           po_id: values.po_id || null,
@@ -336,6 +398,7 @@ export default function InvoicesPage() {
       reset({
         supplier_name: "",
         custom_supplier: "",
+        category: "",
         invoice_date: format(weekAnchor, "yyyy-MM-dd"),
         notes: "",
         po_id: "",
@@ -459,7 +522,7 @@ export default function InvoicesPage() {
                 {allSuppliers.length > 0 ? (
                   <Select
                     value={supplierValue}
-                    onValueChange={(val) => setValue("supplier_name", val)}
+                    onValueChange={onSupplierChange}
                   >
                     <SelectTrigger className={cn(errors.supplier_name && "border-destructive")}>
                       <SelectValue placeholder="Select supplier" />
@@ -500,12 +563,37 @@ export default function InvoicesPage() {
                   className={cn(errors.invoice_date && "border-destructive")}
                 />
               </div>
+
+              <div className="space-y-1.5">
+                <Label>Category <span className="text-destructive">*</span></Label>
+                <Select value={categoryValue} onValueChange={(val) => setValue("category", val, { shouldValidate: true })}>
+                  <SelectTrigger className={cn(errors.category && "border-destructive")}>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ENTRY_CATEGORY_GROUPS.map((g) => (
+                      <SelectGroup key={g.label}>
+                        <SelectLabel>{g.label}</SelectLabel>
+                        {g.options.map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.category && <p className="text-xs text-destructive">{errors.category.message}</p>}
+              </div>
             </div>
 
             {/* Line items */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Items</Label>
+                <div className="flex items-center gap-2">
+                  <Label>Items</Label>
+                  {loadingItems && (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  )}
+                </div>
                 {errors.line_items && !Array.isArray(errors.line_items) && (
                   <p className="text-xs text-destructive">
                     {(errors.line_items as { message?: string }).message}
@@ -523,10 +611,15 @@ export default function InvoicesPage() {
               </div>
 
               <div className="space-y-2">
-                {fields.map((field, index) => (
+                {fields.map((field, index) => {
+                  const qty = Number(watchedItems?.[index]?.quantity) || 0;
+                  return (
                   <div
                     key={field.id}
-                    className="grid grid-cols-1 sm:grid-cols-[1fr_80px_80px_100px_32px] gap-2 items-start"
+                    className={cn(
+                      "grid grid-cols-1 sm:grid-cols-[1fr_80px_80px_100px_32px] gap-2 items-start transition-opacity",
+                      qty === 0 && "opacity-50"
+                    )}
                   >
                     <Input
                       placeholder="e.g. Chicken breast"
@@ -566,7 +659,8 @@ export default function InvoicesPage() {
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="flex items-center justify-between pt-1">

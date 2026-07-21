@@ -90,7 +90,7 @@ interface SupplierRow {
 
 const poItemSchema = z.object({
   description: z.string().min(1, "Required"),
-  quantity: z.coerce.number().positive("Must be > 0"),
+  quantity: z.coerce.number().min(0, "Must be ≥ 0"),
   unit: z.string().min(1, "Required"),
   unit_price: z.coerce.number().min(0, "Must be ≥ 0"),
 });
@@ -293,7 +293,7 @@ export default function PurchaseOrdersPage() {
           replace(
             items.map((item) => ({
               description: item.description,
-              quantity: 1,
+              quantity: 0,
               unit: item.unit,
               unit_price: item.typical_price,
             }))
@@ -316,12 +316,16 @@ export default function PurchaseOrdersPage() {
           : values.supplier_name;
       if (!supplier) throw new Error("Supplier name is required");
 
-      const items: POItem[] = values.items.map((item) => ({
-        description: item.description,
-        quantity: Number(item.quantity),
-        unit: item.unit,
-        unit_price: Number(item.unit_price),
-      }));
+      const items: POItem[] = values.items
+        .filter((item) => Number(item.quantity) > 0)
+        .map((item) => ({
+          description: item.description,
+          quantity: Number(item.quantity),
+          unit: item.unit,
+          unit_price: Number(item.unit_price),
+        }));
+
+      if (items.length === 0) throw new Error("Enter quantities for at least one item");
 
       const total = Math.round(items.reduce((s, i) => s + i.quantity * i.unit_price, 0) * 100) / 100;
 
@@ -509,10 +513,15 @@ export default function PurchaseOrdersPage() {
                 <span />
               </div>
               <div className="space-y-2">
-                {fields.map((field, index) => (
+                {fields.map((field, index) => {
+                  const qty = Number(watchedItems?.[index]?.quantity) || 0;
+                  return (
                   <div
                     key={field.id}
-                    className="grid grid-cols-1 sm:grid-cols-[1fr_80px_80px_100px_32px] gap-2 items-start"
+                    className={cn(
+                      "grid grid-cols-1 sm:grid-cols-[1fr_80px_80px_100px_32px] gap-2 items-start transition-opacity",
+                      qty === 0 && "opacity-50"
+                    )}
                   >
                     <Input
                       placeholder="e.g. Chicken breast"
@@ -552,7 +561,8 @@ export default function PurchaseOrdersPage() {
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="flex items-center justify-between pt-1">
                 <Button
