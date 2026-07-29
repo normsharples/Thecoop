@@ -75,14 +75,14 @@ function getPresetFrom(preset: DatePreset): string | null {
 
 export default function ReviewsReport() {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
   const [datePreset, setDatePreset] = useState<DatePreset>("90d");
   const [filterStars, setFilterStars] = useState<number | null>(null);
   const [filterNeedsReply, setFilterNeedsReply] = useState(false);
 
-  const restaurantIds = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : restaurants?.map((r) => r.id) ?? [];
 
   const fromDate = getPresetFrom(datePreset);

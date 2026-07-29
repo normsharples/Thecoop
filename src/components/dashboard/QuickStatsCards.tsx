@@ -35,16 +35,17 @@ function ratingStatus(rating: number): Status {
 
 export function QuickStatsCards({ date }: { date?: string }) {
   const { data: restaurants, isLoading: restaurantsLoading } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
   const today = date ?? format(new Date(), "yyyy-MM-dd");
   const prevYearDate = format(subYears(parseISO(today), 1), "yyyy-MM-dd");
 
-  const visibleRestaurants = selectedRestaurantId
-    ? restaurants?.filter((r) => r.id === selectedRestaurantId)
+  const visibleRestaurants = selectedRestaurantIds.length
+    ? restaurants?.filter((r) => selectedRestaurantIds.includes(r.id))
     : restaurants;
+  const scopeKey = selectedRestaurantIds.join(",");
 
   const { data: salesData } = useQuery({
-    queryKey: ["sales-today", today, selectedRestaurantId],
+    queryKey: ["sales-today", today, scopeKey],
     queryFn: async () => {
       const ids = visibleRestaurants?.map((r) => r.id) ?? [];
       if (ids.length === 0) return [];
@@ -60,7 +61,7 @@ export function QuickStatsCards({ date }: { date?: string }) {
   });
 
   const { data: prevYearSalesData } = useQuery({
-    queryKey: ["sales-prev-year", prevYearDate, selectedRestaurantId],
+    queryKey: ["sales-prev-year", prevYearDate, scopeKey],
     queryFn: async () => {
       const ids = visibleRestaurants?.map((r) => r.id) ?? [];
       if (ids.length === 0) return [];
@@ -76,7 +77,7 @@ export function QuickStatsCards({ date }: { date?: string }) {
   });
 
   const { data: labourData } = useQuery({
-    queryKey: ["labour-today", today, selectedRestaurantId],
+    queryKey: ["labour-today", today, scopeKey],
     queryFn: async () => {
       const ids = visibleRestaurants?.map((r) => r.id) ?? [];
       if (ids.length === 0) return [];

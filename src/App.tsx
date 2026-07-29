@@ -11,6 +11,9 @@ const MaintenancePage = lazy(() => import("@/pages/MaintenancePage"));
 const AdminPage = lazy(() => import("@/pages/AdminPage"));
 const CashDepositsPage = lazy(() => import("@/pages/CashDepositsPage"));
 const InvoicesPage = lazy(() => import("@/pages/InvoicesPage"));
+const InventoryPage = lazy(() => import("@/pages/InventoryPage"));
+const WastePage = lazy(() => import("@/pages/WastePage"));
+const TransfersPage = lazy(() => import("@/pages/TransfersPage"));
 const ExpensesPage = lazy(() => import("@/pages/ExpensesPage"));
 const PurchaseOrdersPage = lazy(() => import("@/pages/PurchaseOrdersPage"));
 const IncidentsPage = lazy(() => import("@/pages/IncidentsPage"));
@@ -25,6 +28,8 @@ const SalesReport = lazy(() => import("@/components/reports/SalesReport"));
 const LabourReport = lazy(() => import("@/components/reports/LabourReport"));
 const ReviewsReport = lazy(() => import("@/components/reports/ReviewsReport"));
 const FoodCostReport = lazy(() => import("@/components/reports/FoodCostReport"));
+const FoodUsageReport = lazy(() => import("@/components/reports/FoodUsageReport"));
+const TransfersReport = lazy(() => import("@/components/reports/TransfersReport"));
 const PnLReport = lazy(() => import("@/components/reports/PnLReport"));
 const SalesRecordsReport = lazy(() => import("@/components/reports/SalesRecordsReport"));
 const CashUpsReport = lazy(() => import("@/components/reports/CashUpsReport"));
@@ -42,9 +47,14 @@ const RecipesSettings = lazy(() => import("@/components/settings/RecipesSettings
 const AssetRegister = lazy(() => import("@/components/settings/AssetRegister"));
 const BankAccounts = lazy(() => import("@/components/settings/BankAccounts"));
 const IntegrationsSettings = lazy(() => import("@/components/settings/IntegrationsSettings"));
+const BrandsSettings = lazy(() => import("@/components/settings/BrandsSettings"));
+const VenuesSettings = lazy(() => import("@/components/settings/VenuesSettings"));
+const OrderingScheduleSettings = lazy(() => import("@/components/settings/OrderingScheduleSettings"));
+const TasksPage = lazy(() => import("@/pages/TasksPage"));
 
 const SalesManualEntryPage = lazy(() => import("@/pages/SalesManualEntryPage"));
 const LabourManualEntryPage = lazy(() => import("@/pages/LabourManualEntryPage"));
+const DataManagementPage = lazy(() => import("@/pages/DataManagementPage"));
 
 const router = createBrowserRouter([
   {
@@ -55,6 +65,7 @@ const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: "tasks", element: <TasksPage /> },
       { path: "calendar", element: <CalendarPage /> },
       { path: "reports/sales/manual-entry", element: <SalesManualEntryPage /> },
       { path: "reports/labour/manual-entry", element: <LabourManualEntryPage /> },
@@ -67,6 +78,8 @@ const router = createBrowserRouter([
           { path: "labour", element: <LabourReport /> },
           { path: "reviews", element: <ReviewsReport /> },
           { path: "food-cost", element: <FoodCostReport /> },
+          { path: "food-usage", element: <FoodUsageReport /> },
+          { path: "transfers", element: <TransfersReport /> },
           { path: "pnl", element: <PnLReport /> },
           { path: "records", element: <SalesRecordsReport /> },
           { path: "cash-ups", element: <CashUpsReport /> },
@@ -82,7 +95,11 @@ const router = createBrowserRouter([
           { path: "cash", element: <CashDepositsPage /> },
           { path: "invoices", element: <InvoicesPage /> },
           { path: "expenses", element: <ExpensesPage /> },
+          { path: "data-management", element: <DataManagementPage /> },
           { path: "purchase-orders", element: <PurchaseOrdersPage /> },
+          { path: "inventory", element: <InventoryPage /> },
+          { path: "transfers", element: <TransfersPage /> },
+          { path: "waste", element: <WastePage /> },
           { path: "stock-counts", element: <StockCountsPage /> },
           { path: "maintenance", element: <MaintenancePage /> },
           { path: "incidents", element: <IncidentsPage /> },
@@ -94,7 +111,10 @@ const router = createBrowserRouter([
             path: "settings",
             element: <SettingsPage />,
             children: [
-              { index: true, element: <Navigate to="team" replace /> },
+              { index: true, element: <Navigate to="venues" replace /> },
+              { path: "venues", element: <VenuesSettings /> },
+              { path: "brands", element: <BrandsSettings /> },
+              { path: "ordering-schedule", element: <OrderingScheduleSettings /> },
               { path: "team", element: <TeamSettings /> },
               { path: "targets", element: <TargetsSettings /> },
               { path: "alerts", element: <AlertSettings /> },

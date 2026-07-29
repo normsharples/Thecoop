@@ -194,10 +194,18 @@ export default function StockCountsPage() {
       if (approverId) { update.approved_by = approverId; update.approved_at = new Date().toISOString(); }
       const { error } = await supabase.from("stock_counts").update(update).eq("id", id);
       if (error) throw error;
+      // On approval, reconcile live inventory: post the counted-vs-expected
+      // variance to the ledger (opening balances if this is an opening count).
+      if (status === "approved") {
+        const { error: applyErr } = await supabase.rpc("apply_stock_count", { p_count_id: id });
+        if (applyErr) throw applyErr;
+      }
     },
     onSuccess: (_, { status }) => {
-      toast.success(status === "approved" ? "Count approved" : "Count submitted for approval");
+      toast.success(status === "approved" ? "Count approved & inventory reconciled" : "Count submitted for approval");
       queryClient.invalidateQueries({ queryKey: ["stock_counts"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-levels"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-movements"] });
     },
     onError: (err) => toast.error((err as Error).message),
   });

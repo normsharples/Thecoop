@@ -22,11 +22,11 @@ interface ProfileRow {
 }
 
 export default function CashUpsReport() {
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
   const { data: restaurants = [] } = useRestaurants();
 
-  const restaurantIds = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : restaurants.map((r) => r.id);
 
   const { data: cashUps = [], isLoading } = useQuery({
@@ -83,7 +83,7 @@ export default function CashUpsReport() {
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                {!selectedRestaurantId && <TableHead>Venue</TableHead>}
+                {restaurantIds.length !== 1 && <TableHead>Venue</TableHead>}
                 <TableHead className="text-right">Till Count</TableHead>
                 <TableHead className="text-right">To Bank</TableHead>
                 <TableHead className="text-right">POS Expected</TableHead>
@@ -105,7 +105,7 @@ export default function CashUpsReport() {
                     <TableCell className="font-medium whitespace-nowrap">
                       {format(new Date(cu.cash_up_date + "T00:00:00"), "d MMM yyyy")}
                     </TableCell>
-                    {!selectedRestaurantId && (
+                    {restaurantIds.length !== 1 && (
                       <TableCell className="whitespace-nowrap">
                         <span className="inline-flex items-center gap-1 text-muted-foreground">
                           <Store className="h-3 w-3" />

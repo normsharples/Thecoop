@@ -9,10 +9,10 @@ import type { SalesDaily, LabourDaily } from "@/types";
 
 export function WeeklySecondaryCards({ date }: { date: string }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
-  const restaurantIds: string[] = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds: string[] = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : (restaurants?.map((r) => r.id) ?? []);
 
   const anchor = parseISO(date);
@@ -27,7 +27,7 @@ export function WeeklySecondaryCards({ date }: { date: string }) {
   const pweStr = format(prevWeekEnd, "yyyy-MM-dd");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["weekly-secondary", wsStr, selectedRestaurantId],
+    queryKey: ["weekly-secondary", wsStr, restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return null;
       const [

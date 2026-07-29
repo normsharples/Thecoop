@@ -14,10 +14,10 @@ import type { SalesDaily, Target } from "@/types";
 
 export function DailySnapshot({ date }: { date: string }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
-  const restaurantIds: string[] = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds: string[] = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : (restaurants?.map((r) => r.id) ?? []);
 
   const prevDay = format(subDays(parseISO(date), 1), "yyyy-MM-dd");
@@ -30,7 +30,7 @@ export function DailySnapshot({ date }: { date: string }) {
   const dow = parseISO(date).getDay() === 0 ? 6 : parseISO(date).getDay() - 1;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["daily-snapshot", date, selectedRestaurantId],
+    queryKey: ["daily-snapshot", date, restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return null;
       const [

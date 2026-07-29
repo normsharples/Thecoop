@@ -21,6 +21,8 @@ import {
   XCircle,
   Copy,
   Loader2,
+  Search,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -256,8 +258,22 @@ export default function PurchaseOrdersPage() {
 
   const { fields, append, remove, replace } = useFieldArray({ control, name: "items" });
   const [loadingItems, setLoadingItems] = useState(false);
+  const [itemSearch, setItemSearch] = useState("");
   const watchedItems = watch("items");
   const supplierValue = watch("supplier_name");
+
+  const itemQuery = itemSearch.trim().toLowerCase();
+  const rowMatchesSearch = (index: number) => {
+    if (!itemQuery) return true;
+    const it = watchedItems?.[index];
+    return (
+      (it?.description ?? "").toLowerCase().includes(itemQuery) ||
+      (it?.unit ?? "").toLowerCase().includes(itemQuery)
+    );
+  };
+  const matchedCount = itemQuery
+    ? fields.filter((_, i) => rowMatchesSearch(i)).length
+    : fields.length;
 
   const runningTotal = watchedItems.reduce(
     (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unit_price) || 0),
@@ -516,6 +532,33 @@ export default function PurchaseOrdersPage() {
                   <p className="text-xs text-destructive">{(errors.items as { message?: string }).message}</p>
                 )}
               </div>
+              {fields.length > 3 && (
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={itemSearch}
+                    onChange={(e) => setItemSearch(e.target.value)}
+                    placeholder="Search this supplier's catalogue…"
+                    className="pl-8 pr-16"
+                  />
+                  {itemQuery && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground tabular-nums">{matchedCount}</span>
+                      <button
+                        type="button"
+                        onClick={() => setItemSearch("")}
+                        className="rounded p-0.5 text-muted-foreground hover:bg-muted"
+                        aria-label="Clear search"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {itemQuery && matchedCount === 0 && (
+                <p className="text-xs text-muted-foreground px-1">No items match "{itemSearch}".</p>
+              )}
               <div className="hidden sm:grid grid-cols-[1fr_80px_80px_100px_32px] gap-2 px-1">
                 <p className="text-xs text-muted-foreground">Description</p>
                 <p className="text-xs text-muted-foreground">Qty</p>
@@ -531,7 +574,8 @@ export default function PurchaseOrdersPage() {
                     key={field.id}
                     className={cn(
                       "grid grid-cols-1 sm:grid-cols-[1fr_80px_80px_100px_32px] gap-2 items-start transition-opacity",
-                      qty === 0 && "opacity-50"
+                      qty === 0 && "opacity-50",
+                      !rowMatchesSearch(index) && "hidden"
                     )}
                   >
                     <Input
@@ -580,7 +624,7 @@ export default function PurchaseOrdersPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => append({ description: "", quantity: 1, unit: "kg", unit_price: 0 })}
+                  onClick={() => { setItemSearch(""); append({ description: "", quantity: 1, unit: "kg", unit_price: 0 }); }}
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />
                   Add Item

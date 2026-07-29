@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { LogOut, User, ChevronDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { RestaurantSwitcher } from "./RestaurantSwitcher";
+import { BrandSwitcher } from "./BrandSwitcher";
 import { getInitials } from "@/lib/utils";
 
 interface TopbarProps {
@@ -25,7 +26,8 @@ export function Topbar({ pageTitle }: TopbarProps) {
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border bg-background/95 backdrop-blur px-4 lg:px-6">
-      <div className="flex-1">
+      <div className="flex-1 flex items-center gap-2">
+        <BrandSwitcher />
         <RestaurantSwitcher />
       </div>
 

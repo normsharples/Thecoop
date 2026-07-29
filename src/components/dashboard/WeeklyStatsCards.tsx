@@ -36,7 +36,7 @@ function ratingStatus(rating: number): Status {
 
 export function WeeklyStatsCards({ date }: { date: string }) {
   const { data: restaurants, isLoading: restaurantsLoading } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
   const anchor = parseISO(date);
   const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
@@ -47,12 +47,13 @@ export function WeeklyStatsCards({ date }: { date: string }) {
   const prevYearWsStr = format(subYears(weekStart, 1), "yyyy-MM-dd");
   const prevYearWeStr = format(subYears(weekEnd, 1), "yyyy-MM-dd");
 
-  const visibleRestaurants = selectedRestaurantId
-    ? restaurants?.filter((r) => r.id === selectedRestaurantId)
+  const visibleRestaurants = selectedRestaurantIds.length
+    ? restaurants?.filter((r) => selectedRestaurantIds.includes(r.id))
     : restaurants;
+  const scopeKey = selectedRestaurantIds.join(",");
 
   const { data: salesData } = useQuery({
-    queryKey: ["weekly-stats-sales", wsStr, selectedRestaurantId],
+    queryKey: ["weekly-stats-sales", wsStr, scopeKey],
     queryFn: async () => {
       const ids = visibleRestaurants?.map((r) => r.id) ?? [];
       if (!ids.length) return [];
@@ -69,7 +70,7 @@ export function WeeklyStatsCards({ date }: { date: string }) {
   });
 
   const { data: prevYearSalesData } = useQuery({
-    queryKey: ["weekly-stats-prev-year-sales", prevYearWsStr, selectedRestaurantId],
+    queryKey: ["weekly-stats-prev-year-sales", prevYearWsStr, scopeKey],
     queryFn: async () => {
       const ids = visibleRestaurants?.map((r) => r.id) ?? [];
       if (!ids.length) return [];
@@ -86,7 +87,7 @@ export function WeeklyStatsCards({ date }: { date: string }) {
   });
 
   const { data: labourData } = useQuery({
-    queryKey: ["weekly-stats-labour", wsStr, selectedRestaurantId],
+    queryKey: ["weekly-stats-labour", wsStr, scopeKey],
     queryFn: async () => {
       const ids = visibleRestaurants?.map((r) => r.id) ?? [];
       if (!ids.length) return [];

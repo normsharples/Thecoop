@@ -30,10 +30,10 @@ function weeklyTargetFromDaily(targets: Target[], restaurantIds: string[]): numb
 
 export function WeeklySnapshot({ date }: { date: string }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
-  const restaurantIds: string[] = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds: string[] = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : (restaurants?.map((r) => r.id) ?? []);
 
   const anchor = parseISO(date);
@@ -57,7 +57,7 @@ export function WeeklySnapshot({ date }: { date: string }) {
   const lyDateLabel = `${format(prevYearWeekStart, "d MMM")} – ${format(prevYearWeekEnd, "d MMM yyyy")}`;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["weekly-snapshot", wsStr, selectedRestaurantId],
+    queryKey: ["weekly-snapshot", wsStr, restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return null;
       const [

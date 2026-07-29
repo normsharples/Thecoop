@@ -134,53 +134,56 @@ export default function FoodCostReport() {
   const [preset, setPreset] = useState<Preset>("thisMonth");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [reconcOpen, setReconcOpen] = useState(true);
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
   const { data: restaurants = [] } = useRestaurants();
 
-  const isAllRestaurants = !selectedRestaurantId;
+  // Exactly one venue → detailed single-venue view; otherwise aggregate.
+  const singleId = selectedRestaurantIds.length === 1 ? selectedRestaurantIds[0] : null;
+  const isAllRestaurants = !singleId;
   const allRestaurantIds = restaurants.map((r) => r.id);
+  const scopedIds = selectedRestaurantIds.length ? selectedRestaurantIds : allRestaurantIds;
   const range = getRange(preset);
   const prev  = getPrev(range, preset);
 
   // ── Helper: build a filtered query ────────────────────────────────────────
   function scopeInvoices(from: string, to: string) {
-    let q = supabase
+    const q = supabase
       .from("invoices")
       .select("restaurant_id, supplier_name, amount, invoice_date")
       .gte("invoice_date", from)
-      .lte("invoice_date", to);
-    if (selectedRestaurantId) q = q.eq("restaurant_id", selectedRestaurantId);
+      .lte("invoice_date", to)
+      .in("restaurant_id", scopedIds);
     return q;
   }
 
   function scopeSales(from: string, to: string) {
-    let q = supabase
+    const q = supabase
       .from("sales_daily")
       .select("restaurant_id, date, net_sales, total_sales")
       .gte("date", from)
-      .lte("date", to);
-    if (selectedRestaurantId) q = q.eq("restaurant_id", selectedRestaurantId);
+      .lte("date", to)
+      .in("restaurant_id", scopedIds);
     return q;
   }
 
   // ── Queries ───────────────────────────────────────────────────────────────
   const { data: invoices = [], isLoading: invLoading } = useQuery({
-    queryKey: ["invoices-report", selectedRestaurantId, range.from, range.to],
+    queryKey: ["invoices-report", scopedIds.join(","), range.from, range.to],
     queryFn: async () => { const { data, error } = await scopeInvoices(range.from, range.to); if (error) throw error; return data ?? []; },
   });
 
   const { data: prevInvoices = [] } = useQuery({
-    queryKey: ["invoices-report", selectedRestaurantId, prev.from, prev.to],
+    queryKey: ["invoices-report", scopedIds.join(","), prev.from, prev.to],
     queryFn: async () => { const { data, error } = await scopeInvoices(prev.from, prev.to); if (error) throw error; return data ?? []; },
   });
 
   const { data: salesRows = [] } = useQuery({
-    queryKey: ["sales-report", selectedRestaurantId, range.from, range.to],
+    queryKey: ["sales-report", scopedIds.join(","), range.from, range.to],
     queryFn: async () => { const { data, error } = await scopeSales(range.from, range.to); if (error) throw error; return data ?? []; },
   });
 
   const { data: prevSalesRows = [] } = useQuery({
-    queryKey: ["sales-report", selectedRestaurantId, prev.from, prev.to],
+    queryKey: ["sales-report", scopedIds.join(","), prev.from, prev.to],
     queryFn: async () => { const { data, error } = await scopeSales(prev.from, prev.to); if (error) throw error; return data ?? []; },
   });
 
@@ -199,8 +202,6 @@ export default function FoodCostReport() {
     }
     return result;
   }
-
-  const scopedIds = isAllRestaurants ? allRestaurantIds : selectedRestaurantId ? [selectedRestaurantId] : [];
 
   // Opening: most recent approved count BEFORE the period, per restaurant
   const { data: openingCounts = [] } = useQuery<CountRow[]>({
@@ -293,12 +294,12 @@ export default function FoodCostReport() {
   // ── By Restaurant ─────────────────────────────────────────────────────────
   const restaurantData = useMemo(() => {
     if (!isAllRestaurants) return [];
-    return restaurants.map((r) => {
+    return restaurants.filter((r) => scopedIds.includes(r.id)).map((r) => {
       const cost  = invoices.filter((i: any) => i.restaurant_id === r.id).reduce((s: number, i: any) => s + i.amount, 0);
       const sales = salesRows.filter((row: any) => row.restaurant_id === r.id).reduce((s: number, row: any) => s + (row.net_sales ?? row.total_sales ?? 0), 0);
       return { name: r.name, cost, sales, pct: sales > 0 ? (cost / sales) * 100 : null };
     }).sort((a, b) => b.cost - a.cost);
-  }, [isAllRestaurants, restaurants, invoices, salesRows]);
+  }, [isAllRestaurants, restaurants, scopedIds, invoices, salesRows]);
 
   // ── By Supplier ───────────────────────────────────────────────────────────
   const supplierData = useMemo(() => {

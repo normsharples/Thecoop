@@ -8,10 +8,10 @@ import { format, subDays, parseISO } from "date-fns";
 
 export function TrendSparklines({ date }: { date?: string }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
-  const restaurantIds = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : restaurants?.map((r) => r.id) ?? [];
 
   const anchor = date ? parseISO(date) : new Date();
@@ -20,7 +20,7 @@ export function TrendSparklines({ date }: { date?: string }) {
   );
 
   const { data: salesData, isLoading } = useQuery({
-    queryKey: ["sparkline-sales", dates[0], dates[6], selectedRestaurantId],
+    queryKey: ["sparkline-sales", dates[0], dates[6], restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return [];
       const { data, error } = await supabase
@@ -36,7 +36,7 @@ export function TrendSparklines({ date }: { date?: string }) {
   });
 
   const { data: labourData } = useQuery({
-    queryKey: ["sparkline-labour", dates[0], dates[6], selectedRestaurantId],
+    queryKey: ["sparkline-labour", dates[0], dates[6], restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return [];
       const { data, error } = await supabase
@@ -52,7 +52,7 @@ export function TrendSparklines({ date }: { date?: string }) {
   });
 
   const { data: reviewsData } = useQuery({
-    queryKey: ["sparkline-reviews", selectedRestaurantId],
+    queryKey: ["sparkline-reviews", restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return [];
       const { data, error } = await supabase

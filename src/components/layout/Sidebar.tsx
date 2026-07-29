@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  Bird,
   LayoutDashboard,
   BarChart3,
   Trophy,
@@ -16,12 +15,15 @@ import {
   Settings,
   ShieldCheck,
   Receipt,
+  Boxes,
+  ListChecks,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Menu,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useActiveBrand } from "@/hooks/useActiveBrand";
 import { cn } from "@/lib/utils";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -39,6 +41,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings,
   ShieldCheck,
   Receipt,
+  Boxes,
+  ListChecks,
   Menu,
 };
 
@@ -58,6 +62,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", path: "/", icon: "LayoutDashboard" },
+  { label: "Tasks", path: "/tasks", icon: "ListChecks" },
   {
     label: "Reports",
     path: "/reports",
@@ -67,6 +72,8 @@ const navItems: NavItem[] = [
       { label: "Labour", path: "/reports/labour" },
       { label: "Reviews", path: "/reports/reviews" },
       { label: "Food Cost", path: "/reports/food-cost" },
+      { label: "Food Usage", path: "/reports/food-usage" },
+      { label: "Transfers", path: "/reports/transfers" },
       { label: "P&L", path: "/reports/pnl" },
       { label: "Wastage", path: "/reports/wastage" },
       { label: "Records", path: "/reports/records" },
@@ -85,6 +92,10 @@ const navItems: NavItem[] = [
       { label: "Purchase Orders", path: "/admin/purchase-orders" },
       { label: "Invoices", path: "/admin/invoices" },
       { label: "Expenses", path: "/admin/expenses" },
+      { label: "Data Management", path: "/admin/data-management" },
+      { label: "Inventory", path: "/admin/inventory" },
+      { label: "Transfers", path: "/admin/transfers" },
+      { label: "Waste", path: "/admin/waste" },
       { label: "Stock Counts", path: "/admin/stock-counts" },
       { label: "Maintenance", path: "/admin/maintenance" },
       { label: "Incidents", path: "/admin/incidents" },
@@ -108,6 +119,7 @@ const staffNavItems: NavItem[] = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { isSuperadmin, isStaff } = usePermissions();
+  const { name: brandName, Icon: BrandLogo } = useActiveBrand();
   const location = useLocation();
 
   const filteredItems = isStaff
@@ -128,11 +140,11 @@ export function Sidebar() {
       <div className="flex h-16 items-center border-b border-border px-4">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <Bird className="h-7 w-7 text-primary" />
-            <span className="text-lg font-bold text-foreground">The Coop</span>
+            <BrandLogo className="h-7 w-7 text-primary" />
+            <span className="text-lg font-bold text-foreground">{brandName}</span>
           </div>
         )}
-        {collapsed && <Bird className="h-7 w-7 text-primary mx-auto" />}
+        {collapsed && <BrandLogo className="h-7 w-7 text-primary mx-auto" />}
       </div>
 
       {/* Navigation */}

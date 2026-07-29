@@ -17,15 +17,15 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 export function UpcomingCatering() {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const restaurantIds = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : restaurants?.map((r) => r.id) ?? [];
 
   const { data: orders, isLoading } = useQuery({
-    queryKey: ["upcoming-catering", selectedRestaurantId],
+    queryKey: ["upcoming-catering", restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return [];
       const { data, error } = await supabase

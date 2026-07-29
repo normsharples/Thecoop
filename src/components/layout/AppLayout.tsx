@@ -5,6 +5,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { MobileNav } from "./MobileNav";
+import { BrandTheme } from "./BrandTheme";
 import { Loader2 } from "lucide-react";
 
 // The "staff" role can only ever see these sections — everything else
@@ -15,6 +16,7 @@ const STAFF_HOME = "/admin/incidents";
 
 const pageTitles: Record<string, string> = {
   "/": "Dashboard",
+  "/tasks": "Today's Tasks",
   "/pulse": "Pulse Report",
   "/reports": "Reports",
   "/reports/sales": "Sales Report",
@@ -85,6 +87,7 @@ export function AppLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      <BrandTheme />
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar pageTitle={pageTitle} />

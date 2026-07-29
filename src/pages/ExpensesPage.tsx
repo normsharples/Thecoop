@@ -39,10 +39,13 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ENTRY_CATEGORY_GROUPS } from "@/lib/pnlCategories";
 import {
   Dialog,
   DialogContent,
@@ -112,7 +115,7 @@ function monthlyEquivalent(amount: number, frequency: Frequency) {
 
 const recurringSchema = z.object({
   name: z.string().min(1, "Required"),
-  category: z.string().optional(),
+  category: z.string().min(1, "Select a category"),
   amount: z.coerce.number().positive("Must be > 0"),
   frequency: z.enum(["weekly", "monthly", "quarterly", "yearly"]),
   start_date: z.string().min(1, "Required"),
@@ -123,7 +126,7 @@ const recurringSchema = z.object({
 type RecurringFormValues = z.infer<typeof recurringSchema>;
 
 const expenseSchema = z.object({
-  category: z.string().optional(),
+  category: z.string().min(1, "Select a category"),
   description: z.string().min(1, "Required"),
   amount: z.coerce.number().positive("Must be > 0"),
   expense_date: z.string().min(1, "Required"),
@@ -143,7 +146,6 @@ function weekLabel(anchor: Date) {
   return `${format(start, "d MMM")} – ${format(end, "d MMM yyyy")}`;
 }
 
-const COMMON_CATEGORIES = ["Rent", "Utilities", "Insurance", "Marketing", "Software", "Bank Fees", "Repairs & Maintenance", "Admin", "Other"];
 
 // ─── Recurring Expense Dialog ────────────────────────────────────────────────
 
@@ -172,6 +174,7 @@ function RecurringExpenseDialog({
 
   const activeVal = watch("active");
   const frequencyVal = watch("frequency");
+  const categoryVal = watch("category");
 
   const { mutate: save } = useMutation({
     mutationFn: async (values: RecurringFormValues) => {
@@ -223,11 +226,21 @@ function RecurringExpenseDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="category">Category</Label>
-              <Input id="category" list="expense-categories" placeholder="e.g. Rent" {...register("category")} />
-              <datalist id="expense-categories">
-                {COMMON_CATEGORIES.map((c) => <option key={c} value={c} />)}
-              </datalist>
+              <Label>Category <span className="text-destructive">*</span></Label>
+              <Select value={categoryVal} onValueChange={(v) => setValue("category", v, { shouldValidate: true })}>
+                <SelectTrigger className={cn(errors.category && "border-destructive")}>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ENTRY_CATEGORY_GROUPS.map((g) => (
+                    <SelectGroup key={g.label}>
+                      <SelectLabel>{g.label}</SelectLabel>
+                      {g.options.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectGroup>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.category && <p className="text-xs text-destructive">{errors.category.message}</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -439,7 +452,7 @@ export default function ExpensesPage() {
 
   // ── One-off expense form ─────────────────────────────────────────────────────
   const {
-    register, handleSubmit, reset, formState: { errors },
+    register, handleSubmit, reset, setValue, watch, formState: { errors },
   } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema) as Resolver<ExpenseFormValues>,
     defaultValues: {
@@ -447,6 +460,7 @@ export default function ExpensesPage() {
       expense_date: format(new Date(), "yyyy-MM-dd"), notes: "",
     },
   });
+  const expenseCategoryVal = watch("category");
 
   const { mutate: addExpense, isPending } = useMutation({
     mutationFn: async (values: ExpenseFormValues) => {
@@ -575,11 +589,21 @@ export default function ExpensesPage() {
                   {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="category">Category</Label>
-                  <Input id="category" list="expense-categories-oneoff" placeholder="e.g. Repairs & Maintenance" {...register("category")} />
-                  <datalist id="expense-categories-oneoff">
-                    {COMMON_CATEGORIES.map((c) => <option key={c} value={c} />)}
-                  </datalist>
+                  <Label>Category <span className="text-destructive">*</span></Label>
+                  <Select value={expenseCategoryVal} onValueChange={(v) => setValue("category", v, { shouldValidate: true })}>
+                    <SelectTrigger className={cn(errors.category && "border-destructive")}>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ENTRY_CATEGORY_GROUPS.map((g) => (
+                        <SelectGroup key={g.label}>
+                          <SelectLabel>{g.label}</SelectLabel>
+                          {g.options.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectGroup>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.category && <p className="text-xs text-destructive">{errors.category.message}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="expense_date">Date</Label>

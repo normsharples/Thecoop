@@ -177,7 +177,7 @@ function exportCSV(data: SalesDaily[], restaurants: Restaurant[]) {
 export default function SalesReport() {
   const navigate = useNavigate();
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
   const [subPage,     setSubPage]     = useState<SubPage>("overview");
   const [preset,      setPreset]      = useState<Preset>("last7");
@@ -191,8 +191,8 @@ export default function SalesReport() {
   const prevYearRange = showYearComparison ? getPrevYearRange(dateRange) : null;
   const prevLabel = preset === "thisWeek" ? "vs last week" : preset === "thisMonth" ? "vs last month" : "vs prev period";
 
-  const restaurantIds = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : restaurants?.map(r=>r.id) ?? [];
 
   // ── Queries ───────────────────────────────────────────────────────────────
@@ -305,9 +305,10 @@ export default function SalesReport() {
   }, [salesData, restaurants]);
 
   const visibleRestaurantNames = useMemo(() => {
-    if (selectedRestaurantId) return [restaurants?.find(r=>r.id===selectedRestaurantId)?.name??""];
+    if (selectedRestaurantIds.length)
+      return restaurants?.filter(r=>selectedRestaurantIds.includes(r.id)).map(r=>r.name)??[];
     return restaurants?.map(r=>r.name)??[];
-  }, [restaurants, selectedRestaurantId]);
+  }, [restaurants, selectedRestaurantIds]);
 
   // ── Category data ─────────────────────────────────────────────────────────
   const categoryData = useMemo(() => {

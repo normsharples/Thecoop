@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   BarChart,
   Bar,
@@ -46,6 +47,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
 import { useRestaurants } from "@/hooks/useRestaurants";
+import { usePermissions } from "@/hooks/usePermissions";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import { canonicalCategory, OVERHEAD_NODES, CAT, type PnlNode } from "@/lib/pnlCategories";
 
@@ -313,12 +315,26 @@ export default function PnLReport() {
     next.has(k) ? next.delete(k) : next.add(k);
     return next;
   });
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const singleId = selectedRestaurantIds.length === 1 ? selectedRestaurantIds[0] : null;
   const { data: restaurants = [] } = useRestaurants();
+  const { isSuperadmin } = usePermissions();
+  const queryClient = useQueryClient();
 
-  const isAllRestaurants = !selectedRestaurantId;
+  const currentBasis = restaurants.find((r) => r.id === singleId)?.pnl_cogs_basis ?? "purchases";
+  const { mutate: setCogsBasis } = useMutation({
+    mutationFn: async (basis: "purchases" | "usage") => {
+      if (!singleId) throw new Error("Select a single venue to change its P&L basis");
+      const { error } = await supabase.from("restaurants").update({ pnl_cogs_basis: basis }).eq("id", singleId);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("P&L COGS basis updated"); queryClient.invalidateQueries({ queryKey: ["restaurants"] }); },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const isAllRestaurants = !singleId;
   const allRestaurantIds = restaurants.map((r) => r.id);
-  const scopedIds = isAllRestaurants ? allRestaurantIds : selectedRestaurantId ? [selectedRestaurantId] : [];
+  const scopedIds = selectedRestaurantIds.length ? selectedRestaurantIds : allRestaurantIds;
   const range = getRange(preset);
   const prev = getPrev(range, preset);
 
@@ -329,7 +345,7 @@ export default function PnLReport() {
       .select("restaurant_id, supplier_name, amount, category, invoice_date")
       .gte("invoice_date", from)
       .lte("invoice_date", to);
-    if (selectedRestaurantId) q = q.eq("restaurant_id", selectedRestaurantId);
+    q = q.in("restaurant_id", scopedIds);
     return q;
   }
   function scopeSales(from: string, to: string) {
@@ -338,7 +354,7 @@ export default function PnLReport() {
       .select("restaurant_id, date, total_sales, net_sales, online_sales, delivery_sales")
       .gte("date", from)
       .lte("date", to);
-    if (selectedRestaurantId) q = q.eq("restaurant_id", selectedRestaurantId);
+    q = q.in("restaurant_id", scopedIds);
     return q;
   }
   function scopeLabour(from: string, to: string) {
@@ -347,7 +363,7 @@ export default function PnLReport() {
       .select("restaurant_id, date, total_cost, total_hours")
       .gte("date", from)
       .lte("date", to);
-    if (selectedRestaurantId) q = q.eq("restaurant_id", selectedRestaurantId);
+    q = q.in("restaurant_id", scopedIds);
     return q;
   }
   function scopeExpenses(from: string, to: string) {
@@ -356,7 +372,7 @@ export default function PnLReport() {
       .select("restaurant_id, category, description, amount, expense_date")
       .gte("expense_date", from)
       .lte("expense_date", to);
-    if (selectedRestaurantId) q = q.eq("restaurant_id", selectedRestaurantId);
+    q = q.in("restaurant_id", scopedIds);
     return q;
   }
   // Transaction fees (Uber Eats, Lightspeed, …) live in channel_payouts, keyed by venue.
@@ -366,38 +382,68 @@ export default function PnLReport() {
       .select("venue, channel, date, fees, payout_amount")
       .gte("date", from)
       .lte("date", to);
-    if (selectedRestaurantId) {
-      const rname = restaurants.find((r) => r.id === selectedRestaurantId)?.name ?? "";
-      q = q.eq("venue", RNAME_TO_VENUE[rname] ?? "__none__");
+    if (selectedRestaurantIds.length) {
+      const venues = restaurants
+        .filter((r) => selectedRestaurantIds.includes(r.id))
+        .map((r) => RNAME_TO_VENUE[r.name] ?? "__none__");
+      q = q.in("venue", venues.length ? venues : ["__none__"]);
     }
     return q;
   }
 
   // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: invoices = [], isLoading: invLoading } = useQuery({
-    queryKey: ["pnl-invoices", selectedRestaurantId, range.from, range.to],
+    queryKey: ["pnl-invoices", scopedIds.join(","), range.from, range.to],
     queryFn: async () => { const { data, error } = await scopeInvoices(range.from, range.to); if (error) throw error; return data ?? []; },
   });
   const { data: prevInvoices = [] } = useQuery({
-    queryKey: ["pnl-invoices", selectedRestaurantId, prev.from, prev.to],
+    queryKey: ["pnl-invoices", scopedIds.join(","), prev.from, prev.to],
     queryFn: async () => { const { data, error } = await scopeInvoices(prev.from, prev.to); if (error) throw error; return data ?? []; },
   });
 
+  // Ledger COGS (usage-based + transfer value movement) — Phase D.
+  type LedgerCogsRow = { restaurant_id: string; usage_food: number; usage_paper: number; transfer_in_value: number; transfer_out_value: number };
+  async function fetchLedgerCogs(from: string, to: string) {
+    // The RPC takes a single venue or null (= all). For a specific multi-venue
+    // subset, call it per venue and merge the rows.
+    if (selectedRestaurantIds.length) {
+      const results = await Promise.all(
+        selectedRestaurantIds.map(async (id) => {
+          const { data, error } = await supabase.rpc("get_inventory_cogs", {
+            p_start: from, p_end: to, p_restaurant_id: id,
+          });
+          if (error) throw error;
+          return (data ?? []) as LedgerCogsRow[];
+        })
+      );
+      return results.flat();
+    }
+    const { data, error } = await supabase.rpc("get_inventory_cogs", {
+      p_start: from, p_end: to, p_restaurant_id: null,
+    });
+    if (error) throw error;
+    return (data ?? []) as LedgerCogsRow[];
+  }
+  const { data: ledgerRows = [] } = useQuery({
+    queryKey: ["pnl-ledger-cogs", scopedIds.join(","), range.from, range.to],
+    queryFn: () => fetchLedgerCogs(range.from, range.to),
+  });
+
   const { data: salesRows = [], isLoading: salesLoading } = useQuery({
-    queryKey: ["pnl-sales", selectedRestaurantId, range.from, range.to],
+    queryKey: ["pnl-sales", scopedIds.join(","), range.from, range.to],
     queryFn: async () => { const { data, error } = await scopeSales(range.from, range.to); if (error) throw error; return data ?? []; },
   });
   const { data: prevSalesRows = [] } = useQuery({
-    queryKey: ["pnl-sales", selectedRestaurantId, prev.from, prev.to],
+    queryKey: ["pnl-sales", scopedIds.join(","), prev.from, prev.to],
     queryFn: async () => { const { data, error } = await scopeSales(prev.from, prev.to); if (error) throw error; return data ?? []; },
   });
 
   const { data: labourRows = [], isLoading: labourLoading } = useQuery({
-    queryKey: ["pnl-labour", selectedRestaurantId, range.from, range.to],
+    queryKey: ["pnl-labour", scopedIds.join(","), range.from, range.to],
     queryFn: async () => { const { data, error } = await scopeLabour(range.from, range.to); if (error) throw error; return data ?? []; },
   });
   const { data: prevLabourRows = [] } = useQuery({
-    queryKey: ["pnl-labour", selectedRestaurantId, prev.from, prev.to],
+    queryKey: ["pnl-labour", scopedIds.join(","), prev.from, prev.to],
     queryFn: async () => { const { data, error } = await scopeLabour(prev.from, prev.to); if (error) throw error; return data ?? []; },
   });
 
@@ -408,24 +454,24 @@ export default function PnLReport() {
       .select("restaurant_id, week_start, actual_labour, payroll_tax, overtime, penalty_rates")
       .gte("week_start", from)
       .lte("week_start", to);
-    if (selectedRestaurantId) q = q.eq("restaurant_id", selectedRestaurantId);
+    q = q.in("restaurant_id", scopedIds);
     return q;
   }
   const { data: weeklyLabour = [] } = useQuery({
-    queryKey: ["pnl-weekly-labour", selectedRestaurantId, range.from, range.to],
+    queryKey: ["pnl-weekly-labour", scopedIds.join(","), range.from, range.to],
     queryFn: async () => { const { data, error } = await scopeWeeklyLabour(range.from, range.to); if (error) throw error; return data ?? []; },
   });
   const { data: prevWeeklyLabour = [] } = useQuery({
-    queryKey: ["pnl-weekly-labour", selectedRestaurantId, prev.from, prev.to],
+    queryKey: ["pnl-weekly-labour", scopedIds.join(","), prev.from, prev.to],
     queryFn: async () => { const { data, error } = await scopeWeeklyLabour(prev.from, prev.to); if (error) throw error; return data ?? []; },
   });
 
   const { data: rawOneOffExpenses = [], isLoading: expensesLoading } = useQuery({
-    queryKey: ["pnl-expenses", selectedRestaurantId, range.from, range.to],
+    queryKey: ["pnl-expenses", scopedIds.join(","), range.from, range.to],
     queryFn: async () => { const { data, error } = await scopeExpenses(range.from, range.to); if (error) throw error; return data ?? []; },
   });
   const { data: rawPrevOneOffExpenses = [] } = useQuery({
-    queryKey: ["pnl-expenses", selectedRestaurantId, prev.from, prev.to],
+    queryKey: ["pnl-expenses", scopedIds.join(","), prev.from, prev.to],
     queryFn: async () => { const { data, error } = await scopeExpenses(prev.from, prev.to); if (error) throw error; return data ?? []; },
   });
 
@@ -433,11 +479,11 @@ export default function PnLReport() {
   //   "Transaction Fees – Lightspeed" (POS card fees) and
   //   "Transaction Fees – Delivery"   (Uber Eats + DoorDash + Bite).
   const { data: channelFees = [] } = useQuery({
-    queryKey: ["pnl-fees", selectedRestaurantId, range.from, range.to],
+    queryKey: ["pnl-fees", scopedIds.join(","), range.from, range.to],
     queryFn: async () => { const { data, error } = await scopeFees(range.from, range.to); if (error) throw error; return data ?? []; },
   });
   const { data: prevChannelFees = [] } = useQuery({
-    queryKey: ["pnl-fees", selectedRestaurantId, prev.from, prev.to],
+    queryKey: ["pnl-fees", scopedIds.join(","), prev.from, prev.to],
     queryFn: async () => { const { data, error } = await scopeFees(prev.from, prev.to); if (error) throw error; return data ?? []; },
   });
 
@@ -525,9 +571,32 @@ export default function PnLReport() {
 
   // ── COGS split (Food vs Paper) from invoice categories ──
   function paperOf(rows: any[]) { return rows.filter((i) => canonicalCategory(i.category) === CAT.PAPER).reduce((s, i) => s + Number(i.amount ?? 0), 0); }
-  const paperCost = useMemo(() => paperOf(invoices), [invoices]);
-  const foodCost = Math.max(purchases - paperCost, 0);
+  // ── Ledger COGS aggregates + P&L basis (Phase D) ──
+  const ledger = useMemo(() => ledgerRows.reduce(
+    (a, r) => ({
+      usageFood: a.usageFood + Number(r.usage_food ?? 0),
+      usagePaper: a.usagePaper + Number(r.usage_paper ?? 0),
+      transferIn: a.transferIn + Number(r.transfer_in_value ?? 0),
+      transferOut: a.transferOut + Number(r.transfer_out_value ?? 0),
+    }),
+    { usageFood: 0, usagePaper: 0, transferIn: 0, transferOut: 0 }
+  ), [ledgerRows]);
+  const transferAdj = ledger.transferIn - ledger.transferOut;
+
+  // Effective basis: single venue → its own setting; all-venues → usage only if every scoped venue is usage.
+  const cogsBasis: "purchases" | "usage" = useMemo(() => {
+    const scoped = restaurants.filter((r) => scopedIds.includes(r.id));
+    return scoped.length > 0 && scoped.every((r) => r.pnl_cogs_basis === "usage") ? "usage" : "purchases";
+  }, [restaurants, scopedIds]);
+
+  const invPaperCost = useMemo(() => paperOf(invoices), [invoices]);
   const prevPaperCost = useMemo(() => paperOf(prevInvoices), [prevInvoices]);
+
+  // Transfers always shift food cost between venues; usage mode replaces COGS with true consumption.
+  const paperCost = cogsBasis === "usage" ? ledger.usagePaper : invPaperCost;
+  const foodCost = cogsBasis === "usage"
+    ? ledger.usageFood
+    : Math.max(purchases - invPaperCost, 0) + transferAdj;
 
   // ── Labour: Deputy owns HOURS, weekly payroll owns COST ──
   const labourHours = useMemo(() => labourRows.reduce((s: number, r: any) => s + Number(r.total_hours ?? 0), 0), [labourRows]);
@@ -542,7 +611,7 @@ export default function PnLReport() {
   // Effective labour cost used everywhere in the P&L: manual payroll if entered, else Deputy.
   const labourCost = hasWeeklyLabour ? labourManualTotal : labourCostDeputy;
 
-  const cogs = purchases; // invoice-based: Food Cost + Paper Cost
+  const cogs = cogsBasis === "usage" ? ledger.usageFood + ledger.usagePaper : purchases + transferAdj;
   const cogsPct = revenue > 0 ? (cogs / revenue) * 100 : null;
   const grossProfit = revenue - cogs;
   const grossMarginPct = revenue > 0 ? (grossProfit / revenue) * 100 : null;
@@ -840,6 +909,35 @@ export default function PnLReport() {
           Showing combined data across all restaurants — {format(parseISO(range.from), "d MMM")} to {format(parseISO(range.to), "d MMM yyyy")}.
         </p>
       )}
+
+      {/* COGS basis: indicator + superadmin toggle (Phase D) */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground">
+          COGS basis:{" "}
+          <span className="font-medium text-foreground">
+            {cogsBasis === "usage" ? "Usage (from live inventory)" : "Purchases (invoices)"}
+          </span>
+          {cogsBasis === "purchases" && transferAdj !== 0 && (
+            <span className="ml-1 text-muted-foreground">· incl. {formatCurrency(transferAdj)} net transfers</span>
+          )}
+        </span>
+        {isSuperadmin && !isAllRestaurants && (
+          <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
+            {(["purchases", "usage"] as const).map((b) => (
+              <button
+                key={b}
+                onClick={() => currentBasis !== b && setCogsBasis(b)}
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-xs font-medium transition-colors capitalize",
+                  currentBasis === b ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+                )}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

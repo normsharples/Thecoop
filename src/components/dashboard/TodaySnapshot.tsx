@@ -8,16 +8,16 @@ import { format, subDays, parseISO } from "date-fns";
 
 export function TodaySnapshot({ date }: { date?: string }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
   const today = date ?? format(new Date(), "yyyy-MM-dd");
   const yesterday = format(subDays(parseISO(today), 1), "yyyy-MM-dd");
 
-  const restaurantIds = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : restaurants?.map((r) => r.id) ?? [];
 
   const { data: salesData, isLoading: salesLoading } = useQuery({
-    queryKey: ["snapshot-sales", today, selectedRestaurantId],
+    queryKey: ["snapshot-sales", today, restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return [];
       const { data, error } = await supabase
@@ -32,7 +32,7 @@ export function TodaySnapshot({ date }: { date?: string }) {
   });
 
   const { data: labourData } = useQuery({
-    queryKey: ["snapshot-labour", today, selectedRestaurantId],
+    queryKey: ["snapshot-labour", today, restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return [];
       const { data, error } = await supabase
@@ -47,7 +47,7 @@ export function TodaySnapshot({ date }: { date?: string }) {
   });
 
   const { data: reviewsData } = useQuery({
-    queryKey: ["snapshot-reviews", selectedRestaurantId],
+    queryKey: ["snapshot-reviews", restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return [];
       const { data, error } = await supabase

@@ -23,6 +23,8 @@ import {
   ShoppingCart,
   Plus,
   Loader2,
+  Search,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -82,6 +84,7 @@ interface SupplierRow {
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
 const lineItemSchema = z.object({
+  food_cost_item_id: z.string().optional(), // optional link to a tracked catalogue item
   description: z.string().min(1, "Required"),
   quantity: z.coerce.number().min(0, "Must be ≥ 0"),
   unit: z.string().min(1, "Required"),
@@ -122,7 +125,7 @@ function costColour(pct: number) {
   return "text-red-500";
 }
 
-const BLANK_ITEM = { description: "", quantity: 1, unit: "kg", unit_price: 0 };
+const BLANK_ITEM = { food_cost_item_id: "", description: "", quantity: 1, unit: "kg", unit_price: 0 };
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
@@ -159,6 +162,68 @@ export default function InvoicesPage() {
   });
 
   const allSuppliers = supplierRows.map((s) => s.name);
+
+  // ── Tracked items + purchase-unit conversions (for feeding live inventory) ──
+  type TrackedItem = { id: string; name: string; unit: string | null; category: string | null; track_inventory: boolean };
+  const { data: foodItems = [] } = useQuery<TrackedItem[]>({
+    queryKey: ["food_cost_items_tracked"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("food_cost_items")
+        .select("id, name, unit, category, track_inventory")
+        .order("category")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as TrackedItem[];
+    },
+  });
+
+  // Auto-match a line description to a tracked inventory item by name.
+  // Uses the same exact-name rule the save logic uses, so the dropdown
+  // selection always reflects what will actually feed stock on save.
+  const matchFoodItemId = useCallback(
+    (description: string) => {
+      const q = (description ?? "").trim().toLowerCase();
+      if (!q) return "";
+      const tracked = foodItems.filter((f) => f.track_inventory);
+      // 1. Exact name match (safest).
+      const exact = tracked.find((f) => f.name.trim().toLowerCase() === q);
+      if (exact) return exact.id;
+      // 2. Unambiguous contains match: exactly one item's name appears inside the
+      //    description (handles "Chicken Breast 5kg" → "Chicken breast"). Require
+      //    a single hit so we never guess when it could be more than one item.
+      const contained = tracked.filter((f) => {
+        const name = f.name.trim().toLowerCase();
+        return name.length >= 3 && q.includes(name);
+      });
+      return contained.length === 1 ? contained[0].id : "";
+    },
+    [foodItems]
+  );
+
+  // Tracked items grouped by category for the line picker.
+  const trackedItemGroups = useMemo(() => {
+    const groups: Record<string, TrackedItem[]> = {};
+    for (const it of foodItems) {
+      if (!it.track_inventory) continue;
+      const cat = it.category ?? "Other";
+      (groups[cat] ??= []).push(it);
+    }
+    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [foodItems]);
+
+  const { data: purchaseUnits = [] } = useQuery<
+    { food_cost_item_id: string; name: string; factor_to_stock_unit: number }[]
+  >({
+    queryKey: ["item_purchase_units"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("item_purchase_units")
+        .select("food_cost_item_id, name, factor_to_stock_unit");
+      if (error) throw error;
+      return (data ?? []) as { food_cost_item_id: string; name: string; factor_to_stock_unit: number }[];
+    },
+  });
 
   // ── Invoices ──────────────────────────────────────────────────────────────
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
@@ -260,6 +325,20 @@ export default function InvoicesPage() {
   const { fields, append, remove, replace } = useFieldArray({ control, name: "line_items" });
   const watchedItems = watch("line_items");
   const supplierValue = watch("supplier_name");
+
+  const [itemSearch, setItemSearch] = useState("");
+  const itemQuery = itemSearch.trim().toLowerCase();
+  const rowMatchesSearch = (index: number) => {
+    if (!itemQuery) return true;
+    const it = watchedItems?.[index];
+    return (
+      (it?.description ?? "").toLowerCase().includes(itemQuery) ||
+      (it?.unit ?? "").toLowerCase().includes(itemQuery)
+    );
+  };
+  const matchedCount = itemQuery
+    ? fields.filter((_, i) => rowMatchesSearch(i)).length
+    : fields.length;
   const categoryValue = watch("category");
 
   const runningTotal = (watchedItems ?? []).reduce(
@@ -291,9 +370,10 @@ export default function InvoicesPage() {
           .order("display_order");
 
         if (items && items.length > 0) {
-          const lineItems: Array<{ description: string; quantity: number; unit: string; unit_price: number }> = [];
+          const lineItems: Array<{ food_cost_item_id: string; description: string; quantity: number; unit: string; unit_price: number }> = [];
           for (const item of items) {
             lineItems.push({
+              food_cost_item_id: matchFoodItemId(item.description),
               description: item.description,
               quantity: 0,
               unit: item.unit,
@@ -302,6 +382,7 @@ export default function InvoicesPage() {
             const alts = (item.alt_prices as Array<{ unit: string; price: number }>) ?? [];
             for (const alt of alts) {
               lineItems.push({
+                food_cost_item_id: matchFoodItemId(item.description),
                 description: item.description,
                 quantity: 0,
                 unit: alt.unit,
@@ -318,7 +399,7 @@ export default function InvoicesPage() {
         setLoadingItems(false);
       }
     },
-    [supplierRows, setValue, replace]
+    [supplierRows, setValue, replace, matchFoodItemId]
   );
 
   function openFormWithPO(po: PurchaseOrder) {
@@ -333,6 +414,7 @@ export default function InvoicesPage() {
       po_id: po.id,
       line_items: po.items.length > 0
         ? po.items.map((item) => ({
+            food_cost_item_id: matchFoodItemId(item.description),
             description: item.description,
             quantity: item.quantity,
             unit: item.unit,
@@ -404,15 +486,164 @@ export default function InvoicesPage() {
         .single();
       if (error) throw error;
 
+      // Persist line items and feed live inventory. A line feeds the ledger only
+      // when its description matches a tracked catalogue item AND its unit is
+      // unambiguous (matches the item's stock unit, or a configured conversion),
+      // so we never inject a wrong quantity. Unmatched lines are money-only.
+      let fedCount = 0;
+      let newCatalogCount = 0;
+      let updatedCatalogCount = 0;
+      if (invoiceRow) {
+        const norm = (s: string) => s.trim().toLowerCase();
+        const lines = activeItems.map((i) => {
+          // Prefer the explicit item picked on the line; fall back to name-match.
+          const item =
+            (i.food_cost_item_id
+              ? foodItems.find((f) => f.id === i.food_cost_item_id && f.track_inventory)
+              : undefined) ??
+            foodItems.find((f) => f.track_inventory && norm(f.name) === norm(i.description));
+          let qtyStock = 0;
+          if (item) {
+            if (item.unit && norm(item.unit) === norm(i.unit)) {
+              qtyStock = Number(i.quantity) || 0;
+            } else {
+              const pu = purchaseUnits.find(
+                (p) => p.food_cost_item_id === item.id && norm(p.name) === norm(i.unit)
+              );
+              if (pu) qtyStock = (Number(i.quantity) || 0) * pu.factor_to_stock_unit;
+            }
+          }
+          if (qtyStock > 0) fedCount += 1;
+          return {
+            invoice_id: invoiceRow.id,
+            food_cost_item_id: qtyStock > 0 && item ? item.id : null,
+            description: i.description,
+            purchase_unit: i.unit,
+            quantity: Number(i.quantity) || 0,
+            unit_cost: Number(i.unit_price) || 0,
+            qty_stock_units: qtyStock,
+            line_total: Math.round((Number(i.quantity) || 0) * (Number(i.unit_price) || 0) * 100) / 100,
+          };
+        });
+        const { error: lineErr } = await supabase.from("invoice_lines").insert(lines);
+        if (lineErr) throw lineErr;
+
+        // Keep this supplier's catalogue in sync with what was actually invoiced:
+        //  • brand-new descriptions are added,
+        //  • existing items whose price changed have their saved price refreshed
+        //    (matched by unit — the main unit or an alternate price entry).
+        // Best-effort: a catalogue hiccup must never fail an already-saved invoice.
+        try {
+          const supplierRow = supplierRows.find((s) => norm(s.name) === norm(supplier));
+          if (supplierRow) {
+            type CatRow = {
+              id: string;
+              description: string;
+              unit: string;
+              typical_price: number;
+              alt_prices: { unit: string; price: number }[] | null;
+            };
+            const { data: existing } = await supabase
+              .from("supplier_items")
+              .select("id, description, unit, typical_price, alt_prices")
+              .eq("supplier_id", supplierRow.id);
+            const rows = (existing ?? []) as CatRow[];
+            const byDesc = new Map(rows.map((r) => [norm(r.description), r]));
+            const seen = new Set<string>();
+            let order = rows.length;
+
+            const newItems: Array<{
+              supplier_id: string;
+              description: string;
+              unit: string;
+              typical_price: number;
+              display_order: number;
+            }> = [];
+
+            for (const i of activeItems) {
+              const desc = (i.description ?? "").trim();
+              if (!desc) continue;
+              const key = norm(desc);
+              if (seen.has(key)) continue;
+              seen.add(key);
+
+              const lineUnit = i.unit || "each";
+              const linePrice = Number(i.unit_price) || 0;
+              const row = byDesc.get(key);
+
+              if (!row) {
+                // Brand-new item → add to catalogue.
+                newItems.push({
+                  supplier_id: supplierRow.id,
+                  description: desc,
+                  unit: lineUnit,
+                  typical_price: linePrice,
+                  display_order: order++,
+                });
+                continue;
+              }
+
+              // Existing item → refresh the saved price if it changed (never
+              // overwrite with a zero/blank price).
+              if (linePrice <= 0) continue;
+
+              if (norm(row.unit) === norm(lineUnit)) {
+                if (Math.abs(row.typical_price - linePrice) > 0.0001) {
+                  const { error: upErr } = await supabase
+                    .from("supplier_items")
+                    .update({ typical_price: linePrice })
+                    .eq("id", row.id);
+                  if (!upErr) updatedCatalogCount += 1;
+                }
+              } else {
+                const alts = [...(row.alt_prices ?? [])];
+                const idx = alts.findIndex((a) => norm(a.unit) === norm(lineUnit));
+                let changed = false;
+                if (idx === -1) {
+                  alts.push({ unit: lineUnit, price: linePrice });
+                  changed = true;
+                } else if (Math.abs(alts[idx].price - linePrice) > 0.0001) {
+                  alts[idx] = { unit: alts[idx].unit, price: linePrice };
+                  changed = true;
+                }
+                if (changed) {
+                  const { error: upErr } = await supabase
+                    .from("supplier_items")
+                    .update({ alt_prices: alts })
+                    .eq("id", row.id);
+                  if (!upErr) updatedCatalogCount += 1;
+                }
+              }
+            }
+
+            if (newItems.length > 0) {
+              const { error: catErr } = await supabase.from("supplier_items").insert(newItems);
+              if (!catErr) newCatalogCount = newItems.length;
+            }
+          }
+        } catch {
+          // ignore — catalogue sync is non-critical
+        }
+      }
+
       if (values.po_id && invoiceRow) {
         await supabase
           .from("purchase_orders")
           .update({ status: "invoiced", invoice_id: invoiceRow.id })
           .eq("id", values.po_id);
       }
+
+      return { fedCount, newCatalogCount, updatedCatalogCount };
     },
-    onSuccess: () => {
-      toast.success("Invoice added");
+    onSuccess: (result) => {
+      const fed = result?.fedCount ?? 0;
+      const added = result?.newCatalogCount ?? 0;
+      const updated = result?.updatedCatalogCount ?? 0;
+      const parts = ["Invoice added"];
+      if (fed > 0) parts.push(`${fed} item${fed !== 1 ? "s" : ""} added to inventory`);
+      if (added > 0) parts.push(`${added} new item${added !== 1 ? "s" : ""} saved to supplier catalogue`);
+      if (updated > 0) parts.push(`${updated} price${updated !== 1 ? "s" : ""} updated`);
+      toast.success(parts.join(" · "));
       setTotalOverride("");
       reset({
         supplier_name: "",
@@ -428,6 +659,9 @@ export default function InvoicesPage() {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["purchase_orders_pending"] });
       queryClient.invalidateQueries({ queryKey: ["purchase_orders"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-levels"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-movements"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier_catalog_for_item"] });
     },
     onError: (err) => toast.error("Failed to save: " + (err as Error).message),
   });
@@ -620,8 +854,37 @@ export default function InvoicesPage() {
                 )}
               </div>
 
+              {fields.length > 3 && (
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={itemSearch}
+                    onChange={(e) => setItemSearch(e.target.value)}
+                    placeholder="Search this supplier's catalogue…"
+                    className="pl-8 pr-16"
+                  />
+                  {itemQuery && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground tabular-nums">{matchedCount}</span>
+                      <button
+                        type="button"
+                        onClick={() => setItemSearch("")}
+                        className="rounded p-0.5 text-muted-foreground hover:bg-muted"
+                        aria-label="Clear search"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {itemQuery && matchedCount === 0 && (
+                <p className="text-xs text-muted-foreground px-1">No items match "{itemSearch}".</p>
+              )}
+
               {/* Column headers */}
-              <div className="hidden sm:grid grid-cols-[1fr_80px_80px_100px_32px] gap-2 px-1">
+              <div className="hidden sm:grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.1fr)_70px_70px_90px_32px] gap-2 px-1">
+                <p className="text-xs text-muted-foreground">Item (inventory)</p>
                 <p className="text-xs text-muted-foreground">Description</p>
                 <p className="text-xs text-muted-foreground">Qty</p>
                 <p className="text-xs text-muted-foreground">Unit</p>
@@ -636,10 +899,46 @@ export default function InvoicesPage() {
                   <div
                     key={field.id}
                     className={cn(
-                      "grid grid-cols-1 sm:grid-cols-[1fr_80px_80px_100px_32px] gap-2 items-start transition-opacity",
-                      qty === 0 && "opacity-50"
+                      "grid grid-cols-1 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.1fr)_70px_70px_90px_32px] gap-2 items-start transition-opacity",
+                      qty === 0 && "opacity-50",
+                      !rowMatchesSearch(index) && "hidden"
                     )}
                   >
+                    <Select
+                      value={watchedItems?.[index]?.food_cost_item_id || "__none__"}
+                      onValueChange={(val) => {
+                        if (val === "__none__") {
+                          setValue(`line_items.${index}.food_cost_item_id`, "");
+                          return;
+                        }
+                        const picked = foodItems.find((f) => f.id === val);
+                        setValue(`line_items.${index}.food_cost_item_id`, val);
+                        if (picked) {
+                          // auto-fill so the common case (qty in the item's stock unit) converts 1:1
+                          if (!watchedItems?.[index]?.description?.trim()) {
+                            setValue(`line_items.${index}.description`, picked.name);
+                          }
+                          if (picked.unit) setValue(`line_items.${index}.unit`, picked.unit);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="text-xs">
+                        <SelectValue placeholder="Untracked" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— Untracked (money only) —</SelectItem>
+                        {trackedItemGroups.map(([cat, items]) => (
+                          <SelectGroup key={cat}>
+                            <SelectLabel>{cat}</SelectLabel>
+                            {items.map((it) => (
+                              <SelectItem key={it.id} value={it.id}>
+                                {it.name} {it.unit ? `(${it.unit})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Input
                       placeholder="e.g. Chicken breast"
                       {...register(`line_items.${index}.description`)}
@@ -687,7 +986,7 @@ export default function InvoicesPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => append(BLANK_ITEM)}
+                  onClick={() => { setItemSearch(""); append(BLANK_ITEM); }}
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />
                   Add Item

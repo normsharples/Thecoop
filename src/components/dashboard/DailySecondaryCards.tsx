@@ -9,16 +9,16 @@ import type { SalesDaily, LabourDaily } from "@/types";
 
 export function DailySecondaryCards({ date }: { date: string }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
-  const restaurantIds: string[] = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds: string[] = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : (restaurants?.map((r) => r.id) ?? []);
 
   const prevDay = format(subDays(parseISO(date), 1), "yyyy-MM-dd");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["daily-secondary", date, selectedRestaurantId],
+    queryKey: ["daily-secondary", date, restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return null;
       const [

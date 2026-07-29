@@ -6,6 +6,16 @@ export interface Restaurant {
   deputy_id: string | null;
   google_place_id: string | null;
   status: "active" | "grace_period" | "inactive";
+  pnl_cogs_basis?: "purchases" | "usage";
+  brand_id?: string | null;
+  created_at: string;
+}
+
+export interface Brand {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
   created_at: string;
 }
 
@@ -585,6 +595,20 @@ export interface QuickLink {
   order: number;
 }
 
+export interface WeeklyLabour {
+  id: string;
+  restaurant_id: string;
+  week_start: string; // Monday, yyyy-MM-dd
+  actual_labour: number;
+  payroll_tax: number;
+  overtime: number;
+  penalty_rates: number;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SupplierInvoice {
   id: string;
   restaurant_id: string;
@@ -595,4 +619,94 @@ export interface SupplierInvoice {
   category: string;
   status: "pending" | "approved" | "paid";
   created_at: string;
+}
+
+// ── Perpetual inventory (Phase A) ─────────────────────────────────────────────
+
+export type InventoryMovementType =
+  | "opening"
+  | "purchase"
+  | "sale_depletion"
+  | "waste"
+  | "count_adjustment"
+  | "transfer_out"
+  | "transfer_in"
+  | "in_transit_loss";
+
+export interface InventoryMovement {
+  id: string;
+  restaurant_id: string;
+  food_cost_item_id: string;
+  movement_type: InventoryMovementType;
+  qty_delta: number;
+  unit_cost: number;
+  value_delta: number;
+  movement_date: string;
+  source_type: string | null;
+  source_id: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  food_cost_item?: FoodCostItem;
+}
+
+export interface InventoryLevel {
+  restaurant_id: string;
+  food_cost_item_id: string;
+  qty_on_hand: number;
+  avg_cost: number;
+  total_value: number;
+  updated_at: string;
+  food_cost_item?: FoodCostItem;
+}
+
+export interface ItemPurchaseUnit {
+  id: string;
+  food_cost_item_id: string;
+  name: string;
+  factor_to_stock_unit: number;
+  is_default: boolean;
+  created_at: string;
+}
+
+export interface InvoiceLine {
+  id: string;
+  invoice_id: string;
+  food_cost_item_id: string | null;
+  description: string;
+  purchase_unit: string | null;
+  quantity: number;
+  unit_cost: number;
+  qty_stock_units: number;
+  line_total: number;
+  created_at: string;
+}
+
+export type StockTransferStatus = "in_transit" | "received" | "cancelled";
+
+export interface StockTransferLine {
+  id: string;
+  transfer_id: string;
+  food_cost_item_id: string;
+  qty_sent: number;
+  qty_received: number | null;
+  unit_cost: number;
+  created_at: string;
+  food_cost_item?: Pick<FoodCostItem, "id" | "name" | "unit">;
+}
+
+export interface StockTransfer {
+  id: string;
+  from_restaurant_id: string;
+  to_restaurant_id: string;
+  status: StockTransferStatus;
+  notes: string | null;
+  sent_by: string | null;
+  sent_at: string;
+  received_by: string | null;
+  received_at: string | null;
+  created_at: string;
+  from_restaurant?: Pick<Restaurant, "id" | "name">;
+  to_restaurant?: Pick<Restaurant, "id" | "name">;
+  lines?: StockTransferLine[];
 }

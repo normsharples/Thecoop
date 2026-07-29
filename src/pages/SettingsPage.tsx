@@ -13,10 +13,16 @@ import {
   Truck,
   LayoutGrid,
   BookOpen,
+  Tags,
+  Store,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const settingsSections = [
+  { label: "Venues", path: "/admin/settings/venues", icon: Store },
+  { label: "Brands", path: "/admin/settings/brands", icon: Tags },
+  { label: "Ordering Schedule", path: "/admin/settings/ordering-schedule", icon: CalendarClock },
   { label: "Team", path: "/admin/settings/team", icon: Users },
   { label: "Targets", path: "/admin/settings/targets", icon: Target },
   { label: "Alerts", path: "/admin/settings/alerts", icon: Bell },

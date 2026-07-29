@@ -22,14 +22,14 @@ export function ChannelSalesCard({
   label, field, icon: Icon, from, to, prevFrom, prevTo, comparisonLabel,
 }: ChannelSalesCardProps) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
-  const restaurantIds: string[] = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds: string[] = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : (restaurants?.map((r) => r.id) ?? []);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["channel-sales", field, from, to, selectedRestaurantId],
+    queryKey: ["channel-sales", field, from, to, restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return null;
       const [{ data: sales }, { data: prevSales }] = await Promise.all([

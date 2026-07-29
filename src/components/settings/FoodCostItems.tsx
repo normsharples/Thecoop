@@ -34,6 +34,282 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+// ── Purchase Units Editor ───────────────────────────────────────────────────
+// Lets you buy in a larger unit (e.g. a carton) while holding/selling in the
+// item's stock unit (e.g. each). factor_to_stock_unit = how many stock units
+// are in one purchase unit (1 carton = 24 each → factor 24). Invoice entry uses
+// these to convert a purchased quantity into stock automatically.
+
+type PurchaseUnit = {
+  id: string;
+  name: string;
+  factor_to_stock_unit: number;
+  is_default: boolean;
+};
+
+function PurchaseUnitsEditor({
+  item,
+  onApplyCost,
+}: {
+  item: FoodCostItem;
+  onApplyCost?: (costPerStockUnit: number) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [factor, setFactor] = useState("");
+
+  const { data: units = [], isLoading } = useQuery({
+    queryKey: ["item_purchase_units", item.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("item_purchase_units")
+        .select("id, name, factor_to_stock_unit, is_default")
+        .eq("food_cost_item_id", item.id)
+        .order("name");
+      if (error) throw error;
+      return data as PurchaseUnit[];
+    },
+  });
+
+  // Pull this item's line(s) from its configured supplier's catalogue so we can
+  // read the buy-unit price (e.g. $X per carton) and derive cost per stock unit.
+  type CatalogLine = {
+    description: string;
+    unit: string;
+    typical_price: number;
+    alt_prices: { unit: string; price: number }[];
+  };
+  const { data: supplierCatalog = [] } = useQuery({
+    queryKey: ["supplier_catalog_for_item", item.supplier ?? ""],
+    enabled: !!item.supplier,
+    queryFn: async () => {
+      const { data: sup } = await supabase
+        .from("suppliers")
+        .select("id")
+        .ilike("name", item.supplier ?? "")
+        .limit(1)
+        .maybeSingle();
+      if (!sup) return [] as CatalogLine[];
+      const { data } = await supabase
+        .from("supplier_items")
+        .select("description, unit, typical_price, alt_prices")
+        .eq("supplier_id", sup.id);
+      return (data ?? []) as CatalogLine[];
+    },
+  });
+
+  const norm = (s: string) => (s ?? "").trim().toLowerCase();
+
+  // The supplier catalogue line that corresponds to this inventory item.
+  const catalogLine = (() => {
+    const q = norm(item.name);
+    if (!q) return undefined;
+    return (
+      supplierCatalog.find((c) => norm(c.description) === q) ??
+      supplierCatalog.find((c) => {
+        const d = norm(c.description);
+        return d.length >= 3 && (d.includes(q) || q.includes(d));
+      })
+    );
+  })();
+
+  // Supplier price for a given buy-unit name (checks the line's main unit and
+  // its alternate prices). Returns null when there's no matching price.
+  const supplierPriceForUnit = (unitName: string): number | null => {
+    if (!catalogLine) return null;
+    if (norm(catalogLine.unit) === norm(unitName)) return catalogLine.typical_price;
+    const alt = (catalogLine.alt_prices ?? []).find((a) => norm(a.unit) === norm(unitName));
+    return alt ? alt.price : null;
+  };
+
+  const costPerStockUnit = (unitName: string, factorToStock: number): number | null => {
+    const price = supplierPriceForUnit(unitName);
+    if (price == null || !(factorToStock > 0)) return null;
+    return Math.round((price / factorToStock) * 10000) / 10000;
+  };
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["item_purchase_units", item.id] });
+    queryClient.invalidateQueries({ queryKey: ["item_purchase_units"] });
+  };
+
+  const addMutation = useMutation({
+    mutationFn: async () => {
+      const trimmed = name.trim();
+      const f = parseFloat(factor);
+      if (!trimmed) throw new Error("Enter a unit name (e.g. carton)");
+      if (!isFinite(f) || f <= 0)
+        throw new Error(`Enter how many ${item.unit} are in one ${trimmed}`);
+      const { error } = await supabase.from("item_purchase_units").insert({
+        food_cost_item_id: item.id,
+        name: trimmed,
+        factor_to_stock_unit: f,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      // Auto-fill cost per stock unit from the supplier's buy-unit price.
+      const perStock = costPerStockUnit(name.trim(), parseFloat(factor));
+      if (perStock != null && onApplyCost) {
+        onApplyCost(perStock);
+        toast.success(
+          `Purchase unit added — cost per ${item.unit || "unit"} set to ${formatCurrency(perStock)} from supplier price`
+        );
+      } else {
+        toast.success("Purchase unit added");
+      }
+      setName("");
+      setFactor("");
+      invalidate();
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Failed to add purchase unit"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("item_purchase_units").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Purchase unit removed");
+    },
+    onError: () => toast.error("Failed to remove purchase unit"),
+  });
+
+  return (
+    <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-3">
+      <div>
+        <p className="text-sm font-medium text-foreground">Purchase units</p>
+        <p className="text-xs text-muted-foreground">
+          You count and sell in <span className="font-medium">{item.unit || "—"}</span>. Add the
+          larger units you buy in, and how many {item.unit || "units"} each one holds. Invoices
+          entered in these units convert to stock automatically.
+        </p>
+      </div>
+
+      {item.supplier ? null : (
+        <p className="text-xs text-amber-600">
+          Set this item's Supplier field above to auto-calculate cost per {item.unit || "unit"} from
+          the supplier's price.
+        </p>
+      )}
+
+      {isLoading ? (
+        <div className="h-8 rounded bg-muted/30 animate-pulse" />
+      ) : units.length > 0 ? (
+        <div className="space-y-1.5">
+          {units.map((u) => {
+            const price = supplierPriceForUnit(u.name);
+            const perStock = costPerStockUnit(u.name, u.factor_to_stock_unit);
+            return (
+              <div
+                key={u.id}
+                className="rounded-md border border-border bg-card px-3 py-1.5 text-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-foreground">
+                    1 <span className="font-medium">{u.name}</span> ={" "}
+                    <span className="font-mono">{u.factor_to_stock_unit}</span>{" "}
+                    {item.unit || "units"}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                    onClick={() => deleteMutation.mutate(u.id)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+                {perStock != null && (
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      Supplier {formatCurrency(price ?? 0)}/{u.name} →{" "}
+                      <span className="font-medium text-foreground">
+                        {formatCurrency(perStock)}/{item.unit || "unit"}
+                      </span>
+                    </span>
+                    {onApplyCost && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => {
+                          onApplyCost(perStock);
+                          toast.success(
+                            `Cost per ${item.unit || "unit"} set to ${formatCurrency(perStock)}`
+                          );
+                        }}
+                      >
+                        Use as cost/{item.unit || "unit"}
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground italic">
+          No purchase units yet — invoices must be entered in {item.unit || "the stock unit"}.
+        </p>
+      )}
+
+      <div className="flex items-end gap-2">
+        <div className="flex-1 space-y-1">
+          <Label className="text-xs">Buy unit</Label>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. carton"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addMutation.mutate();
+              }
+            }}
+          />
+        </div>
+        <div className="w-32 space-y-1">
+          <Label className="text-xs">{item.unit || "units"} per {name.trim() || "unit"}</Label>
+          <Input
+            type="number"
+            step="0.0001"
+            min="0"
+            value={factor}
+            onChange={(e) => setFactor(e.target.value)}
+            placeholder="e.g. 24"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addMutation.mutate();
+              }
+            }}
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => addMutation.mutate()}
+          disabled={addMutation.isPending}
+        >
+          {addMutation.isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Plus className="h-3.5 w-3.5" />
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ── Item Dialog ───────────────────────────────────────────────────────────────
 
 function ItemDialog({
@@ -50,6 +326,7 @@ function ItemDialog({
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -96,7 +373,7 @@ function ItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit Item" : "Add Food Cost Item"}</DialogTitle>
         </DialogHeader>
@@ -166,6 +443,20 @@ function ItemDialog({
               />
             </div>
           </div>
+
+          {initial ? (
+            <PurchaseUnitsEditor
+              item={initial}
+              onApplyCost={(v) =>
+                setValue("cost_per_unit", v, { shouldDirty: true, shouldValidate: true })
+              }
+            />
+          ) : (
+            <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+              Save this item first, then reopen it to set up purchase units (e.g. buy by the
+              carton, stock by the each).
+            </p>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>

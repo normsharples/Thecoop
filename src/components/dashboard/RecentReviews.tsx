@@ -25,10 +25,10 @@ function StarRating({ rating }: { rating: number }) {
 
 export function RecentReviews() {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
-  const restaurantIds = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : restaurants?.map((r) => r.id) ?? [];
 
   // Current overall Google rating across the shown store(s).
@@ -38,7 +38,7 @@ export function RecentReviews() {
   const overallReviews = totalReviewCount(storeRatings);
 
   const { data: reviews, isLoading } = useQuery({
-    queryKey: ["recent-reviews", selectedRestaurantId],
+    queryKey: ["recent-reviews", restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return [];
       const { data, error } = await supabase

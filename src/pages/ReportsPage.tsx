@@ -7,6 +7,8 @@ const reportTabs = [
   { label: "Labour", path: "/reports/labour" },
   { label: "Reviews", path: "/reports/reviews" },
   { label: "Food Cost", path: "/reports/food-cost" },
+  { label: "Food Usage", path: "/reports/food-usage" },
+  { label: "Transfers", path: "/reports/transfers" },
   { label: "P&L", path: "/reports/pnl" },
   { label: "Records", path: "/reports/records" },
   { label: "Cash Ups", path: "/reports/cash-ups" },

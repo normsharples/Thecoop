@@ -62,7 +62,7 @@ function CustomTooltip({
 
 export function WeeklyRevenueTrend({ date }: { date?: string }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
   const anchor = date ? parseISO(date) : new Date();
   const weekEnd = endOfWeek(anchor, { weekStartsOn: 1 });
@@ -71,12 +71,12 @@ export function WeeklyRevenueTrend({ date }: { date?: string }) {
   const startStr = format(weekStart12, "yyyy-MM-dd");
   const endStr = format(weekEnd, "yyyy-MM-dd");
 
-  const restaurantIds = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : (restaurants?.map((r) => r.id) ?? []);
 
   const { data: salesData, isLoading } = useQuery({
-    queryKey: ["weekly-revenue", startStr, endStr, selectedRestaurantId],
+    queryKey: ["weekly-revenue", startStr, endStr, restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return [];
       const { data, error } = await supabase

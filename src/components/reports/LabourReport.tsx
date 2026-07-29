@@ -212,7 +212,7 @@ const ROLE_COLORS = ["#f97316", "#3b82f6", "#22c55e", "#eab308", "#a855f7", "#ec
 export default function LabourReport() {
   const navigate = useNavigate();
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
   const [preset, setPreset] = useState<Preset>("last7");
   const [customRange, setCustomRange] = useState<DateRange | null>(null);
@@ -220,8 +220,8 @@ export default function LabourReport() {
   const dateRange = customRange ?? getPresetRange(preset);
   const prevRange = getPrevRange(dateRange, preset);
 
-  const restaurantIds = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : restaurants?.map((r) => r.id) ?? [];
 
   const { data: labourData, isLoading } = useQuery({

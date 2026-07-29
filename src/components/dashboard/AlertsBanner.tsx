@@ -15,15 +15,15 @@ export function AlertsBanner() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantId } = useSelectedRestaurant();
+  const { selectedRestaurantIds } = useSelectedRestaurant();
 
-  const restaurantIds = selectedRestaurantId
-    ? [selectedRestaurantId]
+  const restaurantIds = selectedRestaurantIds.length
+    ? selectedRestaurantIds
     : restaurants?.map((r) => r.id) ?? [];
 
   // Query unacknowledged alerts from alert_history
   const { data: alertHistory = [] } = useQuery({
-    queryKey: ["alert-history-unack", selectedRestaurantId],
+    queryKey: ["alert-history-unack", restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return [];
       const { data, error } = await supabase
