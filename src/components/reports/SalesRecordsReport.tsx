@@ -213,13 +213,26 @@ export default function SalesRecordsReport() {
     queryKey: ["sales-records-history", restaurants?.map((r) => r.id)],
     queryFn: async () => {
       if (!restaurants?.length) return [];
-      const { data, error } = await supabase
-        .from("sales_daily")
-        .select("restaurant_id, date, total_sales, net_sales, transaction_count, average_transaction")
-        .in("restaurant_id", restaurants.map((r) => r.id))
-        .order("date", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as DailyRow[];
+      // Supabase defaults to 1000 rows — fetch all pages so recent
+      // months aren't silently truncated.
+      const PAGE = 1000;
+      let allData: DailyRow[] = [];
+      let from = 0;
+      let done = false;
+      while (!done) {
+        const { data, error } = await supabase
+          .from("sales_daily")
+          .select("restaurant_id, date, total_sales, net_sales, transaction_count, average_transaction")
+          .in("restaurant_id", restaurants.map((r) => r.id))
+          .order("date", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const page = (data ?? []) as DailyRow[];
+        allData = allData.concat(page);
+        if (page.length < PAGE) done = true;
+        else from += PAGE;
+      }
+      return allData;
     },
     enabled: !!restaurants?.length,
   });
