@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, Crown, Calendar, TrendingUp, Loader2, Store, CalendarDays, CalendarRange } from "lucide-react";
+import { Trophy, Crown, Calendar, TrendingUp, Loader2, Store, CalendarDays, CalendarRange, Flame } from "lucide-react";
 import {
   format, parseISO, subYears,
   startOfWeek, endOfWeek, startOfMonth, endOfMonth,
@@ -30,6 +30,7 @@ interface PeriodRecord {
   net_sales: number | null;
   transaction_count: number;
   average_transaction: number;
+  isInProgress?: boolean;
 }
 
 interface VenueRecords {
@@ -56,8 +57,9 @@ function formatPeriodDate(record: PeriodRecord, period: Period): string {
 }
 
 // Groups raw daily rows into day/week/month buckets, summing totals.
-// Incomplete (still in-progress) weeks/months are excluded so a partial
-// period can't misleadingly outrank a genuinely complete record period.
+// In-progress periods (current week/month) are included and flagged so
+// the UI can show a "Live" badge — a partial period that already exceeds
+// a completed period's total is genuinely a new record.
 function groupByPeriod(rows: DailyRow[], period: Period): PeriodRecord[] {
   if (period === "day") {
     return rows.map((r) => ({
@@ -87,7 +89,7 @@ function groupByPeriod(rows: DailyRow[], period: Period): PeriodRecord[] {
     const start = parseISO(key);
     const end = period === "week" ? endOfWeek(start, { weekStartsOn: 1 }) : endOfMonth(start);
     const endStr = format(end, "yyyy-MM-dd");
-    if (endStr > todayStr) continue; // still in progress — not a complete period
+    const inProgress = endStr >= todayStr; // period hasn't fully elapsed yet
 
     const total_sales = group.reduce((s, g) => s + g.total_sales, 0);
     const transaction_count = group.reduce((s, g) => s + g.transaction_count, 0);
@@ -100,6 +102,7 @@ function groupByPeriod(rows: DailyRow[], period: Period): PeriodRecord[] {
       net_sales: netVals.length ? netVals.reduce((a, b) => a + b, 0) : null,
       transaction_count,
       average_transaction: transaction_count > 0 ? total_sales / transaction_count : 0,
+      isInProgress: inProgress,
     });
   }
   return records;
@@ -162,9 +165,17 @@ function RecordCard({
         {formatCurrency(record.total_sales)}
       </p>
 
-      <p className="mt-2 text-sm font-medium text-foreground">
-        {formatPeriodDate(record, period)}
-      </p>
+      <div className="mt-2 flex items-center gap-2">
+        <p className="text-sm font-medium text-foreground">
+          {formatPeriodDate(record, period)}
+        </p>
+        {record.isInProgress && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600">
+            <Flame className="h-3 w-3" />
+            Live
+          </span>
+        )}
+      </div>
 
       <div className="mt-4 grid grid-cols-3 gap-3 pt-4 border-t border-border">
         <div>
@@ -301,6 +312,12 @@ export default function SalesRecordsReport() {
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
                     {overallAllTime.restaurant.name} — {formatPeriodDate(overallAllTime.allTime, period)}
+                    {overallAllTime.allTime.isInProgress && (
+                      <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600">
+                        <Flame className="h-3 w-3" />
+                        Live
+                      </span>
+                    )}
                   </p>
                 </div>
                 {overallLast12 && (
@@ -311,6 +328,12 @@ export default function SalesRecordsReport() {
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
                       {overallLast12.restaurant.name} — {formatPeriodDate(overallLast12.last12Months, period)}
+                      {overallLast12.last12Months.isInProgress && (
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600">
+                          <Flame className="h-3 w-3" />
+                          Live
+                        </span>
+                      )}
                     </p>
                   </div>
                 )}
