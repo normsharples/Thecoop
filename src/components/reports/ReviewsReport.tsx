@@ -78,6 +78,7 @@ export default function ReviewsReport() {
   const { selectedRestaurantIds } = useSelectedRestaurant();
 
   const [datePreset, setDatePreset] = useState<DatePreset>("90d");
+  const [customRange, setCustomRange] = useState<{ from: string; to: string } | null>(null);
   const [filterStars, setFilterStars] = useState<number | null>(null);
   const [filterNeedsReply, setFilterNeedsReply] = useState(false);
 
@@ -85,10 +86,11 @@ export default function ReviewsReport() {
     ? selectedRestaurantIds
     : restaurants?.map((r) => r.id) ?? [];
 
-  const fromDate = getPresetFrom(datePreset);
+  const fromDate = customRange ? customRange.from : getPresetFrom(datePreset);
+  const toDate = customRange ? customRange.to : null;
 
   const { data: reviews, isLoading } = useQuery({
-    queryKey: ["reviews-report", fromDate, restaurantIds],
+    queryKey: ["reviews-report", fromDate, toDate, restaurantIds],
     queryFn: async () => {
       if (!restaurantIds.length) return [];
       let query = supabase
@@ -97,6 +99,7 @@ export default function ReviewsReport() {
         .in("restaurant_id", restaurantIds)
         .order("review_date", { ascending: false });
       if (fromDate) query = query.gte("review_date", fromDate);
+      if (toDate) query = query.lte("review_date", toDate);
       const { data, error } = await query;
       if (error) throw error;
       return data as GoogleReview[];
@@ -179,7 +182,9 @@ export default function ReviewsReport() {
     );
   }
 
-  if (!reviews?.length) {
+  const isNarrowed = !!customRange || datePreset !== "all" || filterStars !== null || filterNeedsReply;
+
+  if (!reviews?.length && !isNarrowed) {
     return (
       <div className="rounded-xl border border-border bg-card p-12 flex flex-col items-center justify-center text-center">
         <Star className="h-12 w-12 text-muted-foreground mb-4" />
@@ -194,14 +199,14 @@ export default function ReviewsReport() {
   return (
     <div className="space-y-6">
       {/* ── Date presets ───────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         {datePresets.map((p) => (
           <button
             key={p.key}
-            onClick={() => setDatePreset(p.key)}
+            onClick={() => { setDatePreset(p.key); setCustomRange(null); }}
             className={cn(
               "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-              datePreset === p.key
+              datePreset === p.key && !customRange
                 ? "bg-primary text-primary-foreground"
                 : "border border-border text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
@@ -209,6 +214,18 @@ export default function ReviewsReport() {
             {p.label}
           </button>
         ))}
+        <div className={cn(
+          "flex items-center gap-1.5 rounded-lg px-1.5 py-0.5",
+          customRange && "ring-1 ring-primary"
+        )}>
+          <input type="date" value={customRange?.from ?? ""}
+            onChange={e => setCustomRange(r => ({ from: e.target.value, to: r?.to ?? e.target.value }))}
+            className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          <span className="text-xs text-muted-foreground">→</span>
+          <input type="date" value={customRange?.to ?? ""}
+            onChange={e => setCustomRange(r => ({ from: r?.from ?? e.target.value, to: e.target.value }))}
+            className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
       </div>
 
       {/* ── KPI Cards ──────────────────────────────────────────────────── */}

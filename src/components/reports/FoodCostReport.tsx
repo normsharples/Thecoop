@@ -132,6 +132,7 @@ function PctTooltip({ active, payload, label }: any) {
 
 export default function FoodCostReport() {
   const [preset, setPreset] = useState<Preset>("thisMonth");
+  const [customRange, setCustomRange] = useState<DateRange | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [reconcOpen, setReconcOpen] = useState(true);
   const { selectedRestaurantIds } = useSelectedRestaurant();
@@ -142,7 +143,7 @@ export default function FoodCostReport() {
   const isAllRestaurants = !singleId;
   const allRestaurantIds = restaurants.map((r) => r.id);
   const scopedIds = selectedRestaurantIds.length ? selectedRestaurantIds : allRestaurantIds;
-  const range = getRange(preset);
+  const range = customRange ?? getRange(preset);
   const prev  = getPrev(range, preset);
 
   // ── Helper: build a filtered query ────────────────────────────────────────
@@ -323,19 +324,19 @@ export default function FoodCostReport() {
             className="sm:hidden inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground"
           >
             <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-            {PRESETS.find(p => p.value === preset)?.label ?? "This Month"}
+            {customRange ? `${customRange.from} → ${customRange.to}` : PRESETS.find(p => p.value === preset)?.label ?? "This Month"}
             <ChevronDown className={cn("h-3 w-3 text-muted-foreground transition-transform", filtersOpen && "rotate-180")} />
           </button>
 
           {/* Desktop: inline preset row */}
-          <div className="hidden sm:flex sm:flex-wrap gap-1.5">
+          <div className="hidden sm:flex sm:flex-wrap items-center gap-1.5">
             {PRESETS.map((p) => (
               <button
                 key={p.value}
-                onClick={() => setPreset(p.value)}
+                onClick={() => { setPreset(p.value); setCustomRange(null); }}
                 className={cn(
                   "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                  preset === p.value
+                  preset === p.value && !customRange
                     ? "bg-primary text-primary-foreground"
                     : "border border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
@@ -343,20 +344,32 @@ export default function FoodCostReport() {
                 {p.label}
               </button>
             ))}
+            <div className={cn(
+              "flex items-center gap-1.5 rounded-lg px-1.5 py-0.5",
+              customRange && "ring-1 ring-primary"
+            )}>
+              <input type="date" value={customRange?.from ?? ""}
+                onChange={e => setCustomRange(r => ({ from: e.target.value, to: r?.to ?? e.target.value }))}
+                className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <span className="text-xs text-muted-foreground">→</span>
+              <input type="date" value={customRange?.to ?? ""}
+                onChange={e => setCustomRange(r => ({ from: r?.from ?? e.target.value, to: e.target.value }))}
+                className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
           </div>
         </div>
 
         {/* Mobile: expanded preset grid */}
         {filtersOpen && (
-          <div className="sm:hidden rounded-xl border border-border bg-card p-3">
+          <div className="sm:hidden rounded-xl border border-border bg-card p-3 space-y-3">
             <div className="grid grid-cols-2 gap-1.5">
               {PRESETS.map((p) => (
                 <button
                   key={p.value}
-                  onClick={() => { setPreset(p.value); setFiltersOpen(false); }}
+                  onClick={() => { setPreset(p.value); setCustomRange(null); setFiltersOpen(false); }}
                   className={cn(
                     "rounded-lg px-3 py-2 text-xs font-medium transition-colors text-center",
-                    preset === p.value
+                    preset === p.value && !customRange
                       ? "bg-primary text-primary-foreground"
                       : "border border-border text-muted-foreground hover:bg-accent hover:text-foreground"
                   )}
@@ -364,6 +377,15 @@ export default function FoodCostReport() {
                   {p.label}
                 </button>
               ))}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <input type="date" value={customRange?.from ?? ""}
+                onChange={e => setCustomRange(r => ({ from: e.target.value, to: r?.to ?? e.target.value }))}
+                className="h-8 flex-1 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <span className="text-xs text-muted-foreground">→</span>
+              <input type="date" value={customRange?.to ?? ""}
+                onChange={e => setCustomRange(r => ({ from: r?.from ?? e.target.value, to: e.target.value }))}
+                className="h-8 flex-1 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
           </div>
         )}

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfWeek, endOfWeek, subWeeks, parseISO } from "date-fns";
+import { format, startOfWeek, endOfWeek, subDays, differenceInCalendarDays, parseISO } from "date-fns";
 import { Receipt, Gauge, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -7,7 +7,11 @@ import { useRestaurants } from "@/hooks/useRestaurants";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
 import type { SalesDaily, LabourDaily } from "@/types";
 
-export function WeeklySecondaryCards({ date }: { date: string }) {
+export function WeeklySecondaryCards({
+  date, from, to, comparisonLabel = "vs prev week",
+}: {
+  date: string; from?: string; to?: string; comparisonLabel?: string;
+}) {
   const { data: restaurants } = useRestaurants();
   const { selectedRestaurantIds } = useSelectedRestaurant();
 
@@ -15,11 +19,12 @@ export function WeeklySecondaryCards({ date }: { date: string }) {
     ? selectedRestaurantIds
     : (restaurants?.map((r) => r.id) ?? []);
 
-  const anchor = parseISO(date);
-  const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(anchor, { weekStartsOn: 1 });
-  const prevWeekStart = subWeeks(weekStart, 1);
-  const prevWeekEnd = subWeeks(weekEnd, 1);
+  const useCustom = !!(from && to);
+  const weekStart = useCustom ? parseISO(from!) : startOfWeek(parseISO(date), { weekStartsOn: 1 });
+  const weekEnd = useCustom ? parseISO(to!) : endOfWeek(parseISO(date), { weekStartsOn: 1 });
+  const rangeLen = differenceInCalendarDays(weekEnd, weekStart) + 1;
+  const prevWeekStart = subDays(weekStart, rangeLen);
+  const prevWeekEnd = subDays(weekEnd, rangeLen);
 
   const wsStr = format(weekStart, "yyyy-MM-dd");
   const weStr = format(weekEnd, "yyyy-MM-dd");
@@ -27,7 +32,7 @@ export function WeeklySecondaryCards({ date }: { date: string }) {
   const pweStr = format(prevWeekEnd, "yyyy-MM-dd");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["weekly-secondary", wsStr, restaurantIds.join(",")],
+    queryKey: ["weekly-secondary", wsStr, weStr, restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return null;
       const [
@@ -111,7 +116,7 @@ export function WeeklySecondaryCards({ date }: { date: string }) {
           ) : (
             <span className="text-sm font-medium text-muted-foreground">—</span>
           )}
-          <span className="text-xs text-muted-foreground">vs prev week</span>
+          <span className="text-xs text-muted-foreground">{comparisonLabel}</span>
         </div>
       </div>
 
@@ -143,7 +148,7 @@ export function WeeklySecondaryCards({ date }: { date: string }) {
           ) : (
             <span className="text-sm font-medium text-muted-foreground">—</span>
           )}
-          <span className="text-xs text-muted-foreground">vs prev week</span>
+          <span className="text-xs text-muted-foreground">{comparisonLabel}</span>
         </div>
       </div>
     </>

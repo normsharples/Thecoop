@@ -34,13 +34,17 @@ function ratingStatus(rating: number): Status {
   return "destructive";
 }
 
-export function WeeklyStatsCards({ date }: { date: string }) {
+export function WeeklyStatsCards({
+  date, from, to, revenueLabel = "Weekly Revenue",
+}: {
+  date: string; from?: string; to?: string; revenueLabel?: string;
+}) {
   const { data: restaurants, isLoading: restaurantsLoading } = useRestaurants();
   const { selectedRestaurantIds } = useSelectedRestaurant();
 
-  const anchor = parseISO(date);
-  const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(anchor, { weekStartsOn: 1 });
+  const useCustom = !!(from && to);
+  const weekStart = useCustom ? parseISO(from!) : startOfWeek(parseISO(date), { weekStartsOn: 1 });
+  const weekEnd = useCustom ? parseISO(to!) : endOfWeek(parseISO(date), { weekStartsOn: 1 });
 
   const wsStr = format(weekStart, "yyyy-MM-dd");
   const weStr = format(weekEnd, "yyyy-MM-dd");
@@ -53,7 +57,7 @@ export function WeeklyStatsCards({ date }: { date: string }) {
   const scopeKey = selectedRestaurantIds.join(",");
 
   const { data: salesData } = useQuery({
-    queryKey: ["weekly-stats-sales", wsStr, scopeKey],
+    queryKey: ["weekly-stats-sales", wsStr, weStr, scopeKey],
     queryFn: async () => {
       const ids = visibleRestaurants?.map((r) => r.id) ?? [];
       if (!ids.length) return [];
@@ -70,7 +74,7 @@ export function WeeklyStatsCards({ date }: { date: string }) {
   });
 
   const { data: prevYearSalesData } = useQuery({
-    queryKey: ["weekly-stats-prev-year-sales", prevYearWsStr, scopeKey],
+    queryKey: ["weekly-stats-prev-year-sales", prevYearWsStr, prevYearWeStr, scopeKey],
     queryFn: async () => {
       const ids = visibleRestaurants?.map((r) => r.id) ?? [];
       if (!ids.length) return [];
@@ -87,7 +91,7 @@ export function WeeklyStatsCards({ date }: { date: string }) {
   });
 
   const { data: labourData } = useQuery({
-    queryKey: ["weekly-stats-labour", wsStr, scopeKey],
+    queryKey: ["weekly-stats-labour", wsStr, weStr, scopeKey],
     queryFn: async () => {
       const ids = visibleRestaurants?.map((r) => r.id) ?? [];
       if (!ids.length) return [];
@@ -141,7 +145,7 @@ export function WeeklyStatsCards({ date }: { date: string }) {
             <h3 className="text-base font-semibold">{restaurant.name}</h3>
             <div className="mt-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground">Weekly Revenue</span>
+                <span className="text-xs uppercase tracking-wider text-muted-foreground">{revenueLabel}</span>
                 <div className="flex flex-col items-end gap-0.5">
                   <div className="flex items-center gap-2">
                     {yoyPct !== null && (

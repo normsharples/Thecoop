@@ -4,7 +4,7 @@ import {
   TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
 import {
-  format, startOfWeek, endOfWeek, subWeeks, subYears, parseISO,
+  format, startOfWeek, endOfWeek, subYears, subDays, differenceInCalendarDays, parseISO,
 } from "date-fns";
 import { cn, formatCurrency } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -28,7 +28,11 @@ function weeklyTargetFromDaily(targets: Target[], restaurantIds: string[]): numb
   return found ? total : null;
 }
 
-export function WeeklySnapshot({ date }: { date: string }) {
+export function WeeklySnapshot({
+  date, from, to, comparisonLabel = "vs prev week", revenueLabel = "Weekly Revenue (Net)",
+}: {
+  date: string; from?: string; to?: string; comparisonLabel?: string; revenueLabel?: string;
+}) {
   const { data: restaurants } = useRestaurants();
   const { selectedRestaurantIds } = useSelectedRestaurant();
 
@@ -36,11 +40,15 @@ export function WeeklySnapshot({ date }: { date: string }) {
     ? selectedRestaurantIds
     : (restaurants?.map((r) => r.id) ?? []);
 
-  const anchor = parseISO(date);
-  const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(anchor, { weekStartsOn: 1 });
-  const prevWeekStart = subWeeks(weekStart, 1);
-  const prevWeekEnd = subWeeks(weekEnd, 1);
+  // Either an explicit from/to range (Custom mode) or the week around `date`.
+  const useCustom = !!(from && to);
+  const weekStart = useCustom ? parseISO(from!) : startOfWeek(parseISO(date), { weekStartsOn: 1 });
+  const weekEnd = useCustom ? parseISO(to!) : endOfWeek(parseISO(date), { weekStartsOn: 1 });
+  // Previous comparison period = same-length window immediately preceding the range
+  // (for a full week this equals the prior calendar week).
+  const rangeLen = differenceInCalendarDays(weekEnd, weekStart) + 1;
+  const prevWeekStart = subDays(weekStart, rangeLen);
+  const prevWeekEnd = subDays(weekEnd, rangeLen);
   const prevYearWeekStart = subYears(weekStart, 1);
   const prevYearWeekEnd = subYears(weekEnd, 1);
 
@@ -57,7 +65,7 @@ export function WeeklySnapshot({ date }: { date: string }) {
   const lyDateLabel = `${format(prevYearWeekStart, "d MMM")} – ${format(prevYearWeekEnd, "d MMM yyyy")}`;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["weekly-snapshot", wsStr, restaurantIds.join(",")],
+    queryKey: ["weekly-snapshot", wsStr, weStr, restaurantIds.join(",")],
     queryFn: async () => {
       if (!restaurantIds.length) return null;
       const [
@@ -129,17 +137,17 @@ export function WeeklySnapshot({ date }: { date: string }) {
 
   const stats = [
     {
-      label: "Weekly Revenue (Net)",
+      label: revenueLabel,
       value: weekRev > 0 ? formatCurrency(weekRev) : "—",
       grossValue: weekGross > 0 ? formatCurrency(weekGross) : "—",
       trend: salesTrend,
-      trendLabel: "vs prev week",
+      trendLabel: comparisonLabel,
       subLabel: weeklyTarget ? `target ${formatCurrency(weeklyTarget)}` : undefined,
       icon: <DollarSign className="h-4 w-4" />,
       status: (salesTrend !== null && salesTrend >= 0 ? "success" : "warning") as StatStatus,
     },
     {
-      label: "Same Week Last Year (Net)",
+      label: useCustom ? "Same Period Last Year (Net)" : "Same Week Last Year (Net)",
       value: prevYearRev > 0 ? formatCurrency(prevYearRev) : "—",
       grossValue: prevYearGross > 0 ? formatCurrency(prevYearGross) : "—",
       trend: yoyTrend,
@@ -153,7 +161,7 @@ export function WeeklySnapshot({ date }: { date: string }) {
       value: weekAvgTx !== null ? formatCurrency(weekAvgTx) : "—",
       grossValue: undefined as string | undefined,
       trend: avgTxTrend,
-      trendLabel: "vs prev week",
+      trendLabel: comparisonLabel,
       subLabel: undefined,
       icon: <CreditCard className="h-4 w-4" />,
       status: (avgTxTrend !== null && avgTxTrend >= 0 ? "success" : "warning") as StatStatus,

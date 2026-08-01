@@ -45,9 +45,10 @@ function costColour(pct: number | null) {
 
 export default function FoodUsageReport() {
   const [preset, setPreset] = useState<Preset>("thisMonth");
+  const [customRange, setCustomRange] = useState<{ from: string; to: string } | null>(null);
   const { selectedRestaurantIds } = useSelectedRestaurant();
   const { data: restaurants = [] } = useRestaurants();
-  const range = getRange(preset);
+  const range = customRange ?? getRange(preset);
   const scopedIds = selectedRestaurantIds.length
     ? selectedRestaurantIds
     : restaurants.map((r) => r.id);
@@ -125,19 +126,33 @@ export default function FoodUsageReport() {
           <h2 className="text-lg font-semibold text-foreground">Food Cost — Usage</h2>
           <span className="text-sm text-muted-foreground">— {scopeLabel}</span>
         </div>
-        <div className="flex gap-1 rounded-lg border border-border bg-card p-1">
-          {PRESETS.map((p) => (
-            <button
-              key={p.value}
-              onClick={() => setPreset(p.value)}
-              className={cn(
-                "rounded-md px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
-                preset === p.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 rounded-lg border border-border bg-card p-1">
+            {PRESETS.map((p) => (
+              <button
+                key={p.value}
+                onClick={() => { setPreset(p.value); setCustomRange(null); }}
+                className={cn(
+                  "rounded-md px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
+                  preset === p.value && !customRange ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className={cn(
+            "flex items-center gap-1.5 rounded-lg px-1.5 py-0.5",
+            customRange && "ring-1 ring-primary"
+          )}>
+            <input type="date" value={customRange?.from ?? ""}
+              onChange={e => setCustomRange(r => ({ from: e.target.value, to: r?.to ?? e.target.value }))}
+              className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            <span className="text-xs text-muted-foreground">→</span>
+            <input type="date" value={customRange?.to ?? ""}
+              onChange={e => setCustomRange(r => ({ from: r?.from ?? e.target.value, to: e.target.value }))}
+              className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
         </div>
       </div>
 

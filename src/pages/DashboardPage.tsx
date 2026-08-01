@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format, subDays, addDays, subWeeks, startOfWeek, endOfWeek, parseISO } from "date-fns";
+import { format, subDays, addDays, subWeeks, startOfWeek, endOfWeek, parseISO, differenceInCalendarDays } from "date-fns";
 import { CalendarDays, ChevronLeft, ChevronRight, Smartphone, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AlertsBanner } from "@/components/dashboard/AlertsBanner";
@@ -14,10 +14,11 @@ import { WeeklyRevenueTrend } from "@/components/dashboard/WeeklyRevenueTrend";
 import { RecentReviews } from "@/components/dashboard/RecentReviews";
 import { QuickLinks } from "@/components/dashboard/QuickLinks";
 
-type Mode = "daily" | "weekly";
+type Mode = "daily" | "weekly" | "custom";
 
 const todayStr = format(new Date(), "yyyy-MM-dd");
 const yesterdayStr = format(subDays(new Date(), 1), "yyyy-MM-dd");
+const weekAgoStr = format(subDays(new Date(), 7), "yyyy-MM-dd");
 
 const DAILY_PRESETS = [
   { label: "Yesterday", value: yesterdayStr },
@@ -27,6 +28,16 @@ const DAILY_PRESETS = [
 export default function DashboardPage() {
   const [mode, setMode] = useState<Mode>("daily");
   const [selectedDate, setSelectedDate] = useState(yesterdayStr);
+  const [customFrom, setCustomFrom] = useState(weekAgoStr);
+  const [customTo, setCustomTo] = useState(yesterdayStr);
+
+  // ── Custom range helpers ───────────────────────────────────────────────────
+  // Previous comparison window = same-length range immediately before the selection.
+  const customValid = customFrom <= customTo;
+  const customLen = differenceInCalendarDays(parseISO(customTo), parseISO(customFrom)) + 1;
+  const customPrevFrom = format(subDays(parseISO(customFrom), customLen), "yyyy-MM-dd");
+  const customPrevTo = format(subDays(parseISO(customTo), customLen), "yyyy-MM-dd");
+  const customLabel = `${format(parseISO(customFrom), "d MMM")} – ${format(parseISO(customTo), "d MMM yyyy")}`;
 
   // ── Week helpers ─────────────────────────────────────────────────────────
   const anchor = parseISO(selectedDate);
@@ -84,6 +95,17 @@ export default function DashboardPage() {
           >
             Weekly
           </button>
+          <button
+            onClick={() => setMode("custom")}
+            className={cn(
+              "px-3 py-1.5 transition-colors",
+              mode === "custom"
+                ? "bg-primary text-primary-foreground"
+                : "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            )}
+          >
+            Custom Range
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -115,7 +137,7 @@ export default function DashboardPage() {
                 Showing {dailyDisplayDate}
               </span>
             </>
-          ) : (
+          ) : mode === "weekly" ? (
             /* Week navigation */
             <div className="flex items-center gap-1">
               <button
@@ -133,6 +155,28 @@ export default function DashboardPage() {
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
+            </div>
+          ) : (
+            /* Custom range */
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                value={customFrom}
+                max={customTo}
+                onChange={(e) => e.target.value && setCustomFrom(e.target.value)}
+                className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <span className="text-xs text-muted-foreground">→</span>
+              <input
+                type="date"
+                value={customTo}
+                min={customFrom}
+                onChange={(e) => e.target.value && setCustomTo(e.target.value)}
+                className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <span className="text-xs text-muted-foreground">
+                {customValid ? customLabel : "Start date must be before end date"}
+              </span>
             </div>
           )}
         </div>
@@ -184,8 +228,40 @@ export default function DashboardPage() {
         </>
       )}
 
+      {/* ── Custom range view ─────────────────────────────────────────────── */}
+      {mode === "custom" && customValid && (
+        <>
+          <WeeklySnapshot
+            date={customTo} from={customFrom} to={customTo}
+            comparisonLabel="vs prev period" revenueLabel="Revenue (Net)"
+          />
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <WeeklySecondaryCards
+              date={customTo} from={customFrom} to={customTo}
+              comparisonLabel="vs prev period"
+            />
+            <ChannelSalesCard
+              label="Web / App Sales" field="online_sales" icon={Smartphone}
+              from={customFrom} to={customTo}
+              prevFrom={customPrevFrom} prevTo={customPrevTo}
+              comparisonLabel="vs prev period"
+            />
+            <ChannelSalesCard
+              label="Delivery Sales" field="delivery_sales" icon={Truck}
+              from={customFrom} to={customTo}
+              prevFrom={customPrevFrom} prevTo={customPrevTo}
+              comparisonLabel="vs prev period"
+            />
+          </div>
+          <WeeklyStatsCards
+            date={customTo} from={customFrom} to={customTo}
+            revenueLabel="Revenue"
+          />
+        </>
+      )}
+
       {/* ── Shared ────────────────────────────────────────────────────────── */}
-      <WeeklyRevenueTrend date={selectedDate} />
+      <WeeklyRevenueTrend date={mode === "custom" ? customTo : selectedDate} />
       <RecentReviews />
       <QuickLinks />
     </div>
