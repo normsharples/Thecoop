@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v4";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, startOfWeek, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { Database, Users, Loader2, Trash2, Info } from "lucide-react";
+import { Database, Users, Loader2, Trash2, Info, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { useRestaurants } from "@/hooks/useRestaurants";
@@ -295,6 +295,136 @@ function WeeklyLabourTab() {
   );
 }
 
+// ─── Refresh Live Data ───────────────────────────────────────────────────────────
+
+const REFRESH_URL = (import.meta.env.VITE_REFRESH_URL as string) || "http://127.0.0.1:8787";
+const REFRESH_TOKEN = (import.meta.env.VITE_REFRESH_TOKEN as string) || "";
+
+type RefreshSource = { key: string; label: string };
+type HealthState = { ok: boolean; chrome: boolean; sources: RefreshSource[] } | null;
+
+const DEFAULT_SOURCES: RefreshSource[] = [
+  { key: "lightspeed", label: "Lightspeed Sales" },
+  { key: "sales-mix", label: "Lightspeed Sales Mix" },
+  { key: "deputy", label: "Deputy Labour" },
+  { key: "google", label: "Google Reviews" },
+];
+
+function RefreshDataTab() {
+  const [health, setHealth] = useState<HealthState>(null);
+  const [serverUp, setServerUp] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const checkHealth = async () => {
+    try {
+      const r = await fetch(`${REFRESH_URL}/health`, { method: "GET" });
+      const j = (await r.json()) as HealthState;
+      setHealth(j);
+      setServerUp(true);
+    } catch {
+      setServerUp(false);
+      setHealth(null);
+    }
+  };
+
+  useEffect(() => {
+    checkHealth();
+  }, []);
+
+  const runRefresh = async (source: string, label: string) => {
+    if (busy) return;
+    setBusy(source);
+    const toastId = toast.loading(`Refreshing ${label}… this can take a minute.`);
+    try {
+      const r = await fetch(`${REFRESH_URL}/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-refresh-token": REFRESH_TOKEN },
+        body: JSON.stringify({ source }),
+      });
+      const j = await r.json();
+      if (j.ok) {
+        toast.success(`${label} refreshed`, { id: toastId });
+      } else {
+        const failed = Array.isArray(j.results)
+          ? j.results.filter((x: { ok: boolean }) => !x.ok).map((x: { label: string }) => x.label).join(", ")
+          : "";
+        toast.error(j.error || (failed ? `Failed: ${failed}` : "Refresh failed"), { id: toastId });
+      }
+    } catch {
+      setServerUp(false);
+      toast.error("Can't reach the local refresh server. Is it running on your Mac?", { id: toastId });
+    } finally {
+      setBusy(null);
+      checkHealth();
+    }
+  };
+
+  const sources = health?.sources?.length ? health.sources : DEFAULT_SOURCES;
+  const chromeReady = !!health?.chrome;
+  const disabled = busy !== null || serverUp === false;
+
+  return (
+    <div className="space-y-4">
+      {/* Status */}
+      <div className="rounded-lg border border-border bg-card p-3 text-xs flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <span className="flex items-center gap-1.5">
+          {serverUp ? <Wifi className="h-3.5 w-3.5 text-emerald-500" /> : <WifiOff className="h-3.5 w-3.5 text-destructive" />}
+          Refresh server:{" "}
+          <span className={cn("font-medium", serverUp ? "text-emerald-600" : "text-destructive")}>
+            {serverUp === null ? "checking…" : serverUp ? "connected" : "not running"}
+          </span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          {chromeReady ? <Wifi className="h-3.5 w-3.5 text-emerald-500" /> : <WifiOff className="h-3.5 w-3.5 text-muted-foreground" />}
+          Coop Chrome:{" "}
+          <span className={cn("font-medium", chromeReady ? "text-emerald-600" : "text-muted-foreground")}>
+            {serverUp ? (chromeReady ? "open & logged in" : "not detected") : "—"}
+          </span>
+        </span>
+        <button onClick={checkHealth} className="ml-auto text-muted-foreground hover:text-foreground flex items-center gap-1">
+          <RefreshCw className="h-3 w-3" /> recheck
+        </button>
+      </div>
+
+      {serverUp === false && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-800 dark:text-amber-200 flex gap-2">
+          <Info className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>
+            The local refresh server isn't reachable. On your Mac, run <strong>Start Coop Chrome.command</strong> (sign in to
+            Lightspeed &amp; Deputy once) and <strong>Start Refresh Server.command</strong>, then click “recheck”.
+          </span>
+        </div>
+      )}
+
+      {/* Per-source buttons */}
+      <div className="grid gap-2 sm:grid-cols-2">
+        {sources.map((s) => (
+          <Button
+            key={s.key}
+            variant="outline"
+            className="justify-start h-auto py-2.5"
+            disabled={disabled}
+            onClick={() => runRefresh(s.key, s.label)}
+          >
+            {busy === s.key ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            {s.label}
+          </Button>
+        ))}
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Use <span className="font-medium text-foreground">Refresh Data</span> on the Dashboard to refresh all sources at
+        once. The per-source buttons above are for refreshing just one.
+      </p>
+
+      <p className="text-xs text-muted-foreground">
+        Each refresh reloads the matching tab in your open Coop Chrome, reads the latest figures, and writes them to
+        Supabase. Works while you're at your Mac with Chrome and the refresh server running.
+      </p>
+    </div>
+  );
+}
+
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DataManagementPage() {
@@ -313,9 +443,13 @@ export default function DataManagementPage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="labour"><Users className="h-3.5 w-3.5 mr-1.5" /> Weekly Labour</TabsTrigger>
+          <TabsTrigger value="refresh"><RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Refresh Data</TabsTrigger>
         </TabsList>
         <TabsContent value="labour" className="pt-4">
           <WeeklyLabourTab />
+        </TabsContent>
+        <TabsContent value="refresh" className="pt-4">
+          <RefreshDataTab />
         </TabsContent>
       </Tabs>
     </div>

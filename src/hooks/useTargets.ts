@@ -16,6 +16,9 @@ export const TARGET_METRICS = {
   // Phase 4
   FOOD_COST_PCT: "food_cost_pct",
   WASTE_COST_PCT: "waste_cost_pct",
+  // Roster dashboard: single value per store (day_of_week = null)
+  SPMH: "spmh",                       // sales-per-man-hour productivity target
+  MIN_ROSTER_HOURS: "min_roster_hours", // minimum rostered hours floor per day
 } as const;
 
 // Day-of-week: 0 = Monday … 6 = Sunday (matches Mon–Sun grid display)
@@ -126,6 +129,9 @@ export function useTargets(restaurantId: string | null) {
     getReviewVolumeTarget: () => getTarget(TARGET_METRICS.REVIEW_VOLUME),
     getRosterHoursBudget: (dayOfWeek: number) =>
       getTarget(TARGET_METRICS.ROSTER_HOURS, dayOfWeek),
+    getSpmhTarget: () => getTarget(TARGET_METRICS.SPMH),
+    getMinRosterHours: () => getTarget(TARGET_METRICS.MIN_ROSTER_HOURS),
+    getTarget,
     hasTargets: targets.length > 0,
     isLoading,
     upsert: upsertMutation.mutateAsync,

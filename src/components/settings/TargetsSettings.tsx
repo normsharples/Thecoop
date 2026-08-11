@@ -49,9 +49,14 @@ function SaveCell({
         await latestOnSave.current(num);
         setStatus("saved");
         setTimeout(() => setStatus("idle"), 1500);
-      } catch {
+      } catch (err) {
         setStatus("idle");
-        toast.error("Failed to save target");
+        const e = err as { message?: string; details?: string; hint?: string; code?: string };
+        const msg = e?.message
+          ? `${e.message}${e.code ? ` [${e.code}]` : ""}${e.details ? ` — ${e.details}` : ""}${e.hint ? ` (${e.hint})` : ""}`
+          : JSON.stringify(err);
+        console.error("Target save failed:", err);
+        toast.error(`Failed to save target: ${msg}`);
       }
     }, 500);
   }, []);
@@ -229,6 +234,8 @@ function RestaurantTargets({ restaurant }: { restaurant: Restaurant }) {
     getGoogleRatingTarget,
     getReviewVolumeTarget,
     getRosterHoursBudget,
+    getSpmhTarget,
+    getMinRosterHours,
     upsert,
     copyTo,
     isCopying,
@@ -396,6 +403,44 @@ function RestaurantTargets({ restaurant }: { restaurant: Restaurant }) {
           <p className="text-xs text-muted-foreground mt-2">
             Scheduled hours budget per day. Green ≤ 100%, Amber 100–110%, Red &gt;110%.
           </p>
+        </SectionCard>
+
+        {/* I. SPMH Target */}
+        <SectionCard title="I. SPMH Target (Sales per Man Hour)">
+          <div className="flex items-center gap-4">
+            <div className="w-28">
+              <SaveCell
+                initialValue={getSpmhTarget() ?? 0}
+                onSave={(val) => save(TARGET_METRICS.SPMH, val)}
+                type="currency"
+                min={0}
+                step={1}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Drives the Roster dashboard's Required hours: required = projected
+              sales ÷ SPMH target. Set higher for tighter layouts.
+            </p>
+          </div>
+        </SectionCard>
+
+        {/* J. Minimum Roster Hours */}
+        <SectionCard title="J. Minimum Roster Hours (floor per day)">
+          <div className="flex items-center gap-4">
+            <div className="w-28">
+              <SaveCell
+                initialValue={getMinRosterHours() ?? 0}
+                onSave={(val) => save(TARGET_METRICS.MIN_ROSTER_HOURS, val)}
+                type="number"
+                min={0}
+                step={0.5}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Required hours never drops below this, so a quiet day still keeps
+              open/close cover. Leave 0 for no floor.
+            </p>
+          </div>
         </SectionCard>
 
         {restaurants.length > 1 && (

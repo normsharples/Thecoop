@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 const reportTabs = [
   { label: "Sales", path: "/reports/sales" },
   { label: "Labour", path: "/reports/labour" },
+  { label: "Roster", path: "/reports/roster" },
   { label: "Reviews", path: "/reports/reviews" },
   { label: "Food Cost", path: "/reports/food-cost" },
   { label: "Food Usage", path: "/reports/food-usage" },

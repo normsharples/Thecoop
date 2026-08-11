@@ -1,9 +1,19 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { format, startOfMonth, addMonths, subMonths } from "date-fns";
-import { TrendingUp, ChevronLeft, ChevronRight, Loader2, Check, Store } from "lucide-react";
+import {
+  format,
+  startOfMonth,
+  addMonths,
+  subMonths,
+  startOfWeek,
+  addWeeks,
+  subWeeks,
+  addDays,
+} from "date-fns";
+import { TrendingUp, ChevronLeft, ChevronRight, Loader2, Check, Store, CalendarRange } from "lucide-react";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { useProjections } from "@/hooks/useProjections";
+import { useDailyProjections } from "@/hooks/useDailyProjections";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 
 // ── Debounced currency cell ────────────────────────────────────────────────────
@@ -71,6 +81,144 @@ function ProjectionCell({
       {status === "saved" && (
         <Check className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-green-500" />
       )}
+    </div>
+  );
+}
+
+// ── Daily projections grid (for rostering) ────────────────────────────────────
+
+function DailyProjectionsGrid({
+  restaurants,
+}: {
+  restaurants: { id: string; name: string }[];
+}) {
+  const [weekStart, setWeekStart] = useState(() =>
+    startOfWeek(new Date(), { weekStartsOn: 1 })
+  );
+  const days = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    [weekStart]
+  );
+  const from = format(days[0], "yyyy-MM-dd");
+  const to = format(days[6], "yyyy-MM-dd");
+
+  const restaurantIds = useMemo(() => restaurants.map((r) => r.id), [restaurants]);
+  const { getProjection, upsert, isLoading } = useDailyProjections(
+    restaurantIds,
+    from,
+    to
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2">
+          <CalendarRange className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">
+            Daily Sales Projections
+          </h2>
+        </div>
+
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
+          <button
+            onClick={() => setWeekStart((w) => subWeeks(w, 1))}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="w-44 text-center text-sm font-medium text-foreground">
+            {format(days[0], "d MMM")} – {format(days[6], "d MMM")}
+          </span>
+          <button
+            onClick={() => setWeekStart((w) => addWeeks(w, 1))}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        Projected sales for each day of the roster week. These drive the Required
+        hours on the Roster dashboard (Reports → Roster).
+      </p>
+
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        {isLoading ? (
+          <div className="p-12 text-center">
+            <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
+          </div>
+        ) : restaurants.length === 0 ? (
+          <div className="p-12 text-center">
+            <p className="text-sm text-muted-foreground">No venues available.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sticky left-0 bg-card">
+                    Venue
+                  </th>
+                  {days.map((d) => (
+                    <th
+                      key={d.toISOString()}
+                      className="px-2 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap"
+                    >
+                      {format(d, "EEE d/M")}
+                    </th>
+                  ))}
+                  <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Week
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {restaurants.map((r) => {
+                  const weekTotal = days.reduce(
+                    (sum, d) => sum + (getProjection(r.id, format(d, "yyyy-MM-dd")) ?? 0),
+                    0
+                  );
+                  return (
+                    <tr key={r.id}>
+                      <td className="px-4 py-3 align-top sticky left-0 bg-card">
+                        <div className="flex items-center gap-2 pt-1.5">
+                          <Store className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-foreground whitespace-nowrap">
+                            {r.name}
+                          </span>
+                        </div>
+                      </td>
+                      {days.map((d) => {
+                        const dateStr = format(d, "yyyy-MM-dd");
+                        return (
+                          <td key={dateStr} className="px-2 py-3 align-top w-28">
+                            <ProjectionCell
+                              initialValue={getProjection(r.id, dateStr) ?? 0}
+                              onSave={(val) =>
+                                upsert({
+                                  restaurant_id: r.id,
+                                  date: dateStr,
+                                  projected_sales: val,
+                                })
+                              }
+                            />
+                          </td>
+                        );
+                      })}
+                      <td className="px-3 py-3 align-top">
+                        <span className="pt-1.5 inline-block font-semibold tabular-nums text-foreground whitespace-nowrap">
+                          {formatCurrency(weekTotal)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -238,6 +386,13 @@ export default function ProjectionsPage() {
           </div>
         )}
       </div>
+
+      {/* Daily projections for rostering */}
+      {!restaurantsLoading && restaurants.length > 0 && (
+        <div className="pt-2">
+          <DailyProjectionsGrid restaurants={restaurants} />
+        </div>
+      )}
     </div>
   );
 }

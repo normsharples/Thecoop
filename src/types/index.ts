@@ -208,6 +208,39 @@ export interface Projection {
   updated_at: string;
 }
 
+// Per-day projected sales used by the Roster dashboard to compute Required hours.
+export interface DailyProjection {
+  id: string;
+  restaurant_id: string;
+  date: string; // yyyy-MM-dd
+  projected_sales: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// One free-text note per roster week, per store.
+export interface RosterNote {
+  id: string;
+  restaurant_id: string;
+  week_start_date: string; // Monday of the roster week, yyyy-MM-dd
+  note: string;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// On-demand roster refresh queue polled by the local Deputy scraper.
+export interface RosterRefreshRequest {
+  id: string;
+  restaurant_id: string;
+  week_start: string; // Monday of the week to refresh, yyyy-MM-dd
+  status: "pending" | "running" | "done" | "error";
+  error_message: string | null;
+  requested_by: string | null;
+  requested_at: string;
+  completed_at: string | null;
+}
+
 export interface CashOutItem {
   description: string;
   amount: number;

@@ -26,6 +26,7 @@ const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 
 const SalesReport = lazy(() => import("@/components/reports/SalesReport"));
 const LabourReport = lazy(() => import("@/components/reports/LabourReport"));
+const RosterDashboard = lazy(() => import("@/components/reports/RosterDashboard"));
 const ReviewsReport = lazy(() => import("@/components/reports/ReviewsReport"));
 const FoodCostReport = lazy(() => import("@/components/reports/FoodCostReport"));
 const FoodUsageReport = lazy(() => import("@/components/reports/FoodUsageReport"));
@@ -76,6 +77,7 @@ const router = createBrowserRouter([
           { index: true, element: <Navigate to="sales" replace /> },
           { path: "sales", element: <SalesReport /> },
           { path: "labour", element: <LabourReport /> },
+          { path: "roster", element: <RosterDashboard /> },
           { path: "reviews", element: <ReviewsReport /> },
           { path: "food-cost", element: <FoodCostReport /> },
           { path: "food-usage", element: <FoodUsageReport /> },

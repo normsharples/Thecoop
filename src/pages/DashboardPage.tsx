@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { format, subDays, addDays, subWeeks, startOfWeek, endOfWeek, parseISO, differenceInCalendarDays } from "date-fns";
-import { CalendarDays, ChevronLeft, ChevronRight, Smartphone, Truck } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Smartphone, Truck, RefreshCw, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { triggerRefresh, refreshErrorMessage } from "@/lib/refresh";
 import { AlertsBanner } from "@/components/dashboard/AlertsBanner";
 import { DailySnapshot } from "@/components/dashboard/DailySnapshot";
 import { DailySecondaryCards } from "@/components/dashboard/DailySecondaryCards";
@@ -30,6 +32,17 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(yesterdayStr);
   const [customFrom, setCustomFrom] = useState(weekAgoStr);
   const [customTo, setCustomTo] = useState(yesterdayStr);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function handleRefreshData() {
+    if (refreshing) return;
+    setRefreshing(true);
+    const toastId = toast.loading("Refreshing data… this can take a minute.");
+    const res = await triggerRefresh("all");
+    if (res.ok) toast.success("Data refreshed", { id: toastId });
+    else toast.error(refreshErrorMessage(res), { id: toastId });
+    setRefreshing(false);
+  }
 
   // ── Custom range helpers ───────────────────────────────────────────────────
   // Previous comparison window = same-length range immediately before the selection.
@@ -180,6 +193,16 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        <button
+          onClick={handleRefreshData}
+          disabled={refreshing}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors"
+          title="Reload the open Chrome tabs and pull the latest data into the dashboard"
+        >
+          {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          Refresh Data
+        </button>
       </div>
 
       {/* ── Daily view ────────────────────────────────────────────────────── */}
