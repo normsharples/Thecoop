@@ -241,6 +241,17 @@ export interface RosterRefreshRequest {
   completed_at: string | null;
 }
 
+export interface RefreshRequest {
+  id: string;
+  source: string; // 'lightspeed' | 'sales-mix' | 'deputy' | 'google' | 'bite' | 'uber' | 'payouts' | 'all'
+  status: "pending" | "running" | "done" | "error";
+  error_message: string | null;
+  requested_by: string | null;
+  requested_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
 export interface CashOutItem {
   description: string;
   amount: number;
