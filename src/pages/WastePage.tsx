@@ -329,7 +329,7 @@ export default function WastePage() {
                   <p className="text-sm font-medium text-foreground truncate">
                     {w.item_name}
                     {!w.food_cost_item_id && (
-                      <span className="ml-1.5 text-xs text-amber-600">(untracked)</span>
+                      <span className="ml-1.5 text-xs text-warning">(untracked)</span>
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground">

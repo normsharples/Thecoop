@@ -116,9 +116,9 @@ function bestOf(records: PeriodRecord[]): PeriodRecord | null {
 // ─── Venue colours ───────────────────────────────────────────────────────────
 
 const VENUE_COLORS = [
-  { gradient: "from-orange-500 to-amber-500", bg: "bg-orange-500/10", text: "text-orange-500", ring: "ring-orange-500/20", border: "border-orange-500/30" },
+  { gradient: "from-warning to-warning", bg: "bg-warning/10", text: "text-warning", ring: "ring-warning/20", border: "border-warning/30" },
   { gradient: "from-blue-500 to-indigo-500",  bg: "bg-blue-500/10",   text: "text-blue-500",   ring: "ring-blue-500/20",   border: "border-blue-500/30"  },
-  { gradient: "from-emerald-500 to-teal-500", bg: "bg-emerald-500/10",text: "text-emerald-500", ring: "ring-emerald-500/20", border: "border-emerald-500/30" },
+  { gradient: "from-success to-teal-500", bg: "bg-success/10",text: "text-success", ring: "ring-success/20", border: "border-success/30" },
 ];
 
 // ─── Record card ─────────────────────────────────────────────────────────────
@@ -170,7 +170,7 @@ function RecordCard({
           {formatPeriodDate(record, period)}
         </p>
         {record.isInProgress && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600">
+          <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-warning">
             <Flame className="h-3 w-3" />
             Live
           </span>
@@ -312,21 +312,21 @@ export default function SalesRecordsReport() {
         <>
           {/* ── Group highs banner ───────────────────────────────────────── */}
           {overallAllTime && (
-            <div className="rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-card to-orange-500/5 p-6">
+            <div className="rounded-xl border border-warning/30 bg-gradient-to-br from-warning/5 via-card to-warning/5 p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Crown className="h-5 w-5 text-amber-500" />
+                <Crown className="h-5 w-5 text-warning" />
                 <h3 className="text-sm font-semibold text-foreground">Group Record {periodConfig.recordLabel}</h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">All-Time Highest</p>
-                  <p className="text-3xl font-bold text-amber-500 tabular-nums">
+                  <p className="text-3xl font-bold text-warning tabular-nums">
                     {formatCurrency(overallAllTime.allTime.total_sales)}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
                     {overallAllTime.restaurant.name} — {formatPeriodDate(overallAllTime.allTime, period)}
                     {overallAllTime.allTime.isInProgress && (
-                      <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600">
+                      <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-warning">
                         <Flame className="h-3 w-3" />
                         Live
                       </span>
@@ -336,13 +336,13 @@ export default function SalesRecordsReport() {
                 {overallLast12 && (
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Last 12 Months Highest</p>
-                    <p className="text-3xl font-bold text-orange-500 tabular-nums">
+                    <p className="text-3xl font-bold text-warning tabular-nums">
                       {formatCurrency(overallLast12.last12Months.total_sales)}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
                       {overallLast12.restaurant.name} — {formatPeriodDate(overallLast12.last12Months, period)}
                       {overallLast12.last12Months.isInProgress && (
-                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600">
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-warning">
                           <Flame className="h-3 w-3" />
                           Live
                         </span>

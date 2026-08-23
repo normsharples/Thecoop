@@ -6,6 +6,7 @@ export interface Restaurant {
   deputy_id: string | null;
   google_place_id: string | null;
   status: "active" | "grace_period" | "inactive";
+  state?: "NSW" | "VIC" | "QLD" | "SA" | "WA" | "TAS" | "NT" | "ACT" | null; // drives public-holiday calendar (payroll)
   pnl_cogs_basis?: "purchases" | "usage";
   brand_id?: string | null;
   created_at: string;
@@ -24,11 +25,271 @@ export interface Profile {
   email: string;
   username: string | null;
   full_name: string;
-  role: "superadmin" | "area_manager" | "manager" | "staff";
+  role: "superadmin" | "area_manager" | "manager" | "shift_supervisor" | "staff" | "team_member";
   restaurant_access: string[];
   avatar_url: string | null;
+  // Rostering fields (migration 042)
+  home_restaurant_id?: string | null;
+  display_colour?: string | null;
+  is_rosterable?: boolean;
+  contact_email?: string | null;
+  phone?: string | null;
+  base_pay_rate?: number | null; // manual OVERRIDE of the award-derived rate
+  award_level?: "1" | "2" | "3" | "3+" | null; // MA000003 classification level
+  pay_type?: "hourly" | "salary";
+  employment_type?: "casual" | "part_time" | "full_time" | null;
+  salary_annual?: number | null;
+  contracted_hours?: number | null;
+  date_of_birth?: string | null; // for junior award rates (payroll)
+  // Onboarding detail fields (migration 063)
+  legal_first_name?: string | null;
+  legal_middle_name?: string | null;
+  legal_last_name?: string | null;
+  preferred_name?: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  suburb?: string | null;
+  address_state?: string | null;
+  postcode?: string | null;
+  emergency_name?: string | null;
+  emergency_relationship?: string | null;
+  emergency_phone?: string | null;
+  emergency_phone_alt?: string | null;
+  medical_notes?: string | null;
+  work_eligibility?: "citizen" | "permanent_resident" | "visa" | null;
+  visa_subclass?: string | null;
+  visa_expiry?: string | null;
+  position_title?: string | null;
+  start_date?: string | null;
+  probation_weeks?: number | null;
+  requires_onboarding?: boolean | null;
+  // Set when this person authorises someone else's contract (migration 065)
+  signatory_title?: string | null;
+  signature_image?: string | null;
+  notification_prefs?: { email?: boolean; push?: boolean } | null;
+  // pin_hash exists in DB but is never selected to the client
   created_at: string;
   updated_at: string;
+}
+
+// ============================================================================
+// Rostering (migration 042)
+// ============================================================================
+
+export interface Position {
+  id: string;
+  name: string;
+  colour: string | null;
+  sort_order: number;
+  active: boolean;
+  parent_id: string | null; // null = top-level Area; set = Sub-area of that Area
+  restaurant_id: string | null; // null = All locations (global); set = venue-specific
+  created_at: string;
+}
+
+// Station training / proficiency (migration 058). A "station" is a Position
+// (Area or Sub-area). A missing row = the person is not trained on that station.
+export type ProficiencyLevel = "basic" | "intermediate" | "advanced";
+
+export interface StationTraining {
+  id: string;
+  employee_id: string;
+  position_id: string;
+  level: ProficiencyLevel;
+  created_at: string;
+  updated_at: string;
+}
+
+// Staffing matrix (migration 059): "sales vs required staff". One row per
+// required slot; the slot is needed for an hour once that hour's projected
+// sales reach threshold_sales.
+export interface StaffingMatrixRow {
+  id: string;
+  restaurant_id: string;
+  station_name: string;
+  position_id: string | null; // mapped roster position (for training/assign); null = unmapped
+  threshold_sales: number;
+  slot_order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Per-venue config for the projection engine + sales-driven shift generation.
+export interface StaffingConfig {
+  restaurant_id: string;
+  ly_weight: number;
+  lw_weight: number;
+  growth_pct: number;
+  growth_auto: boolean;
+  open_hour: number;
+  close_hour: number;
+  min_shift_hours: number;
+  break_threshold_hours: number;
+  break_minutes: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type RosterWeekStatus = "draft" | "published";
+
+export interface RosterWeek {
+  id: string;
+  restaurant_id: string;
+  week_start: string; // Monday, YYYY-MM-DD
+  status: RosterWeekStatus;
+  published_at: string | null;
+  published_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Shift {
+  id: string;
+  restaurant_id: string;
+  employee_id: string | null; // null = open / unassigned shift
+  date: string; // YYYY-MM-DD
+  start_time: string; // HH:MM[:SS]
+  end_time: string;
+  unpaid_break_minutes: number;
+  break_start: string | null; // HH:MM start of the unpaid break; null = auto-centre
+  position_id: string | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  // Convenience joins (populated client-side where needed)
+  employee?: Profile;
+  position?: Position;
+}
+
+export interface ShiftTemplate {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface ShiftTemplateLine {
+  id: string;
+  template_id: string;
+  employee_id: string | null;
+  day_of_week: number; // 0 = Monday
+  start_time: string;
+  end_time: string;
+  unpaid_break_minutes: number;
+  position_id: string | null;
+  note: string | null;
+}
+
+export interface AvailabilityRule {
+  id: string;
+  employee_id: string;
+  day_of_week: number; // 0 = Monday
+  is_available: boolean;
+  start_time: string | null; // set = available only within this window (part-day)
+  end_time: string | null;
+  effective_from: string | null; // rule applies only on/after this date (null = always)
+  effective_until: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AvailabilityException {
+  id: string;
+  employee_id: string;
+  date: string;
+  is_available: boolean;
+  start_time: string | null;
+  end_time: string | null;
+  reason: string | null;
+  created_at: string;
+}
+
+export type LeaveType = "annual" | "sick" | "unpaid" | "other";
+export type LeaveStatus = "pending" | "approved" | "declined";
+
+export interface LeaveRequest {
+  id: string;
+  employee_id: string;
+  start_date: string;
+  end_date: string;
+  leave_type: LeaveType;
+  note: string | null;
+  status: LeaveStatus;
+  notify_user_id: string | null; // who the requester sent it to (migration 067)
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  employee?: Profile;
+  notify_user?: { full_name: string } | null;
+}
+
+export type ShiftSwapStatus =
+  | "offered"
+  | "claimed"
+  | "approved"
+  | "declined"
+  | "cancelled";
+
+export interface ShiftSwap {
+  id: string;
+  shift_id: string;
+  offered_by: string;
+  claimed_by: string | null;
+  status: ShiftSwapStatus;
+  note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  shift?: Shift;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  data: Record<string, unknown>;
+  read_at: string | null;
+  created_at: string;
+}
+
+// ============================================================================
+// Time & attendance (migration 052 — payroll T1)
+// ============================================================================
+
+export type TimeEntryApproval =
+  | "pending"       // still clocked in / not yet finalised
+  | "auto_approved" // within tolerance of the rostered shift
+  | "flagged"       // variance or no rostered shift — needs a manager
+  | "approved"      // manager approved
+  | "rejected";     // manager rejected
+
+export interface TimeEntry {
+  id: string;
+  restaurant_id: string;
+  employee_id: string;
+  shift_id: string | null;
+  work_date: string;            // yyyy-MM-dd (venue-local roster date)
+  clock_in: string;             // ISO timestamptz
+  clock_out: string | null;
+  break_start: string | null;
+  break_end: string | null;
+  source: "kiosk" | "app" | "manual";
+  worked_minutes: number | null;
+  approval_status: TimeEntryApproval;
+  flag_reason: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  employee?: Profile;
 }
 
 export interface StoreProfile {
@@ -753,4 +1014,164 @@ export interface StockTransfer {
   from_restaurant?: Pick<Restaurant, "id" | "name">;
   to_restaurant?: Pick<Restaurant, "id" | "name">;
   lines?: StockTransferLine[];
+}
+
+// ============================================================================
+// Onboarding & employment contracts (migration 063)
+// ============================================================================
+
+export type OnboardingStatus = "legacy" | "pending" | "in_progress" | "complete" | "exempt";
+
+export interface EmployeeOnboarding {
+  employee_id: string;
+  status: OnboardingStatus;
+  collect_details: boolean;
+  issue_contract: boolean;
+  details_complete: boolean;
+  sensitive_complete: boolean;
+  contract_signed: boolean;
+  auto_issue: boolean;
+  current_step: number;
+  skip_allowed: boolean;
+  requested_by: string | null;
+  requested_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmployeeSensitive {
+  employee_id: string;
+  tfn: string | null;
+  tfn_exemption: "none" | "applied" | "under_18" | "pensioner" | "not_provided" | null;
+  tax_free_threshold: boolean;
+  help_debt: boolean;
+  tax_residency: "resident" | "foreign" | "working_holiday" | null;
+  super_choice: "employer_default" | "own_fund" | null;
+  super_fund_name: string | null;
+  super_usi: string | null;
+  super_member_number: string | null;
+  bank_account_name: string | null;
+  bank_bsb: string | null;
+  bank_account_number: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type EmployeeDocumentKind = "rsa" | "food_handler" | "visa" | "id" | "qualification" | "other";
+
+export interface EmployeeDocument {
+  id: string;
+  employee_id: string;
+  kind: EmployeeDocumentKind;
+  label: string | null;
+  file_path: string | null;
+  issued_on: string | null;
+  expires_on: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+export interface ContractTemplate {
+  id: string;
+  name: string;
+  kind: "contract" | "variation";
+  employment_type: "casual" | "part_time" | "full_time" | null;
+  restaurant_id: string | null;
+  body_html: string;
+  version: number;
+  active: boolean;
+  is_seed_draft: boolean;
+  notes: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContractTemplateVersion {
+  id: string;
+  template_id: string;
+  version: number;
+  name: string | null;
+  body_html: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export type ContractStatus = "draft" | "issued" | "viewed" | "signed" | "declined" | "superseded";
+
+export interface EmployeeContract {
+  id: string;
+  employee_id: string;
+  template_id: string | null;
+  template_version: number | null;
+  template_name: string | null;
+  kind: "contract" | "variation";
+  status: ContractStatus;
+  body_html: string;
+  tokens: Record<string, string>;
+  content_hash: string | null;
+  issued_by: string | null;
+  authorised_by: string | null;
+  auto_issued: boolean;
+  issued_at: string | null;
+  viewed_at: string | null;
+  signed_at: string | null;
+  signature_name: string | null;
+  signature_image: string | null;
+  signature_ip: string | null;
+  signature_user_agent: string | null;
+  employer_signatory_name: string | null;
+  employer_signatory_title: string | null;
+  employer_signature_image: string | null;
+  employer_signed_at: string | null;
+  decline_reason: string | null;
+  storage_path: string | null;
+  superseded_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OnboardingChecklistItem {
+  id: string;
+  label: string;
+  description: string | null;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+}
+
+export interface EmployeeChecklistRow {
+  id: string;
+  employee_id: string;
+  item_id: string;
+  done: boolean;
+  done_by: string | null;
+  done_at: string | null;
+  created_at: string;
+}
+
+export interface ProfileChangeRequest {
+  id: string;
+  employee_id: string;
+  scope: "profile" | "sensitive";
+  payload: Record<string, string | null>;
+  status: "pending" | "approved" | "rejected";
+  requested_at: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+}
+
+export interface CompanySettings {
+  legal_name: string;
+  trading_name: string;
+  abn: string;
+  address: string;
+  signatory_name: string;
+  signatory_title: string;
+  signature_image: string;
 }

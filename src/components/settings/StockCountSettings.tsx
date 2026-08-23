@@ -401,7 +401,7 @@ function LocationRow({
     >
       <div className="mt-0.5 shrink-0">
         {loc.active ? (
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <CheckCircle2 className="h-4 w-4 text-success" />
         ) : (
           <XCircle className="h-4 w-4 text-muted-foreground" />
         )}
@@ -524,7 +524,7 @@ function ItemLocationsTab() {
       </div>
 
       {locations.length === 0 && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+        <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning dark:text-warning">
           Add count areas in the <strong>Count Areas</strong> tab first, then
           come back to assign items.
         </div>

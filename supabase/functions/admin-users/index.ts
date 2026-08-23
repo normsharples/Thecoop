@@ -21,7 +21,7 @@ const corsHeaders = {
 
 const SYNTHETIC_EMAIL_DOMAIN = "thecoop.local";
 
-type Role = "superadmin" | "area_manager" | "manager" | "staff";
+type Role = "superadmin" | "area_manager" | "manager" | "shift_supervisor" | "staff" | "team_member";
 
 interface CreateBody {
   action: "create";
@@ -30,6 +30,12 @@ interface CreateBody {
   password: string;
   role: Role;
   restaurant_access: string[];
+  // Rostering fields (optional)
+  home_restaurant_id?: string | null;
+  contact_email?: string | null;
+  phone?: string | null;
+  display_colour?: string | null;
+  is_rosterable?: boolean;
 }
 interface ResetBody {
   action: "reset_password";
@@ -91,7 +97,22 @@ serve(async (req) => {
   try {
     switch (body.action) {
       case "create": {
-        const { username, full_name, password, role, restaurant_access } = body;
+        const {
+          username,
+          full_name,
+          password,
+          role,
+          restaurant_access,
+          home_restaurant_id,
+          contact_email,
+          phone,
+          display_colour,
+          is_rosterable,
+        } = body;
+        // team_member logins are deliberately given no restaurant_access — that
+        // is what keeps them out of every operational table; their roster access
+        // is by employee_id only.
+        const access = role === "team_member" ? [] : restaurant_access ?? [];
         if (!username || !full_name || !password) {
           return json({ error: "Username, name and password are required" }, 400);
         }
@@ -115,14 +136,20 @@ serve(async (req) => {
         const userId = created.user?.id;
         if (!userId) return json({ error: "Failed to create user" }, 500);
 
-        // Overwrite the trigger-created profile with the intended role/access.
+        // Overwrite the trigger-created profile with the intended role/access
+        // plus any rostering fields.
         const { error: profileErr } = await admin.from("profiles").upsert({
           id: userId,
           email,
           username,
           full_name,
           role,
-          restaurant_access: restaurant_access ?? [],
+          restaurant_access: access,
+          home_restaurant_id: home_restaurant_id ?? null,
+          contact_email: contact_email ?? null,
+          phone: phone ?? null,
+          display_colour: display_colour ?? null,
+          is_rosterable: is_rosterable ?? role === "team_member",
         });
         if (profileErr) {
           // Roll back the auth user so a failed profile write doesn't orphan a login.

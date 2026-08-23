@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
+const PulsePage = lazy(() => import("@/pages/PulsePage"));
 const ReportsPage = lazy(() => import("@/pages/ReportsPage"));
 const LeaderboardPage = lazy(() => import("@/pages/LeaderboardPage"));
 const StockCountsPage = lazy(() => import("@/pages/StockCountsPage"));
@@ -22,9 +23,21 @@ const CalendarPage = lazy(() => import("@/pages/CalendarPage"));
 const DrivePage = lazy(() => import("@/pages/DrivePage"));
 const StoreProfilesPage = lazy(() => import("@/pages/StoreProfilesPage"));
 const ProjectionsPage = lazy(() => import("@/pages/ProjectionsPage"));
+const RosteringPage = lazy(() => import("@/pages/RosteringPage"));
+const MyRosterPage = lazy(() => import("@/pages/MyRosterPage"));
+const RosterViewPage = lazy(() => import("@/pages/RosterViewPage"));
+const MyAvailabilityPage = lazy(() => import("@/pages/MyAvailabilityPage"));
+const TeamPage = lazy(() => import("@/pages/TeamPage"));
+const FoodPage = lazy(() => import("@/pages/FoodPage"));
+const KioskPage = lazy(() => import("@/pages/KioskPage"));
+const OnboardingPage = lazy(() => import("@/pages/OnboardingPage"));
+const ClockPage = lazy(() => import("@/pages/ClockPage"));
+const MyProfilePage = lazy(() => import("@/pages/MyProfilePage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 
 const SalesReport = lazy(() => import("@/components/reports/SalesReport"));
+const SalesReportLayout = lazy(() => import("@/components/reports/SalesReportLayout"));
+const SalesByHourReport = lazy(() => import("@/components/reports/SalesByHourReport"));
 const LabourReport = lazy(() => import("@/components/reports/LabourReport"));
 const RosterDashboard = lazy(() => import("@/components/reports/RosterDashboard"));
 const ReviewsReport = lazy(() => import("@/components/reports/ReviewsReport"));
@@ -35,10 +48,13 @@ const PnLReport = lazy(() => import("@/components/reports/PnLReport"));
 const SalesRecordsReport = lazy(() => import("@/components/reports/SalesRecordsReport"));
 const CashUpsReport = lazy(() => import("@/components/reports/CashUpsReport"));
 const PayoutReport = lazy(() => import("@/components/reports/PayoutReport"));
+const EmployeeContactReport = lazy(() => import("@/components/reports/EmployeeContactReport"));
 
-const TeamSettings = lazy(() => import("@/components/settings/TeamSettings"));
 const QuickLinksSettings = lazy(() => import("@/components/settings/QuickLinksSettings"));
 const TargetsSettings = lazy(() => import("@/components/settings/TargetsSettings"));
+const PositionsSettings = lazy(() => import("@/components/settings/PositionsSettings"));
+const StaffingSettings = lazy(() => import("@/components/settings/StaffingSettings"));
+const RosterCheckSettings = lazy(() => import("@/components/settings/RosterCheckSettings"));
 const AlertSettings = lazy(() => import("@/components/settings/AlertSettings"));
 const WHSAuditTemplates = lazy(() => import("@/components/settings/WHSAuditTemplates"));
 const FoodCostSettings = lazy(() => import("@/components/settings/FoodCostSettings"));
@@ -63,10 +79,33 @@ const router = createBrowserRouter([
     element: <LoginPage />,
   },
   {
+    // Full-screen shared-tablet time clock (its own chrome, outside AppLayout).
+    path: "/kiosk",
+    element: <KioskPage />,
+  },
+  {
+    // Onboarding wizard — full screen, outside AppLayout so the gate can send
+    // people here without the nav chrome.
+    path: "/onboarding",
+    element: <OnboardingPage />,
+  },
+  {
+    // Clock in/out, reachable even while onboarding is incomplete. Nobody
+    // works unpaid because of paperwork.
+    path: "/clock",
+    element: <ClockPage />,
+  },
+  {
     element: <AppLayout />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: "pulse", element: <PulsePage /> },
       { path: "tasks", element: <TasksPage /> },
+      { path: "rostering", element: <RosteringPage /> },
+      { path: "my-roster", element: <MyRosterPage /> },
+      { path: "roster-view", element: <RosterViewPage /> },
+      { path: "my-availability", element: <MyAvailabilityPage /> },
+      { path: "my-profile", element: <MyProfilePage /> },
       { path: "calendar", element: <CalendarPage /> },
       { path: "reports/sales/manual-entry", element: <SalesManualEntryPage /> },
       { path: "reports/labour/manual-entry", element: <LabourManualEntryPage /> },
@@ -75,7 +114,14 @@ const router = createBrowserRouter([
         element: <ReportsPage />,
         children: [
           { index: true, element: <Navigate to="sales" replace /> },
-          { path: "sales", element: <SalesReport /> },
+          {
+            path: "sales",
+            element: <SalesReportLayout />,
+            children: [
+              { index: true, element: <SalesReport /> },
+              { path: "by-hour", element: <SalesByHourReport /> },
+            ],
+          },
           { path: "labour", element: <LabourReport /> },
           { path: "roster", element: <RosterDashboard /> },
           { path: "reviews", element: <ReviewsReport /> },
@@ -86,6 +132,7 @@ const router = createBrowserRouter([
           { path: "records", element: <SalesRecordsReport /> },
           { path: "cash-ups", element: <CashUpsReport /> },
           { path: "payouts", element: <PayoutReport /> },
+          { path: "contacts", element: <EmployeeContactReport /> },
         ],
       },
       { path: "leaderboard", element: <LeaderboardPage /> },
@@ -109,6 +156,20 @@ const router = createBrowserRouter([
           { path: "drive", element: <DrivePage /> },
           { path: "store-profiles", element: <StoreProfilesPage /> },
           { path: "projections", element: <ProjectionsPage /> },
+          { path: "team", element: <TeamPage /> },
+          {
+            path: "food",
+            element: <FoodPage />,
+            children: [
+              { index: true, element: <Navigate to="purchase-orders" replace /> },
+              { path: "purchase-orders", element: <PurchaseOrdersPage /> },
+              { path: "invoices", element: <InvoicesPage /> },
+              { path: "transfers", element: <TransfersPage /> },
+              { path: "inventory", element: <InventoryPage /> },
+              { path: "waste", element: <WastePage /> },
+              { path: "stock-counts", element: <StockCountsPage /> },
+            ],
+          },
           {
             path: "settings",
             element: <SettingsPage />,
@@ -117,7 +178,9 @@ const router = createBrowserRouter([
               { path: "venues", element: <VenuesSettings /> },
               { path: "brands", element: <BrandsSettings /> },
               { path: "ordering-schedule", element: <OrderingScheduleSettings /> },
-              { path: "team", element: <TeamSettings /> },
+              { path: "positions", element: <PositionsSettings /> },
+              { path: "staffing", element: <StaffingSettings /> },
+              { path: "roster-checks", element: <RosterCheckSettings /> },
               { path: "targets", element: <TargetsSettings /> },
               { path: "alerts", element: <AlertSettings /> },
               { path: "whs-templates", element: <WHSAuditTemplates /> },

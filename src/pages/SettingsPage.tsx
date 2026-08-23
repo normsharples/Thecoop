@@ -1,7 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import {
   Settings,
-  Users,
   Target,
   Bell,
   Shield,
@@ -16,6 +15,9 @@ import {
   Tags,
   Store,
   CalendarClock,
+  Briefcase,
+  Gauge,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +25,9 @@ const settingsSections = [
   { label: "Venues", path: "/admin/settings/venues", icon: Store },
   { label: "Brands", path: "/admin/settings/brands", icon: Tags },
   { label: "Ordering Schedule", path: "/admin/settings/ordering-schedule", icon: CalendarClock },
-  { label: "Team", path: "/admin/settings/team", icon: Users },
+  { label: "Positions", path: "/admin/settings/positions", icon: Briefcase },
+  { label: "Staffing", path: "/admin/settings/staffing", icon: Gauge },
+  { label: "Roster Checks", path: "/admin/settings/roster-checks", icon: ShieldAlert },
   { label: "Targets", path: "/admin/settings/targets", icon: Target },
   { label: "Alerts", path: "/admin/settings/alerts", icon: Bell },
   { label: "WHS Templates", path: "/admin/settings/whs-templates", icon: Shield },

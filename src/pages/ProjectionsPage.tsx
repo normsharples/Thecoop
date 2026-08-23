@@ -79,7 +79,7 @@ function ProjectionCell({
         <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 animate-spin text-muted-foreground" />
       )}
       {status === "saved" && (
-        <Check className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-green-500" />
+        <Check className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-success" />
       )}
     </div>
   );

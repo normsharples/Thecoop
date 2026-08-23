@@ -15,6 +15,7 @@ const config: Config = {
     extend: {
       colors: {
         border: "hsl(var(--border))",
+        "border-strong": "hsl(var(--border-strong))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
@@ -22,6 +23,9 @@ const config: Config = {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          hover: "hsl(var(--primary-hover))",
+          soft: "hsl(var(--primary-soft))",
+          softer: "hsl(var(--primary-softer))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -30,15 +34,22 @@ const config: Config = {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+          soft: "hsl(var(--destructive-soft))",
+          border: "hsl(var(--destructive-border))",
         },
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
+          soft: "hsl(var(--success-soft))",
+          strong: "hsl(var(--success-strong))",
         },
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+          soft: "hsl(var(--warning-soft))",
+          strong: "hsl(var(--warning-strong))",
         },
+        info: "hsl(var(--info))",
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
@@ -55,21 +66,56 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // ── The Coop brand tokens ──────────────────────────────────────────
+        surface: {
+          subtle: "hsl(var(--surface-subtle))",
+          sunken: "hsl(var(--surface-sunken))",
+        },
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          active: "hsl(var(--sidebar-active))",
+          "active-bg": "hsl(var(--sidebar-active-bg))",
+          border: "hsl(var(--sidebar-border))",
+          heading: "hsl(var(--sidebar-heading))",
+          mark: "hsl(var(--sidebar-mark))",
+        },
+        chart: {
+          1: "hsl(var(--primary))",
+          2: "hsl(var(--chart-2))",
+          3: "hsl(var(--primary-soft))",
+          4: "hsl(var(--success))",
+          5: "hsl(var(--warning))",
+          6: "hsl(var(--info))",
+        },
+        // ── Brand accent ────────────────────────────────────────────────
+        // Set per-brand at runtime. Used for brand marks only — the app
+        // chrome stays navy so switching brand never restyles the UI.
         brand: {
-          gold:  "#C9A84C",   // primary accent
-          "gold-light": "#D4A853",  // lighter accent
-          brown: "#5C3D2E",   // dark brand colour
-          cream: "#F5F3EF",   // light brand colour
+          accent: "hsl(var(--brand-accent))",
         },
       },
       borderRadius: {
+        xl: "calc(var(--radius) + 4px)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["DM Sans", "system-ui", "sans-serif"],
+        sans: ["Archivo", "system-ui", "-apple-system", "sans-serif"],
+        display: ["'Source Serif 4'", "Georgia", "serif"],
+        mono: ["ui-monospace", "SFMono-Regular", "monospace"],
+      },
+      fontSize: {
+        stat: ["2.5rem", { lineHeight: "1", letterSpacing: "-0.02em", fontWeight: "600" }],
+      },
+      boxShadow: {
+        // Flat by default — the design separates surfaces with borders,
+        // not elevation. Shadows are reserved for genuinely floating layers.
+        sm: "0 1px 2px 0 hsl(220 43% 11% / 0.04)",
+        DEFAULT: "0 1px 2px 0 hsl(220 43% 11% / 0.04)",
+        md: "0 2px 6px -1px hsl(220 43% 11% / 0.07)",
+        lg: "0 8px 24px -6px hsl(220 43% 11% / 0.12)",
+        popover: "0 12px 32px -8px hsl(220 43% 11% / 0.18)",
       },
       keyframes: {
         "accordion-down": {

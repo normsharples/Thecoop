@@ -38,9 +38,9 @@ interface MoveRow {
 
 function costColour(pct: number | null) {
   if (pct == null) return "text-muted-foreground";
-  if (pct <= 28) return "text-green-500";
-  if (pct <= 33) return "text-amber-500";
-  return "text-red-500";
+  if (pct <= 28) return "text-success";
+  if (pct <= 33) return "text-warning";
+  return "text-destructive";
 }
 
 export default function FoodUsageReport() {
@@ -113,9 +113,9 @@ export default function FoodUsageReport() {
 
   const breakdown = [
     { label: "Sold (recipe depletion)", value: agg.sales, icon: ShoppingCart, tone: "text-blue-500" },
-    { label: "Waste", value: agg.waste, icon: Trash, tone: "text-red-500" },
+    { label: "Waste", value: agg.waste, icon: Trash, tone: "text-destructive" },
     { label: "Count variance (shrinkage)", value: agg.variance, icon: SlidersHorizontal, tone: "text-purple-500" },
-    { label: "In-transit loss", value: agg.loss, icon: ArrowLeftRight, tone: "text-amber-600" },
+    { label: "In-transit loss", value: agg.loss, icon: ArrowLeftRight, tone: "text-warning" },
   ];
 
   return (

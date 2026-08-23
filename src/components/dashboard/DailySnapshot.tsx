@@ -160,17 +160,17 @@ export function DailySnapshot({ date }: { date: string }) {
             {stat.trend !== null ? (
               <>
                 {stat.trend > 0 ? (
-                  <TrendingUp className={cn("h-4 w-4", stat.status === "success" ? "text-green-500" : "text-red-500")} />
+                  <TrendingUp className={cn("h-4 w-4", stat.status === "success" ? "text-success" : "text-destructive")} />
                 ) : stat.trend < 0 ? (
-                  <TrendingDown className={cn("h-4 w-4", stat.status === "success" ? "text-green-500" : "text-red-500")} />
+                  <TrendingDown className={cn("h-4 w-4", stat.status === "success" ? "text-success" : "text-destructive")} />
                 ) : (
                   <Minus className="h-4 w-4 text-muted-foreground" />
                 )}
                 <span className={cn(
                   "text-sm font-medium",
-                  stat.status === "success" && "text-green-500",
-                  stat.status === "warning" && "text-amber-500",
-                  stat.status === "destructive" && "text-red-500",
+                  stat.status === "success" && "text-success",
+                  stat.status === "warning" && "text-warning",
+                  stat.status === "destructive" && "text-destructive",
                 )}>
                   {stat.trend > 0 ? "+" : ""}{stat.trend.toFixed(1)}%
                 </span>
@@ -178,9 +178,9 @@ export function DailySnapshot({ date }: { date: string }) {
             ) : (
               <span className={cn(
                 "text-sm font-medium",
-                stat.status === "success" && "text-green-500",
-                stat.status === "warning" && "text-amber-500",
-                stat.status === "destructive" && "text-red-500",
+                stat.status === "success" && "text-success",
+                stat.status === "warning" && "text-warning",
+                stat.status === "destructive" && "text-destructive",
               )}>
                 {stat.label === "Google Rating"
                   ? (avgRating !== null

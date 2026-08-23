@@ -120,9 +120,9 @@ function weekLabel(anchor: Date) {
 }
 
 function costColour(pct: number) {
-  if (pct <= 28) return "text-green-500";
-  if (pct <= 33) return "text-amber-500";
-  return "text-red-500";
+  if (pct <= 28) return "text-success";
+  if (pct <= 33) return "text-warning";
+  return "text-destructive";
 }
 
 const BLANK_ITEM = { food_cost_item_id: "", description: "", quantity: 1, unit: "kg", unit_price: 0 };
@@ -706,10 +706,10 @@ export default function InvoicesPage() {
 
       {/* ── Pending PO tasks banner ───────────────────────────────────────── */}
       {pendingPOs.length > 0 && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Clock className="h-4 w-4 text-amber-500" />
-            <p className="text-sm font-semibold text-amber-600">
+            <Clock className="h-4 w-4 text-warning" />
+            <p className="text-sm font-semibold text-warning">
               {pendingPOs.length} purchase order{pendingPOs.length !== 1 ? "s" : ""} awaiting invoice
             </p>
           </div>
@@ -740,7 +740,7 @@ export default function InvoicesPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="shrink-0 text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950"
+                    className="shrink-0 text-warning border-warning/30 hover:bg-warning-soft dark:hover:bg-warning-soft"
                     onClick={() => openFormWithPO(po)}
                   >
                     <PlusCircle className="h-3.5 w-3.5 mr-1" />

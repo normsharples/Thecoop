@@ -103,13 +103,13 @@ export function WeeklySecondaryCards({
           {txTrend !== null ? (
             <>
               {txTrend > 0 ? (
-                <TrendingUp className={cn("h-4 w-4", txStatus === "success" ? "text-green-500" : "text-red-500")} />
+                <TrendingUp className={cn("h-4 w-4", txStatus === "success" ? "text-success" : "text-destructive")} />
               ) : txTrend < 0 ? (
-                <TrendingDown className={cn("h-4 w-4", txStatus === "success" ? "text-green-500" : "text-red-500")} />
+                <TrendingDown className={cn("h-4 w-4", txStatus === "success" ? "text-success" : "text-destructive")} />
               ) : (
                 <Minus className="h-4 w-4 text-muted-foreground" />
               )}
-              <span className={cn("text-sm font-medium", txStatus === "success" ? "text-green-500" : "text-amber-500")}>
+              <span className={cn("text-sm font-medium", txStatus === "success" ? "text-success" : "text-warning")}>
                 {txTrend > 0 ? "+" : ""}{txTrend.toFixed(1)}%
               </span>
             </>
@@ -135,13 +135,13 @@ export function WeeklySecondaryCards({
           {spmhTrend !== null ? (
             <>
               {spmhTrend > 0 ? (
-                <TrendingUp className={cn("h-4 w-4", spmhStatus === "success" ? "text-green-500" : "text-red-500")} />
+                <TrendingUp className={cn("h-4 w-4", spmhStatus === "success" ? "text-success" : "text-destructive")} />
               ) : spmhTrend < 0 ? (
-                <TrendingDown className={cn("h-4 w-4", spmhStatus === "success" ? "text-green-500" : "text-red-500")} />
+                <TrendingDown className={cn("h-4 w-4", spmhStatus === "success" ? "text-success" : "text-destructive")} />
               ) : (
                 <Minus className="h-4 w-4 text-muted-foreground" />
               )}
-              <span className={cn("text-sm font-medium", spmhStatus === "success" ? "text-green-500" : "text-amber-500")}>
+              <span className={cn("text-sm font-medium", spmhStatus === "success" ? "text-success" : "text-warning")}>
                 {spmhTrend > 0 ? "+" : ""}{spmhTrend.toFixed(1)}%
               </span>
             </>

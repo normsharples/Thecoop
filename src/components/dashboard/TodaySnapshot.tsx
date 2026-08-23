@@ -143,17 +143,17 @@ export function TodaySnapshot({ date }: { date?: string }) {
               {stat.trend !== null ? (
                 <>
                   {stat.trend > 0 ? (
-                    <TrendingUp className={cn("h-4 w-4", status === "success" ? "text-green-500" : "text-red-500")} />
+                    <TrendingUp className={cn("h-4 w-4", status === "success" ? "text-success" : "text-destructive")} />
                   ) : stat.trend < 0 ? (
-                    <TrendingDown className={cn("h-4 w-4", status === "success" ? "text-green-500" : "text-red-500")} />
+                    <TrendingDown className={cn("h-4 w-4", status === "success" ? "text-success" : "text-destructive")} />
                   ) : (
                     <Minus className="h-4 w-4 text-muted-foreground" />
                   )}
                   <span className={cn(
                     "text-sm font-medium",
-                    status === "success" && "text-green-500",
-                    status === "warning" && "text-amber-500",
-                    status === "destructive" && "text-red-500"
+                    status === "success" && "text-success",
+                    status === "warning" && "text-warning",
+                    status === "destructive" && "text-destructive"
                   )}>
                     {stat.trend > 0 ? "+" : ""}{stat.trend.toFixed(1)}%
                   </span>
@@ -161,9 +161,9 @@ export function TodaySnapshot({ date }: { date?: string }) {
               ) : (
                 <span className={cn(
                   "text-sm font-medium",
-                  status === "success" && "text-green-500",
-                  status === "warning" && "text-amber-500",
-                  status === "destructive" && "text-red-500"
+                  status === "success" && "text-success",
+                  status === "warning" && "text-warning",
+                  status === "destructive" && "text-destructive"
                 )}>
                   {"status" in stat && stat.status === "destructive" ? "Over target" :
                    "status" in stat && stat.status === "warning" ? "Near target" :

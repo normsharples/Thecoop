@@ -1,20 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const reportTabs = [
-  { label: "Sales", path: "/reports/sales" },
-  { label: "Labour", path: "/reports/labour" },
-  { label: "Roster", path: "/reports/roster" },
-  { label: "Reviews", path: "/reports/reviews" },
-  { label: "Food Cost", path: "/reports/food-cost" },
-  { label: "Food Usage", path: "/reports/food-usage" },
-  { label: "Transfers", path: "/reports/transfers" },
-  { label: "P&L", path: "/reports/pnl" },
-  { label: "Records", path: "/reports/records" },
-  { label: "Cash Ups", path: "/reports/cash-ups" },
-  { label: "Payouts", path: "/reports/payouts" },
-];
+import { REPORT_NAV } from "@/lib/reportNav";
 
 export default function ReportsPage() {
   return (
@@ -25,7 +12,7 @@ export default function ReportsPage() {
       </div>
 
       <nav className="flex gap-1 rounded-xl border border-border bg-card p-1 overflow-x-auto">
-        {reportTabs.map((tab) => (
+        {REPORT_NAV.map((tab) => (
           <NavLink
             key={tab.path}
             to={tab.path}

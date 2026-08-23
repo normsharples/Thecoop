@@ -417,7 +417,7 @@ function IngredientsPanel({ recipe }: { recipe: RecipeWithIngredients }) {
                             })
                           }
                           disabled={isSavingEdit}
-                          className="rounded p-1 text-green-600 hover:bg-green-500/10 transition-colors"
+                          className="rounded p-1 text-success hover:bg-success/10 transition-colors"
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" />
                         </button>

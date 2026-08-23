@@ -93,9 +93,9 @@ function SourceBadge({ source }: { source: string }) {
     <span
       className={cn(
         "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
-        source === "deputy"   && "bg-green-500/10 text-green-500",
+        source === "deputy"   && "bg-success/10 text-success",
         source === "manual"   && "bg-muted/60 text-muted-foreground",
-        source === "override" && "bg-amber-500/10 text-amber-500"
+        source === "override" && "bg-warning/10 text-warning"
       )}
     >
       {source}
@@ -123,9 +123,9 @@ function KpiCard({
       </div>
       <p className={cn(
         "mt-3 text-3xl font-bold",
-        ragStatus === "destructive" && "text-red-500",
-        ragStatus === "warning"     && "text-amber-500",
-        ragStatus === "success"     && "text-green-500",
+        ragStatus === "destructive" && "text-destructive",
+        ragStatus === "warning"     && "text-warning",
+        ragStatus === "success"     && "text-success",
       )}>
         {value !== null ? formatFn(value) : "—"}
       </p>
@@ -133,9 +133,9 @@ function KpiCard({
         <div className="mt-1.5">
           <span className={cn(
             "text-xs font-medium",
-            ragStatus === "destructive" && "text-red-500",
-            ragStatus === "warning"     && "text-amber-500",
-            ragStatus === "success"     && "text-green-500",
+            ragStatus === "destructive" && "text-destructive",
+            ragStatus === "warning"     && "text-warning",
+            ragStatus === "success"     && "text-success",
           )}>
             {ragStatus === "destructive" ? "Over target" : ragStatus === "warning" ? "Near target" : "On target"}
           </span>
@@ -146,13 +146,13 @@ function KpiCard({
           {change !== null ? (
             <>
               {change > 0 ? (
-                <TrendingUp className="h-4 w-4 text-green-500" />
+                <TrendingUp className="h-4 w-4 text-success" />
               ) : change < 0 ? (
-                <TrendingDown className="h-4 w-4 text-red-500" />
+                <TrendingDown className="h-4 w-4 text-destructive" />
               ) : (
                 <Minus className="h-4 w-4 text-muted-foreground" />
               )}
-              <span className={cn("text-sm font-medium", isPositive ? "text-green-500" : "text-red-500")}>
+              <span className={cn("text-sm font-medium", isPositive ? "text-success" : "text-destructive")}>
                 {change > 0 ? "+" : ""}{change.toFixed(1)}%
               </span>
             </>
@@ -480,9 +480,9 @@ export default function LabourReport() {
             </LineChart>
           </ResponsiveContainer>
           <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-4 rounded bg-green-500" /> Under 30% — on target</span>
-            <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-4 rounded bg-amber-500" /> 30–35% — near target</span>
-            <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-4 rounded bg-red-500" /> Over 35% — over target</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-4 rounded bg-success" /> Under 30% — on target</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-4 rounded bg-warning" /> 30–35% — near target</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-1.5 w-4 rounded bg-destructive" /> Over 35% — over target</span>
           </div>
         </div>
       )}
@@ -590,9 +590,9 @@ export default function LabourReport() {
                       <td className="px-4 py-3 text-sm">
                         <span className={cn(
                           "font-medium",
-                          pctStatus === "destructive" && "text-red-500",
-                          pctStatus === "warning"     && "text-amber-500",
-                          pctStatus === "success"     && "text-green-500",
+                          pctStatus === "destructive" && "text-destructive",
+                          pctStatus === "warning"     && "text-warning",
+                          pctStatus === "success"     && "text-success",
                         )}>
                           {formatPercent(Number(row.labour_percent))}
                         </span>

@@ -47,8 +47,8 @@ type TrackedItem = { id: string; name: string; unit: string | null; category: st
 interface DraftLine { food_cost_item_id: string; qty: string }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  in_transit: { label: "In transit", cls: "bg-amber-500/10 text-amber-600" },
-  received:   { label: "Received",   cls: "bg-green-500/10 text-green-600" },
+  in_transit: { label: "In transit", cls: "bg-warning/10 text-warning" },
+  received:   { label: "Received",   cls: "bg-success/10 text-success" },
   cancelled:  { label: "Cancelled",  cls: "bg-muted text-muted-foreground" },
 };
 
@@ -302,7 +302,7 @@ export default function TransfersPage() {
         <div className="space-y-2">
           <p className="text-sm font-semibold text-foreground">Incoming — confirm receipt</p>
           {incoming.map((t) => (
-            <div key={t.id} className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+            <div key={t.id} className="rounded-xl border border-warning/30 bg-warning/5 p-4 space-y-3">
               <div className="flex items-center gap-2 text-sm">
                 <span className="font-medium text-foreground">{t.from_restaurant?.name}</span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -402,7 +402,7 @@ function TransferRow({
           <span key={ln.id} className="text-xs text-muted-foreground">
             {ln.food_cost_item?.name}: <span className="text-foreground tabular-nums">{ln.qty_sent} {ln.food_cost_item?.unit}</span>
             {ln.qty_received != null && ln.qty_received !== ln.qty_sent && (
-              <span className="text-red-500"> (recv {ln.qty_received})</span>
+              <span className="text-destructive"> (recv {ln.qty_received})</span>
             )}
           </span>
         ))}

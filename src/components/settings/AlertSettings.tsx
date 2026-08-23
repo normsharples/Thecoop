@@ -108,9 +108,9 @@ function SeverityBadge({ severity }: { severity: "warning" | "urgent" | "critica
     <span
       className={cn(
         "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-        severity === "urgent" && "bg-red-500/10 text-red-500",
-        severity === "warning" && "bg-amber-500/10 text-amber-500",
-        severity === "critical" && "bg-red-700/10 text-red-700"
+        severity === "urgent" && "bg-destructive/10 text-destructive",
+        severity === "warning" && "bg-warning/10 text-warning",
+        severity === "critical" && "bg-destructive/10 text-destructive"
       )}
     >
       {severity}
@@ -430,7 +430,7 @@ function AlertHistoryTable() {
         <h3 className="text-sm font-semibold text-card-foreground">
           Alert History
           {unacknowledged.length > 0 && (
-            <span className="ml-2 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500">
+            <span className="ml-2 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
               {unacknowledged.length} unacknowledged
             </span>
           )}
@@ -475,7 +475,7 @@ function AlertHistoryTable() {
                 key={row.id}
                 className={cn(
                   "border-b border-border last:border-0 px-5 py-3.5",
-                  !row.acknowledged && "bg-amber-500/5"
+                  !row.acknowledged && "bg-warning/5"
                 )}
               >
                 {/* Mobile */}
@@ -504,7 +504,7 @@ function AlertHistoryTable() {
                         Acknowledge
                       </button>
                     ) : (
-                      <span className="text-xs text-green-500 flex items-center gap-1">
+                      <span className="text-xs text-success flex items-center gap-1">
                         <Check className="h-3 w-3" />
                         Acknowledged
                       </span>
@@ -541,7 +541,7 @@ function AlertHistoryTable() {
                         Ack
                       </button>
                     ) : (
-                      <span className="text-xs text-green-500 flex items-center gap-1">
+                      <span className="text-xs text-success flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3" />
                         Done
                       </span>

@@ -53,7 +53,7 @@ interface CountWithMeta extends StockCount {
 const STATUS_CONFIG = {
   draft:     { label: "Draft",     colour: "bg-muted text-muted-foreground",    icon: Pencil       },
   submitted: { label: "Submitted", colour: "bg-blue-500/10 text-blue-500",      icon: Clock        },
-  approved:  { label: "Approved",  colour: "bg-green-500/10 text-green-500",    icon: CheckCircle2 },
+  approved:  { label: "Approved",  colour: "bg-success/10 text-success",    icon: CheckCircle2 },
 } as const;
 
 function StatusBadge({ status }: { status: StockCount["status"] }) {
@@ -256,10 +256,10 @@ export default function StockCountsPage() {
 
       {/* No food cost items warning */}
       {!isAllRestaurants && foodCostItems.length === 0 && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-3">
-          <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 flex items-start gap-3">
+          <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-amber-600">No food cost items set up</p>
+            <p className="text-sm font-medium text-warning">No food cost items set up</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               Go to <strong>Settings → Food Cost Items</strong> to add items before running a stock count.
             </p>
@@ -367,7 +367,7 @@ export default function StockCountsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-green-600 border-green-200 hover:bg-green-50 dark:hover:bg-green-950"
+                          className="text-success border-success/30 hover:bg-success-soft dark:hover:bg-success-soft"
                           onClick={(e) => {
                             e.stopPropagation();
                             updateStatus({ id: count.id, status: "approved", approverId: profile!.id });

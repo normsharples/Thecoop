@@ -66,13 +66,13 @@ export function ChannelSalesCard({
         {trend !== null ? (
           <>
             {trend > 0 ? (
-              <TrendingUp className="h-4 w-4 text-green-500" />
+              <TrendingUp className="h-4 w-4 text-success" />
             ) : trend < 0 ? (
-              <TrendingDown className="h-4 w-4 text-red-500" />
+              <TrendingDown className="h-4 w-4 text-destructive" />
             ) : (
               <Minus className="h-4 w-4 text-muted-foreground" />
             )}
-            <span className={cn("text-sm font-medium", trend >= 0 ? "text-green-500" : "text-red-500")}>
+            <span className={cn("text-sm font-medium", trend >= 0 ? "text-success" : "text-destructive")}>
               {trend > 0 ? "+" : ""}{trend.toFixed(1)}%
             </span>
           </>

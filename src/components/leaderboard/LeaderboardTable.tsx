@@ -17,7 +17,7 @@ import type { LeaderboardRow, LeaderboardWeights } from "@/hooks/useLeaderboardD
 function RankMedal({ rank }: { rank: number }) {
   if (rank === 1)
     return (
-      <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-yellow-500/15 text-yellow-500 text-sm font-bold">
+      <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-warning/15 text-warning text-sm font-bold">
         1
       </span>
     );
@@ -29,7 +29,7 @@ function RankMedal({ rank }: { rank: number }) {
     );
   if (rank === 3)
     return (
-      <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-amber-700/15 text-amber-700 text-sm font-bold">
+      <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-warning/15 text-warning text-sm font-bold">
         3
       </span>
     );
@@ -46,9 +46,9 @@ function MovementBadge({
   movement: LeaderboardRow["movement"];
 }) {
   if (movement === "up")
-    return <TrendingUp className="h-4 w-4 text-green-500" />;
+    return <TrendingUp className="h-4 w-4 text-success" />;
   if (movement === "down")
-    return <TrendingDown className="h-4 w-4 text-red-500" />;
+    return <TrendingDown className="h-4 w-4 text-destructive" />;
   if (movement === "new")
     return (
       <span className="text-xs text-primary font-semibold">NEW</span>
@@ -62,10 +62,10 @@ function ScoreBar({ score }: { score: number }) {
   }
   const color =
     score >= 90
-      ? "bg-green-500"
+      ? "bg-success"
       : score >= 70
-      ? "bg-amber-500"
-      : "bg-red-500";
+      ? "bg-warning"
+      : "bg-destructive";
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
@@ -282,7 +282,7 @@ export default function LeaderboardTable({
                     </p>
                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                       {row.hasPartialData && (
-                        <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                        <AlertCircle className="h-3.5 w-3.5 text-warning" />
                       )}
                       <span className="text-sm font-bold tabular-nums text-foreground">
                         {row.noData ? "—" : row.compositeScore.toFixed(1)}
@@ -333,7 +333,7 @@ export default function LeaderboardTable({
                     {row.restaurantName}
                   </p>
                   {row.hasPartialData && (
-                    <AlertCircle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                    <AlertCircle className="h-3.5 w-3.5 text-warning flex-shrink-0" />
                   )}
                 </div>
                 {/* Net Sales */}
@@ -400,10 +400,10 @@ export default function LeaderboardTable({
                       className={cn(
                         "text-base font-bold tabular-nums",
                         row.compositeScore >= 90
-                          ? "text-green-500"
+                          ? "text-success"
                           : row.compositeScore >= 70
-                          ? "text-amber-500"
-                          : "text-red-500"
+                          ? "text-warning"
+                          : "text-destructive"
                       )}
                     >
                       {row.compositeScore.toFixed(1)}

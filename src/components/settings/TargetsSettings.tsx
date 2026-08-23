@@ -88,7 +88,7 @@ function SaveCell({
         <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 animate-spin text-muted-foreground" />
       )}
       {status === "saved" && (
-        <Check className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-green-500" />
+        <Check className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-success" />
       )}
     </div>
   );
@@ -489,7 +489,7 @@ export default function TargetsSettings() {
         <p className="text-sm text-muted-foreground">
           Set KPI targets per restaurant. All values auto-save 500ms after you
           stop typing — look for the{" "}
-          <Check className="inline h-3 w-3 text-green-500" /> indicator.
+          <Check className="inline h-3 w-3 text-success" /> indicator.
         </p>
       </div>
 

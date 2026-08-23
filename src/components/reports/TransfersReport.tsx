@@ -27,8 +27,8 @@ function getRange(p: Preset) {
 }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  in_transit: { label: "In transit", cls: "bg-amber-500/10 text-amber-600" },
-  received: { label: "Received", cls: "bg-green-500/10 text-green-600" },
+  in_transit: { label: "In transit", cls: "bg-warning/10 text-warning" },
+  received: { label: "Received", cls: "bg-success/10 text-success" },
   cancelled: { label: "Cancelled", cls: "bg-muted text-muted-foreground" },
 };
 
@@ -155,13 +155,13 @@ export default function TransfersReport() {
               return (
                 <div key={v.name} className="grid grid-cols-[1fr_110px_110px_110px] gap-2 px-4 py-2.5 items-center">
                   <span className="text-sm font-medium text-foreground">{v.name}</span>
-                  <span className="text-right text-sm tabular-nums text-green-600">
+                  <span className="text-right text-sm tabular-nums text-success">
                     <ArrowDownLeft className="inline h-3 w-3 mr-0.5" />{formatCurrency(v.inVal)}
                   </span>
-                  <span className="text-right text-sm tabular-nums text-amber-600">
+                  <span className="text-right text-sm tabular-nums text-warning">
                     <ArrowUpRight className="inline h-3 w-3 mr-0.5" />{formatCurrency(v.outVal)}
                   </span>
-                  <span className={cn("text-right text-sm tabular-nums font-semibold", net >= 0 ? "text-green-600" : "text-amber-600")}>
+                  <span className={cn("text-right text-sm tabular-nums font-semibold", net >= 0 ? "text-success" : "text-warning")}>
                     {net >= 0 ? "+" : ""}{formatCurrency(net)}
                   </span>
                 </div>

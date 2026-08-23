@@ -157,21 +157,21 @@ function recurringAmountInRange(templates: RecurringExpenseRow[], from: Date, to
 // ─── Colour helpers ───────────────────────────────────────────────────────────
 // Cost ratios: lower is better.
 function costText(pct: number, target: number) {
-  if (pct <= target) return "text-green-500";
-  if (pct <= target + 5) return "text-amber-500";
-  return "text-red-500";
+  if (pct <= target) return "text-success";
+  if (pct <= target + 5) return "text-warning";
+  return "text-destructive";
 }
 // Margin: higher is better.
 function marginText(pct: number) {
-  if (pct >= MARGIN_TARGET) return "text-green-500";
-  if (pct >= MARGIN_TARGET - 10) return "text-amber-500";
-  return "text-red-500";
+  if (pct >= MARGIN_TARGET) return "text-success";
+  if (pct >= MARGIN_TARGET - 10) return "text-warning";
+  return "text-destructive";
 }
 // Net margin (after overheads) uses a lower, more realistic benchmark.
 function netMarginText(pct: number) {
-  if (pct >= NET_MARGIN_TARGET) return "text-green-500";
-  if (pct >= NET_MARGIN_TARGET - 5) return "text-amber-500";
-  return "text-red-500";
+  if (pct >= NET_MARGIN_TARGET) return "text-success";
+  if (pct >= NET_MARGIN_TARGET - 5) return "text-warning";
+  return "text-destructive";
 }
 function netMarginColour(pct: number) {
   if (pct >= NET_MARGIN_TARGET) return "#22c55e";
@@ -199,8 +199,8 @@ function KpiCard({ label, value, sub, delta, deltaGoodDirection = "down", highli
             const Icon = delta > 0 ? TrendingUp : TrendingDown;
             return (
               <>
-                <Icon className={cn("h-3 w-3", isGood ? "text-green-500" : "text-red-500")} />
-                <span className={isGood ? "text-green-500" : "text-red-500"}>
+                <Icon className={cn("h-3 w-3", isGood ? "text-success" : "text-destructive")} />
+                <span className={isGood ? "text-success" : "text-destructive"}>
                   {delta > 0 ? "+" : ""}{formatPercent(delta)} vs prev
                 </span>
               </>
@@ -283,14 +283,14 @@ function TreeRow({ line, revenue, expanded, onToggle }: {
           <span className="text-xs text-muted-foreground tabular-nums w-11 text-right hidden sm:inline">
             {pct != null ? formatPercent(pct) : ""}
           </span>
-          <span className={cn("text-[11px] tabular-nums w-14 text-right hidden md:inline", change == null ? "text-muted-foreground/50" : changeGood ? "text-green-500" : "text-red-500")}>
+          <span className={cn("text-[11px] tabular-nums w-14 text-right hidden md:inline", change == null ? "text-muted-foreground/50" : changeGood ? "text-success" : "text-destructive")}>
             {change != null ? `${change > 0 ? "+" : ""}${formatPercent(change)}` : "—"}
           </span>
           <span className={cn(
             "text-sm tabular-nums w-24 text-right",
             bold ? "font-bold" : "font-medium",
-            line.kind === "netTotal" ? (line.amount >= 0 ? "text-green-500" : "text-red-500")
-              : isCost ? "text-red-500" : "text-foreground"
+            line.kind === "netTotal" ? (line.amount >= 0 ? "text-success" : "text-destructive")
+              : isCost ? "text-destructive" : "text-foreground"
           )}>
             {isCost && line.amount !== 0 ? "− " : ""}{formatCurrency(Math.abs(line.amount))}
           </span>
@@ -1001,7 +1001,7 @@ export default function PnLReport() {
           label="Operating Profit"
           value={formatCurrency(operatingProfit)}
           sub="Revenue − COGS − Labour"
-          highlight={operatingProfit >= 0 ? "text-green-500" : "text-red-500"}
+          highlight={operatingProfit >= 0 ? "text-success" : "text-destructive"}
         />
         <KpiCard
           label="Operating Margin"
@@ -1023,7 +1023,7 @@ export default function PnLReport() {
           label="Net Profit"
           value={formatCurrency(netProfit)}
           sub="Operating Profit − Overheads − Transaction Fees"
-          highlight={netProfit >= 0 ? "text-green-500" : "text-red-500"}
+          highlight={netProfit >= 0 ? "text-success" : "text-destructive"}
         />
         <KpiCard
           label="Net Margin"
@@ -1158,7 +1158,7 @@ export default function PnLReport() {
                         <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatCurrency(row.labour)}</td>
                         <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatCurrency(row.overhead)}</td>
                         <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground hidden lg:table-cell">{formatCurrency(row.fees)}</td>
-                        <td className={cn("px-4 py-2.5 text-xs text-right font-semibold tabular-nums", row.profit >= 0 ? "text-green-500" : "text-red-500")}>
+                        <td className={cn("px-4 py-2.5 text-xs text-right font-semibold tabular-nums", row.profit >= 0 ? "text-success" : "text-destructive")}>
                           {formatCurrency(row.profit)}
                         </td>
                         <td className={cn("px-4 py-2.5 text-xs text-right font-semibold tabular-nums", row.margin != null ? netMarginText(row.margin) : "text-muted-foreground")}>
@@ -1175,7 +1175,7 @@ export default function PnLReport() {
                       <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground">{formatCurrency(labourCost)}</td>
                       <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground">{formatCurrency(totalOverheads)}</td>
                       <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground hidden lg:table-cell">{formatCurrency(transactionFees)}</td>
-                      <td className={cn("px-4 py-2.5 text-xs text-right font-bold tabular-nums", netProfit >= 0 ? "text-green-500" : "text-red-500")}>
+                      <td className={cn("px-4 py-2.5 text-xs text-right font-bold tabular-nums", netProfit >= 0 ? "text-success" : "text-destructive")}>
                         {formatCurrency(netProfit)}
                       </td>
                       <td className={cn("px-4 py-2.5 text-xs text-right font-bold tabular-nums", netMarginPct != null ? netMarginText(netMarginPct) : "text-muted-foreground")}>
@@ -1216,7 +1216,7 @@ export default function PnLReport() {
                           <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatCurrency(row.labour)}</td>
                           <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatCurrency(row.overhead)}</td>
                           <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground hidden lg:table-cell">{formatCurrency(row.fees)}</td>
-                          <td className={cn("px-4 py-2.5 text-xs text-right font-semibold tabular-nums", row.profit >= 0 ? "text-green-500" : "text-red-500")}>
+                          <td className={cn("px-4 py-2.5 text-xs text-right font-semibold tabular-nums", row.profit >= 0 ? "text-success" : "text-destructive")}>
                             {formatCurrency(row.profit)}
                           </td>
                           <td className={cn("px-4 py-2.5 text-xs text-right font-semibold tabular-nums", row.margin != null ? netMarginText(row.margin) : "text-muted-foreground")}>
@@ -1234,7 +1234,7 @@ export default function PnLReport() {
                           <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground">{formatCurrency(labourCost)}</td>
                           <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground">{formatCurrency(totalOverheads)}</td>
                           <td className="px-4 py-2.5 text-xs text-right font-semibold tabular-nums text-foreground hidden lg:table-cell">{formatCurrency(transactionFees)}</td>
-                          <td className={cn("px-4 py-2.5 text-xs text-right font-bold tabular-nums", netProfit >= 0 ? "text-green-500" : "text-red-500")}>
+                          <td className={cn("px-4 py-2.5 text-xs text-right font-bold tabular-nums", netProfit >= 0 ? "text-success" : "text-destructive")}>
                             {formatCurrency(netProfit)}
                           </td>
                           <td className={cn("px-4 py-2.5 text-xs text-right font-bold tabular-nums", netMarginPct != null ? netMarginText(netMarginPct) : "text-muted-foreground")}>
@@ -1348,18 +1348,18 @@ export default function PnLReport() {
 
           {/* Labour by day count (fallback context when no COGS/labour breakdown exists) */}
           {labourRows.length === 0 && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 flex items-center gap-2">
-              <Users className="h-4 w-4 text-amber-500 shrink-0" />
-              <p className="text-xs text-amber-700 dark:text-amber-400">
+            <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 flex items-center gap-2">
+              <Users className="h-4 w-4 text-warning shrink-0" />
+              <p className="text-xs text-warning dark:text-warning">
                 No labour data for this period — Net Profit currently only deducts COGS and overheads.
                 Add labour figures in Reports → Labour or via manual entry for a complete P&amp;L.
               </p>
             </div>
           )}
           {oneOffExpenses.length === 0 && recurringExpenses.length === 0 && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 flex items-center gap-2">
-              <Landmark className="h-4 w-4 text-amber-500 shrink-0" />
-              <p className="text-xs text-amber-700 dark:text-amber-400">
+            <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 flex items-center gap-2">
+              <Landmark className="h-4 w-4 text-warning shrink-0" />
+              <p className="text-xs text-warning dark:text-warning">
                 No overhead expenses recorded — Net Profit currently equals Operating Profit.
                 Add rent, utilities, insurance and other overheads in Admin → Expenses for a complete P&amp;L.
               </p>

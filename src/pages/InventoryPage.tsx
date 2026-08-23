@@ -18,12 +18,12 @@ import type { InventoryMovementType } from "@/types";
 // Movement type → label + colour for the drill-down ledger.
 const MOVE_META: Record<InventoryMovementType, { label: string; tone: string }> = {
   opening:          { label: "Opening",     tone: "text-slate-500" },
-  purchase:         { label: "Purchase",    tone: "text-green-600" },
-  transfer_in:      { label: "Transfer in", tone: "text-green-600" },
+  purchase:         { label: "Purchase",    tone: "text-success" },
+  transfer_in:      { label: "Transfer in", tone: "text-success" },
   sale_depletion:   { label: "Sale",        tone: "text-blue-500" },
-  waste:            { label: "Waste",       tone: "text-red-500" },
-  transfer_out:     { label: "Transfer out",tone: "text-amber-600" },
-  in_transit_loss:  { label: "Transit loss",tone: "text-red-500" },
+  waste:            { label: "Waste",       tone: "text-destructive" },
+  transfer_out:     { label: "Transfer out",tone: "text-warning" },
+  in_transit_loss:  { label: "Transit loss",tone: "text-destructive" },
   count_adjustment: { label: "Count adjust",tone: "text-purple-500" },
 };
 
@@ -62,7 +62,7 @@ function ItemMovements({
               <tr key={m.id} className="border-t border-border/50">
                 <td className="py-1 tabular-nums">{format(parseISO(m.movement_date), "d MMM yy")}</td>
                 <td className={cn("py-1 font-medium", meta?.tone)}>{meta?.label ?? m.movement_type}</td>
-                <td className={cn("py-1 text-right tabular-nums", m.qty_delta < 0 ? "text-red-500" : "text-green-600")}>
+                <td className={cn("py-1 text-right tabular-nums", m.qty_delta < 0 ? "text-destructive" : "text-success")}>
                   {m.qty_delta > 0 ? "+" : ""}{m.qty_delta}
                 </td>
                 <td className="py-1 text-right tabular-nums text-muted-foreground">{formatCurrency(m.unit_cost)}</td>
@@ -124,12 +124,12 @@ export default function InventoryPage() {
           <p className="text-xs text-muted-foreground mb-1">Tracked Items</p>
           <p className="text-xl font-bold tabular-nums text-foreground">{rows.length}</p>
         </div>
-        <div className={cn("rounded-xl border p-4", negativeCount > 0 ? "border-red-500/40 bg-red-500/5" : "border-border bg-card")}>
+        <div className={cn("rounded-xl border p-4", negativeCount > 0 ? "border-destructive/40 bg-destructive/5" : "border-border bg-card")}>
           <div className="flex items-center gap-1.5 mb-1">
-            {negativeCount > 0 && <AlertTriangle className="h-3 w-3 text-red-500" />}
+            {negativeCount > 0 && <AlertTriangle className="h-3 w-3 text-destructive" />}
             <p className="text-xs text-muted-foreground">Negative on Hand</p>
           </div>
-          <p className={cn("text-xl font-bold tabular-nums", negativeCount > 0 ? "text-red-500" : "text-foreground")}>
+          <p className={cn("text-xl font-bold tabular-nums", negativeCount > 0 ? "text-destructive" : "text-foreground")}>
             {negativeCount}
           </p>
         </div>
@@ -184,14 +184,14 @@ export default function InventoryPage() {
                       <p className="text-sm font-medium text-foreground truncate">{item?.name}</p>
                       <p className="text-xs text-muted-foreground">{item?.category}</p>
                     </div>
-                    <span className={cn("text-right text-sm tabular-nums font-semibold", neg && "text-red-500")}>
+                    <span className={cn("text-right text-sm tabular-nums font-semibold", neg && "text-destructive")}>
                       {neg && <AlertTriangle className="inline h-3 w-3 mr-1 -mt-0.5" />}
                       {l.qty_on_hand} {item?.unit}
                     </span>
                     <span className="text-right text-sm tabular-nums text-muted-foreground">
                       {formatCurrency(l.avg_cost)}
                     </span>
-                    <span className={cn("text-right text-sm tabular-nums font-semibold", neg && "text-red-500")}>
+                    <span className={cn("text-right text-sm tabular-nums font-semibold", neg && "text-destructive")}>
                       {formatCurrency(l.total_value)}
                     </span>
                     <span className="flex justify-end text-muted-foreground">

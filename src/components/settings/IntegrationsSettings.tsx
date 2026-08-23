@@ -28,13 +28,13 @@ function StatusBadge({
 }) {
   if (status === "success")
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-green-500">
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
         <CheckCircle2 className="h-3.5 w-3.5" /> Connected
       </span>
     );
   if (status === "error")
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-red-500">
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
         <XCircle className="h-3.5 w-3.5" /> Error
       </span>
     );
@@ -177,7 +177,7 @@ function LightspeedCard({
             <p className="text-sm font-medium text-foreground">{restaurant.name}</p>
             <p className="text-xs text-muted-foreground mt-0.5">No POS integration</p>
           </div>
-          <span className="inline-flex items-center rounded-md bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-500">
+          <span className="inline-flex items-center rounded-md bg-warning/10 px-2 py-1 text-xs font-semibold text-warning">
             Manual Entry Only
           </span>
         </div>
@@ -222,7 +222,7 @@ function LightspeedCard({
       </div>
 
       {credential?.sync_error && (
-        <div className="flex items-start gap-2 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-500">
+        <div className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
           <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
           {credential.sync_error}
         </div>
@@ -369,8 +369,8 @@ function SyncLogsTable({
                         className={cn(
                           "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
                           log.status === "success" &&
-                            "bg-green-500/10 text-green-500",
-                          log.status === "error" && "bg-red-500/10 text-red-500",
+                            "bg-success/10 text-success",
+                          log.status === "error" && "bg-destructive/10 text-destructive",
                           log.status === "skipped" &&
                             "bg-muted/60 text-muted-foreground"
                         )}
@@ -378,7 +378,7 @@ function SyncLogsTable({
                         {log.status}
                       </span>
                       {log.error_message && (
-                        <p className="mt-0.5 text-xs text-red-500 max-w-xs truncate">
+                        <p className="mt-0.5 text-xs text-destructive max-w-xs truncate">
                           {log.error_message}
                         </p>
                       )}
@@ -780,7 +780,7 @@ export default function IntegrationsSettings() {
             </p>
           )}
           {deputySetting?.sync_error && (
-            <div className="flex items-start gap-2 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-500">
+            <div className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
               <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
               {deputySetting.sync_error}
             </div>
@@ -884,7 +884,7 @@ export default function IntegrationsSettings() {
             </p>
           )}
           {googleSetting?.sync_error && (
-            <div className="flex items-start gap-2 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-500">
+            <div className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
               <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
               {googleSetting.sync_error}
             </div>

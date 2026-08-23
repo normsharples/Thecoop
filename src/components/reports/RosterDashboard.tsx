@@ -77,11 +77,11 @@ function KpiCard({
 }) {
   const toneClass =
     tone === "green"
-      ? "text-green-500"
+      ? "text-success"
       : tone === "amber"
-      ? "text-yellow-500"
+      ? "text-warning"
       : tone === "red"
-      ? "text-red-500"
+      ? "text-destructive"
       : "text-foreground";
   return (
     <div className="rounded-xl border border-border bg-card p-4">
@@ -140,7 +140,7 @@ function NotesPanel({
           </span>
         )}
         {status === "saved" && (
-          <span className="flex items-center gap-1 text-xs text-green-500">
+          <span className="flex items-center gap-1 text-xs text-success">
             <Check className="h-3 w-3" /> Saved
           </span>
         )}
@@ -371,7 +371,7 @@ export default function RosterDashboard() {
       </div>
 
       {latest?.status === "error" && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-500">
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           Last refresh failed{latest.error_message ? `: ${latest.error_message}` : "."}
         </div>
@@ -379,7 +379,7 @@ export default function RosterDashboard() {
 
       {/* Missing-config nudges */}
       {spmhTarget <= 0 && (
-        <div className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-600 dark:text-yellow-500">
+        <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning dark:text-warning">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           No SPMH target set for this store — required hours fall back to the
           minimum floor only. Set it in Settings → Targets.

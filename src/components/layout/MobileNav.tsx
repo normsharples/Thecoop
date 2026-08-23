@@ -18,6 +18,8 @@ import {
   Wallet,
   TrendingUp,
   Receipt,
+  CalendarRange,
+  UserRound,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
@@ -32,13 +34,29 @@ const mobileTabItems = [
 // bar since there's no "More" sheet needed for just three destinations.
 const staffTabItems = [
   { label: "Incidents",   path: "/admin/incidents", icon: AlertTriangle },
-  { label: "Cash",        path: "/admin/cash",      icon: Banknote },
+  { label: "Cash Up",     path: "/admin/cash",      icon: Banknote },
   { label: "Invoices",    path: "/admin/invoices",  icon: Receipt },
+  { label: "Availability", path: "/my-availability", icon: CalendarDays },
+];
+
+const teamMemberTabItems = [
+  { label: "My Roster", path: "/my-roster", icon: CalendarRange },
+  { label: "My Profile", path: "/my-profile", icon: UserRound },
+];
+
+const supervisorTabItems = [
+  { label: "Roster",       path: "/roster-view",     icon: CalendarRange },
+  { label: "My Roster",    path: "/my-roster",       icon: CalendarDays },
+  { label: "Incidents",    path: "/admin/incidents", icon: AlertTriangle },
+  { label: "Cash Up",      path: "/admin/cash",      icon: Banknote },
 ];
 
 const moreItems = [
+  { label: "Rostering",       path: "/rostering",               icon: CalendarRange },
+  { label: "My Availability", path: "/my-availability",         icon: CalendarDays },
+  { label: "My Profile",      path: "/my-profile",              icon: UserRound },
   { label: "WHS Audits",      path: "/admin/whs-audits",       icon: Shield },
-  { label: "Cash & Deposits", path: "/admin/cash",             icon: Banknote },
+  { label: "Banking", path: "/admin/cash",             icon: Banknote },
   { label: "Purchase Orders", path: "/admin/purchase-orders",  icon: ClipboardList },
   { label: "Expenses",        path: "/admin/expenses",         icon: Wallet },
   { label: "Stock Counts",    path: "/admin/stock-counts",     icon: ClipboardList },
@@ -53,9 +71,16 @@ const moreItems = [
 export function MobileNav() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const location = useLocation();
-  const { isSuperadmin, isStaff } = usePermissions();
+  const { isSuperadmin, isStaff, isTeamMember, isShiftSupervisor } = usePermissions();
 
-  const filteredTabItems = isStaff ? staffTabItems : mobileTabItems;
+  const filteredTabItems = isTeamMember
+    ? teamMemberTabItems
+    : isShiftSupervisor
+    ? supervisorTabItems
+    : isStaff
+    ? staffTabItems
+    : mobileTabItems;
+  const hideMore = isStaff || isTeamMember || isShiftSupervisor;
 
   const filteredMoreItems = moreItems.filter(
     (item) => !item.superadminOnly || isSuperadmin
@@ -84,7 +109,7 @@ export function MobileNav() {
             </NavLink>
           );
         })}
-        {!isStaff && (
+        {!hideMore && (
           <button
             onClick={() => setSheetOpen(true)}
             className={cn(
@@ -99,7 +124,7 @@ export function MobileNav() {
       </nav>
 
       {/* Slide-up sheet */}
-      {!isStaff && sheetOpen && (
+      {!hideMore && sheetOpen && (
         <>
           <div
             className="fixed inset-0 z-50 bg-black/50 lg:hidden"
@@ -127,7 +152,7 @@ export function MobileNav() {
                   className={cn(
                     "flex flex-col items-center gap-1.5 rounded-xl p-3 text-xs font-medium transition-colors",
                     location.pathname.startsWith(item.path)
-                      ? "bg-primary/10 text-primary"
+                      ? "bg-primary-softer text-primary"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground"
                   )}
                 >

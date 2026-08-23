@@ -46,7 +46,7 @@ import {
 import type { CashOutItem } from "@/types";
 
 export default function CashDepositsPage() {
-  const { isStaff } = usePermissions();
+  const { isStaff, isShiftSupervisor } = usePermissions();
   const { selectedRestaurantId } = useSelectedRestaurant();
   const { data: restaurants = [] } = useRestaurants();
   const restaurant = restaurants.find((r) => r.id === selectedRestaurantId);
@@ -61,7 +61,7 @@ export default function CashDepositsPage() {
 
   // Staff log a daily till reconciliation instead of bank deposits — they
   // can't create or view cash_deposits records (RLS-enforced, migration 022).
-  if (isStaff) {
+  if (isStaff || isShiftSupervisor) {
     return <CashUpView restaurantId={selectedRestaurantId} restaurantName={restaurant?.name} />;
   }
 
@@ -561,7 +561,7 @@ function AdminCashDepositsView({ restaurantId, restaurantName }: { restaurantId:
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Banknote className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold text-foreground">Cash &amp; Deposits</h2>
+        <h2 className="text-lg font-semibold text-foreground">Banking</h2>
         {restaurantName && (
           <span className="text-sm text-muted-foreground">— {restaurantName}</span>
         )}
@@ -767,7 +767,7 @@ function AdminCashDepositsView({ restaurantId, restaurantName }: { restaurantId:
                     </TableCell>
                     <TableCell className="text-center">
                       {deposit.verified ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" />
+                        <CheckCircle2 className="h-4 w-4 text-success mx-auto" />
                       ) : (
                         <AlertCircle className="h-4 w-4 text-muted-foreground mx-auto" />
                       )}

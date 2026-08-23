@@ -190,7 +190,7 @@ function PurchaseUnitsEditor({
       </div>
 
       {item.supplier ? null : (
-        <p className="text-xs text-amber-600">
+        <p className="text-xs text-warning">
           Set this item's Supplier field above to auto-calculate cost per {item.unit || "unit"} from
           the supplier's price.
         </p>

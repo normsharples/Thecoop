@@ -14,9 +14,9 @@ function StatusDot({ status }: { status: Status }) {
     <span
       className={cn(
         "inline-block h-2.5 w-2.5 rounded-full",
-        status === "success" && "bg-green-500",
-        status === "warning" && "bg-amber-500",
-        status === "destructive" && "bg-red-500"
+        status === "success" && "bg-success",
+        status === "warning" && "bg-warning",
+        status === "destructive" && "bg-destructive"
       )}
     />
   );
@@ -149,7 +149,7 @@ export function WeeklyStatsCards({
                 <div className="flex flex-col items-end gap-0.5">
                   <div className="flex items-center gap-2">
                     {yoyPct !== null && (
-                      <span className={cn("text-xs font-medium", yoyPct >= 0 ? "text-green-500" : "text-red-400")}>
+                      <span className={cn("text-xs font-medium", yoyPct >= 0 ? "text-success" : "text-destructive")}>
                         {yoyPct >= 0 ? "+" : ""}{yoyPct.toFixed(1)}% YoY
                       </span>
                     )}
@@ -169,8 +169,8 @@ export function WeeklyStatsCards({
                   <span
                     className={cn(
                       "text-sm font-medium",
-                      labourPct !== null && labourStatus(labourPct) === "destructive" && "text-red-400",
-                      labourPct !== null && labourStatus(labourPct) === "warning" && "text-amber-400"
+                      labourPct !== null && labourStatus(labourPct) === "destructive" && "text-destructive",
+                      labourPct !== null && labourStatus(labourPct) === "warning" && "text-warning"
                     )}
                   >
                     {labourPct !== null ? formatPercent(labourPct) : "—"}

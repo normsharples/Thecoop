@@ -84,9 +84,9 @@ function pctColour(pct: number) {
   return "#ef4444";
 }
 function pctText(pct: number) {
-  if (pct <= 28) return "text-green-500";
-  if (pct <= 33) return "text-amber-500";
-  return "text-red-500";
+  if (pct <= 28) return "text-success";
+  if (pct <= 33) return "text-warning";
+  return "text-destructive";
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -105,8 +105,8 @@ function KpiCard({ label, value, sub, delta, highlight }: {
           {delta === 0
             ? <><Minus className="h-3 w-3 text-muted-foreground" /><span className="text-muted-foreground">No change</span></>
             : delta > 0
-            ? <><TrendingUp className="h-3 w-3 text-red-500" /><span className="text-red-500">+{formatPercent(delta)} vs prev</span></>
-            : <><TrendingDown className="h-3 w-3 text-green-500" /><span className="text-green-500">{formatPercent(delta)} vs prev</span></>
+            ? <><TrendingUp className="h-3 w-3 text-destructive" /><span className="text-destructive">+{formatPercent(delta)} vs prev</span></>
+            : <><TrendingDown className="h-3 w-3 text-success" /><span className="text-success">{formatPercent(delta)} vs prev</span></>
           }
         </div>
       )}
@@ -421,7 +421,7 @@ export default function FoodCostReport() {
           label="vs Target"
           value={foodCostPct != null ? (foodCostPct - FOOD_COST_TARGET > 0 ? "+" : "") + formatPercent(foodCostPct - FOOD_COST_TARGET) : "—"}
           sub={foodCostPct != null ? (foodCostPct <= FOOD_COST_TARGET ? "On target" : "Over target") : undefined}
-          highlight={foodCostPct != null ? (foodCostPct <= FOOD_COST_TARGET ? "text-green-500" : "text-red-500") : undefined}
+          highlight={foodCostPct != null ? (foodCostPct <= FOOD_COST_TARGET ? "text-success" : "text-destructive") : undefined}
         />
       </div>
 
@@ -446,7 +446,7 @@ export default function FoodCostReport() {
               ? stockVariance > 0 ? "↑ Projected higher than actual" : stockVariance < 0 ? "↓ More stock than expected" : "Matches projection"
               : undefined}
             highlight={stockVariance != null
-              ? stockVariance > 500 ? "text-red-500" : stockVariance > 0 ? "text-amber-500" : "text-green-500"
+              ? stockVariance > 500 ? "text-destructive" : stockVariance > 0 ? "text-warning" : "text-success"
               : undefined}
           />
           <KpiCard
@@ -479,36 +479,36 @@ export default function FoodCostReport() {
             <div className="p-5 space-y-5">
               {/* Missing count warnings */}
               {openingCounts.length === 0 && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
-                  <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5">
+                  <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                  <p className="text-xs text-warning dark:text-warning">
                     No approved stock count found <strong>before {format(parseISO(range.from), "d MMM yyyy")}</strong>.
                     Complete and approve a count before this period to calculate Net Food Cost.
                   </p>
                 </div>
               )}
               {openingCounts.length > 0 && closingCounts.length === 0 && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
-                  <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5">
+                  <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                  <p className="text-xs text-warning dark:text-warning">
                     No approved stock count found <strong>within this period</strong>.
                     Complete and approve a closing count to calculate Net Food Cost.
                   </p>
                 </div>
               )}
               {isAllRestaurants && openingCounts.length > 0 && openingCounts.length < scopedIds.length && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
-                  <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5">
+                  <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                  <p className="text-xs text-warning dark:text-warning">
                     Opening counts found for <strong>{openingCounts.length} of {scopedIds.length} restaurants</strong>.
                     Totals only include restaurants with an approved count before this period.
                   </p>
                 </div>
               )}
               {isAllRestaurants && closingCounts.length > 0 && closingCounts.length < scopedIds.length && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5">
-                  <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5">
+                  <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                  <p className="text-xs text-warning dark:text-warning">
                     Closing counts found for <strong>{closingCounts.length} of {scopedIds.length} restaurants</strong>.
                     Totals only include restaurants with an approved count within this period.
                   </p>
@@ -623,12 +623,12 @@ export default function FoodCostReport() {
                     </div>
                     <div className={cn(
                       "flex items-center justify-between px-4 py-2.5",
-                      stockVariance! > 500 ? "bg-red-500/5" : stockVariance! > 0 ? "bg-amber-500/5" : "bg-green-500/5"
+                      stockVariance! > 500 ? "bg-destructive/5" : stockVariance! > 0 ? "bg-warning/5" : "bg-success/5"
                     )}>
                       <div>
                         <p className={cn(
                           "text-sm font-semibold",
-                          stockVariance! > 500 ? "text-red-600" : stockVariance! > 0 ? "text-amber-600" : "text-green-600"
+                          stockVariance! > 500 ? "text-destructive" : stockVariance! > 0 ? "text-warning" : "text-success"
                         )}>
                           {stockVariance! > 0 ? "Unaccounted Usage / Shrinkage" : stockVariance! < 0 ? "Stock Surplus" : "Matches Projection"}
                         </p>
@@ -642,7 +642,7 @@ export default function FoodCostReport() {
                       </div>
                       <p className={cn(
                         "text-sm font-bold tabular-nums",
-                        stockVariance! > 500 ? "text-red-600" : stockVariance! > 0 ? "text-amber-600" : "text-green-600"
+                        stockVariance! > 500 ? "text-destructive" : stockVariance! > 0 ? "text-warning" : "text-success"
                       )}>
                         {stockVariance! > 0 ? "−" : stockVariance! < 0 ? "+" : ""}
                         {formatCurrency(Math.abs(stockVariance!))}
@@ -706,9 +706,9 @@ export default function FoodCostReport() {
                             <td className={cn(
                               "px-4 py-2.5 text-xs text-right tabular-nums",
                               variance === null ? "text-muted-foreground/40"
-                                : variance > 500 ? "text-red-500 font-medium"
-                                : variance > 0 ? "text-amber-500"
-                                : "text-green-500"
+                                : variance > 500 ? "text-destructive font-medium"
+                                : variance > 0 ? "text-warning"
+                                : "text-success"
                             )}>
                               {variance !== null
                                 ? (variance > 0 ? "−" : variance < 0 ? "+" : "") + formatCurrency(Math.abs(variance))
@@ -729,7 +729,7 @@ export default function FoodCostReport() {
                           {netFoodCost !== null ? formatCurrency(netFoodCost) : "—"}
                         </td>
                         <td className={cn("px-4 py-2.5 text-xs text-right font-bold tabular-nums",
-                          stockVariance! > 500 ? "text-red-500" : stockVariance! > 0 ? "text-amber-500" : "text-green-500")}>
+                          stockVariance! > 500 ? "text-destructive" : stockVariance! > 0 ? "text-warning" : "text-success")}>
                           {stockVariance !== null
                             ? (stockVariance > 0 ? "−" : stockVariance < 0 ? "+" : "") + formatCurrency(Math.abs(stockVariance))
                             : "—"}

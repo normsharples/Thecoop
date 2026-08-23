@@ -4,71 +4,137 @@
 
 @layer base {
   :root {
-    /* ── The Coop Brand Palette ──────────────────────────────────────────── */
-    /* Gold  #C9A84C → hsl(44 54% 54%)                                       */
-    /* Brown #5C3D2E → hsl(20 33% 27%)                                       */
-    /* Cream #F5F3EF → hsl(40 23% 95%)                                       */
+    /* ── The Coop — navy / teal, high contrast ─────────────────────────────
+       Neutrals    #101828 #1D2939 #344054 #475467 #667085 #98A2B3
+                   #D0D5DD #E4E7EC #EAECF0 #EDF0F5 #F2F4F7 #F7F8FA #FAFBFC
+       Navy        #1E4A8C  (primary)   #15366B hover   #2C5FA8 light
+       Teal        #0E7C66  (positive)  #ECFDF3 tint
+       Amber       #B54708  (watch)     #FFFAEB tint
+       Red         #B42318  (off track) #FEF3F2 tint
+       ------------------------------------------------------------------ */
 
-    --background: 0 0% 100%;            /* #FFFFFF                           */
-    --foreground: 0 0% 18%;             /* #2D2D2D                           */
-    --card: 0 0% 100%;                  /* #FFFFFF                           */
-    --card-foreground: 0 0% 18%;        /* #2D2D2D                           */
-    --popover: 0 0% 100%;              /* #FFFFFF                           */
-    --popover-foreground: 0 0% 18%;    /* #2D2D2D                           */
-    --primary: 44 54% 54%;              /* #C9A84C  Gold                     */
-    --primary-foreground: 0 0% 100%;    /* #FFFFFF                           */
-    --secondary: 40 23% 95%;            /* #F5F3EF  Cream                    */
-    --secondary-foreground: 20 33% 27%; /* #5C3D2E  Brown                    */
-    --muted: 40 23% 95%;                /* #F5F3EF  Cream                    */
-    --muted-foreground: 0 0% 45%;       /* #737373                           */
-    --accent: 43 60% 58%;               /* #D4A853                           */
-    --accent-foreground: 0 0% 100%;     /* #FFFFFF                           */
-    --destructive: 0 72% 51%;           /* #DC2626                           */
+    --background: 220 23% 97%;             /* #F7F8FA  app canvas          */
+    --foreground: 220 43% 11%;             /* #101828                      */
+
+    --card: 0 0% 100%;                     /* #FFFFFF                      */
+    --card-foreground: 220 43% 11%;        /* #101828                      */
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 43% 11%;
+
+    --primary: 216 65% 33%;                /* #1E4A8C  navy                */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 216 24% 96%;              /* #F2F4F7                      */
+    --secondary-foreground: 217 24% 27%;   /* #344054                      */
+
+    --muted: 218 29% 94%;                  /* #EDF0F5                      */
+    --muted-foreground: 221 13% 46%;       /* #667085                      */
+
+    --accent: 216 24% 96%;                 /* #F2F4F7  hover surface       */
+    --accent-foreground: 220 43% 11%;      /* #101828                      */
+
+    --destructive: 4 76% 40%;              /* #B42318                      */
     --destructive-foreground: 0 0% 100%;
-    --success: 142 72% 40%;
+    --success: 168 80% 27%;                /* #0E7C66                      */
     --success-foreground: 0 0% 100%;
-    --warning: 44 54% 54%;              /* #C9A84C  Gold doubles as warning  */
+    --warning: 22 92% 37%;                 /* #B54708                      */
     --warning-foreground: 0 0% 100%;
-    --border: 0 0% 90%;                 /* #E6E6E6                           */
-    --input: 0 0% 90%;                  /* #E6E6E6                           */
-    --ring: 44 54% 54%;                 /* #C9A84C  Gold focus ring          */
+
+    --border: 218 17% 91%;                 /* #E4E7EC                      */
+    --input: 217 16% 84%;                  /* #D0D5DD                      */
+    --ring: 216 65% 33%;                   /* #1E4A8C                      */
     --radius: 0.5rem;
 
-    /* Brand tokens for direct use */
-    --brand-gold: 44 54% 54%;           /* #C9A84C */
-    --brand-brown: 20 33% 27%;          /* #5C3D2E */
-    --brand-cream: 40 23% 95%;          /* #F5F3EF */
+    /* ── Extended surface + status tokens ──────────────────────────────── */
+    --surface-subtle: 210 25% 98%;         /* #FAFBFC  table headers etc.  */
+    --surface-sunken: 218 29% 94%;         /* #EDF0F5  track / rail        */
+    --border-strong: 217 16% 84%;          /* #D0D5DD  control borders     */
+
+    --primary-hover: 217 67% 25%;          /* #15366B                      */
+    --primary-soft: 218 37% 88%;           /* #D6DEEC  chart fill, light   */
+    --primary-softer: 221 100% 97%;        /* #EFF4FF  tint background     */
+    --chart-2: 218 37% 80%;                /* #B8C6DE                      */
+
+    --success-soft: 145 81% 96%;           /* #ECFDF3                      */
+    --success-strong: 167 46% 42%;         /* #3A9C86                      */
+    --warning-soft: 45 100% 96%;           /* #FFFAEB                      */
+    --warning-strong: 42 99% 65%;          /* #FEC84B                      */
+    --destructive-soft: 5 86% 97%;         /* #FEF3F2                      */
+    --destructive-border: 4 96% 80%;       /* #FDA29B                      */
+    --info: 258 54% 52%;                   /* #6941C6                      */
+
+    /* Sidebar — a dark slab against the light canvas */
+    --sidebar: 220 43% 11%;                /* #101828                      */
+    --sidebar-foreground: 218 15% 65%;     /* #98A2B3                      */
+    --sidebar-active: 0 0% 100%;
+    --sidebar-active-bg: 214 33% 17%;      /* #1D2939                      */
+    --sidebar-border: 214 33% 17%;         /* #1D2939                      */
+    --sidebar-heading: 216 18% 34%;        /* #475467                      */
+    --sidebar-mark: 168 80% 27%;           /* #0E7C66  active rail         */
+
+    /* Brand accent — set at runtime per brand. Deliberately NOT --primary:
+       the app chrome stays navy so multi-brand does not restyle the UI. */
+    --brand-accent: 168 80% 27%;
   }
 
   .dark {
-    /* Warm dark theme — deep espresso browns with gold accents */
-    --background: 20 18% 8%;            /* Deep dark brown                   */
-    --foreground: 40 20% 93%;           /* Warm cream                        */
-    --card: 20 18% 11%;                 /* Slightly lighter dark brown       */
-    --card-foreground: 40 20% 93%;      /* Warm cream                        */
-    --popover: 20 18% 11%;
-    --popover-foreground: 40 20% 93%;
-    --primary: 44 54% 54%;              /* #C9A84C  Gold — same in dark      */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 20 18% 16%;            /* Dark warm muted brown             */
-    --secondary-foreground: 40 20% 93%;
-    --muted: 20 18% 16%;
-    --muted-foreground: 40 10% 55%;
-    --accent: 20 18% 18%;               /* Subtle hover on dark              */
-    --accent-foreground: 40 20% 93%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 142 72% 40%;
-    --success-foreground: 0 0% 100%;
-    --warning: 44 54% 54%;
-    --warning-foreground: 0 0% 100%;
-    --border: 20 18% 20%;
-    --input: 20 18% 20%;
-    --ring: 44 54% 54%;
+    --background: 220 43% 7%;
+    --foreground: 216 24% 96%;
 
-    --brand-gold: 44 54% 54%;
-    --brand-brown: 20 33% 27%;
-    --brand-cream: 40 23% 95%;
+    --card: 220 38% 10%;
+    --card-foreground: 216 24% 96%;
+    --popover: 220 38% 10%;
+    --popover-foreground: 216 24% 96%;
+
+    --primary: 216 70% 58%;                /* lifted navy for dark ground  */
+    --primary-foreground: 220 43% 8%;
+
+    --secondary: 214 33% 15%;
+    --secondary-foreground: 216 24% 96%;
+
+    --muted: 214 33% 15%;
+    --muted-foreground: 218 15% 60%;
+
+    --accent: 214 33% 18%;
+    --accent-foreground: 216 24% 96%;
+
+    --destructive: 4 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 167 55% 45%;
+    --success-foreground: 220 43% 8%;
+    --warning: 33 85% 55%;
+    --warning-foreground: 220 43% 8%;
+
+    --border: 214 30% 18%;
+    --input: 214 28% 24%;
+    --ring: 216 70% 58%;
+
+    --surface-subtle: 220 38% 12%;
+    --surface-sunken: 214 33% 15%;
+    --border-strong: 214 28% 26%;
+
+    --primary-hover: 216 70% 66%;
+    --primary-soft: 216 40% 28%;
+    --primary-softer: 216 40% 18%;
+    --chart-2: 216 35% 42%;
+
+    --success-soft: 168 45% 14%;
+    --success-strong: 167 50% 50%;
+    --warning-soft: 30 55% 14%;
+    --warning-strong: 42 90% 62%;
+    --destructive-soft: 4 45% 15%;
+    --destructive-border: 4 55% 40%;
+    --info: 258 60% 66%;
+
+    --sidebar: 220 45% 6%;
+    --sidebar-foreground: 218 15% 62%;
+    --sidebar-active: 0 0% 100%;
+    --sidebar-active-bg: 214 33% 14%;
+    --sidebar-border: 214 30% 14%;
+    --sidebar-heading: 216 18% 38%;
+    --sidebar-mark: 167 55% 45%;
+
+    --brand-accent: 167 55% 45%;
   }
 }
 
@@ -78,35 +144,50 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv01", "cv03";
+  }
+
+  /* Headings carry the serif — the one place the design leans editorial. */
+  h1, h2, h3 {
+    @apply font-display tracking-tight;
+  }
+
+  /* Figures line up column to column across every table and stat tile. */
+  table, .tnum {
+    font-variant-numeric: tabular-nums;
   }
 }
 
-/* ── Pulse Report vital card glow animations ───────────────────────────────── */
-@keyframes vital-glow-green {
-  0%, 100% { box-shadow: 0 0 6px 1px rgba(34, 197, 94, 0.1); }
-  50%       { box-shadow: 0 0 22px 4px rgba(34, 197, 94, 0.28); }
-}
-@keyframes vital-glow-amber {
-  0%, 100% { box-shadow: 0 0 6px 1px rgba(245, 158, 11, 0.12); }
-  50%       { box-shadow: 0 0 22px 4px rgba(245, 158, 11, 0.32); }
-}
-@keyframes vital-glow-red {
-  0%, 100% { box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.15); }
-  50%       { box-shadow: 0 0 26px 6px rgba(239, 68, 68, 0.4); }
+@layer components {
+  /* Section eyebrow used above stat values and table headers. */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;
+  }
 }
 
+/* ── Pulse Report vital card treatment ─────────────────────────────────────
+   The old build glowed and pulsed. The redesign states status flatly: a
+   3px coloured cap on the card, no animation competing for attention.   */
 .vital-green {
-  border-color: rgb(34, 197, 94);
-  animation: vital-glow-green 3s ease-in-out infinite;
+  border-top: 3px solid hsl(var(--success));
 }
 .vital-amber {
-  border-color: rgb(245, 158, 11);
-  animation: vital-glow-amber 2s ease-in-out infinite;
+  border-top: 3px solid hsl(var(--warning));
 }
 .vital-red {
-  border-color: rgb(239, 68, 68);
-  animation: vital-glow-red 1.2s ease-in-out infinite;
+  border-top: 3px solid hsl(var(--destructive));
 }
 .vital-grey {
-  border-color: hsl(var(--border));
+  border-top: 3px solid hsl(var(--border-strong));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Off-track is the only state that still asks for the eye. */
+  .vital-red {
+    animation: vital-attention 2.4s ease-in-out infinite;
+  }
+}
+@keyframes vital-attention {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--destructive) / 0); }
+  50%      { box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.12); }
 }

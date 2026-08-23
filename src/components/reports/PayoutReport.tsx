@@ -30,11 +30,11 @@ const STORES: {
     label: "Pollo (Geelong West)",
     channels: ["Lightspeed", "Uber Eats", "DoorDash", "Bite"],
     color: {
-      gradient: "from-orange-500 to-amber-500",
-      bg: "bg-orange-500/10",
-      text: "text-orange-500",
-      border: "border-orange-500/30",
-      badge: "bg-orange-500/15 text-orange-600",
+      gradient: "from-warning to-warning",
+      bg: "bg-warning/10",
+      text: "text-warning",
+      border: "border-warning/30",
+      badge: "bg-warning/15 text-warning",
     },
   },
   {
@@ -53,11 +53,11 @@ const STORES: {
 
 const STORE_COLORS = [
   {
-    gradient: "from-orange-500 to-amber-500",
-    bg: "bg-orange-500/10",
-    text: "text-orange-500",
-    border: "border-orange-500/30",
-    badge: "bg-orange-500/15 text-orange-600",
+    gradient: "from-warning to-warning",
+    bg: "bg-warning/10",
+    text: "text-warning",
+    border: "border-warning/30",
+    badge: "bg-warning/15 text-warning",
   },
   {
     gradient: "from-blue-500 to-indigo-500",
@@ -183,14 +183,14 @@ export default function PayoutReport() {
       {!isLoading && hasAnyData && (
         <>
           {/* ── Grand total banner ─────────────────────────────────────── */}
-          <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-teal-500/5 p-6">
+          <div className="rounded-xl border border-success/30 bg-gradient-to-br from-success/5 via-card to-teal-500/5 p-6">
             <div className="flex items-center gap-2 mb-3">
-              <Wallet className="h-5 w-5 text-emerald-500" />
+              <Wallet className="h-5 w-5 text-success" />
               <h3 className="text-sm font-semibold text-foreground">
                 Total Payouts
               </h3>
             </div>
-            <p className="text-4xl font-bold text-emerald-500 tabular-nums tracking-tight">
+            <p className="text-4xl font-bold text-success tabular-nums tracking-tight">
               {formatCurrency(grandTotal)}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">

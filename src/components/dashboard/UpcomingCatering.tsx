@@ -8,11 +8,11 @@ import { format } from "date-fns";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   enquiry:   { label: "Enquiry",    className: "bg-muted/60 text-muted-foreground" },
-  confirmed: { label: "Confirmed",  className: "bg-green-500/10 text-green-500" },
+  confirmed: { label: "Confirmed",  className: "bg-success/10 text-success" },
   preparing: { label: "Preparing",  className: "bg-blue-500/10 text-blue-500" },
   delivered: { label: "Delivered",  className: "bg-purple-500/10 text-purple-500" },
   completed: { label: "Completed",  className: "bg-muted/60 text-muted-foreground" },
-  cancelled: { label: "Cancelled",  className: "bg-red-500/10 text-red-500" },
+  cancelled: { label: "Cancelled",  className: "bg-destructive/10 text-destructive" },
 };
 
 export function UpcomingCatering() {

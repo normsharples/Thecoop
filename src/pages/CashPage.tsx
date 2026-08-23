@@ -6,7 +6,7 @@ export default function CashPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Banknote className="h-7 w-7 text-primary" />
-        <h1 className="text-2xl font-bold text-foreground">Cash &amp; Deposits</h1>
+        <h1 className="text-2xl font-bold text-foreground">Banking</h1>
       </div>
 
       <div className={cn("rounded-xl border border-border bg-card p-6")}>

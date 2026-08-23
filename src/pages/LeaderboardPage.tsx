@@ -126,7 +126,7 @@ function LeaderboardSettingsPanel({ onClose }: { onClose: () => void }) {
             <div
               className={cn(
                 "mt-3 text-xs font-medium",
-                totalOk ? "text-green-500" : "text-red-500"
+                totalOk ? "text-success" : "text-destructive"
               )}
             >
               Active total: {activeTotal.toFixed(2)}%

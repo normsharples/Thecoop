@@ -39,7 +39,7 @@ export function BrandSwitcher() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+        className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-card px-3 py-[7px] text-[13px] font-medium text-secondary-foreground transition-colors hover:bg-accent"
       >
         {createElement(brandIcon(selected?.icon), {
           className: "h-4 w-4",
@@ -50,7 +50,7 @@ export function BrandSwitcher() {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-56 rounded-lg border border-border bg-popover p-1 shadow-md">
+        <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-border bg-popover p-1 shadow-popover">
           <button
             onClick={() => choose(null)}
             className={cn(

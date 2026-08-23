@@ -195,13 +195,13 @@ export default function LabourManualEntryPage() {
       <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
         {/* ── Override warning ─────────────────────────────────────────── */}
         {isOverride && (
-          <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-            <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+          <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4">
+            <AlertTriangle className="h-5 w-5 text-warning mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-amber-500">
+              <p className="text-sm font-medium text-warning">
                 Labour data already exists for this date
               </p>
-              <p className="text-xs text-amber-500/80 mt-1">
+              <p className="text-xs text-warning/80 mt-1">
                 Source: <strong>{existingSource}</strong> — Hours:{" "}
                 <strong>{Number(existingData.total_hours).toFixed(1)}h</strong> — Cost:{" "}
                 <strong>{formatCurrency(Number(existingData.total_cost))}</strong> — Labour %:{" "}
@@ -209,7 +209,7 @@ export default function LabourManualEntryPage() {
                 Saving will mark this as &quot;override&quot;.
               </p>
               {overrideWarning && (
-                <p className="text-xs font-semibold text-amber-500 mt-2">
+                <p className="text-xs font-semibold text-warning mt-2">
                   Click Save again to confirm the override.
                 </p>
               )}
@@ -231,10 +231,10 @@ export default function LabourManualEntryPage() {
                   <strong
                     className={cn(
                       labourPct >= 35
-                        ? "text-red-500"
+                        ? "text-destructive"
                         : labourPct >= 30
-                        ? "text-amber-500"
-                        : "text-green-500"
+                        ? "text-warning"
+                        : "text-success"
                     )}
                   >
                     {formatPercent(labourPct)}
@@ -350,10 +350,10 @@ export default function LabourManualEntryPage() {
                 className={cn(
                   "text-sm font-semibold",
                   labourPct >= 35
-                    ? "text-red-500"
+                    ? "text-destructive"
                     : labourPct >= 30
-                    ? "text-amber-500"
-                    : "text-green-500"
+                    ? "text-warning"
+                    : "text-success"
                 )}
               >
                 {formatPercent(labourPct)}
@@ -437,7 +437,7 @@ export default function LabourManualEntryPage() {
             className={cn(
               "inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors disabled:opacity-50",
               isOverride
-                ? "bg-amber-500 text-white hover:bg-amber-600"
+                ? "bg-warning text-white hover:bg-warning"
                 : "bg-primary text-primary-foreground hover:bg-primary/90"
             )}
           >

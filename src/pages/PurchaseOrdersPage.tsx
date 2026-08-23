@@ -117,8 +117,8 @@ const STATUS_CONFIG: Record<
 > = {
   draft:     { label: "Draft",     colour: "bg-muted text-muted-foreground",      icon: FileText     },
   sent:      { label: "Sent",      colour: "bg-blue-500/10 text-blue-500",        icon: Send         },
-  received:  { label: "Received",  colour: "bg-amber-500/10 text-amber-500",      icon: Package      },
-  invoiced:  { label: "Invoiced",  colour: "bg-green-500/10 text-green-500",      icon: CheckCircle2 },
+  received:  { label: "Received",  colour: "bg-warning/10 text-warning",      icon: Package      },
+  invoiced:  { label: "Invoiced",  colour: "bg-success/10 text-success",      icon: CheckCircle2 },
   cancelled: { label: "Cancelled", colour: "bg-destructive/10 text-destructive",  icon: XCircle      },
 };
 
@@ -762,7 +762,7 @@ function PORow({
             <p className="text-sm text-muted-foreground">{po.supplier_name}</p>
             <StatusBadge status={po.status} />
             {needsInvoice && (
-              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-500">
+              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-warning/10 text-warning">
                 <Clock className="h-3 w-3" />
                 Invoice pending
               </span>
@@ -871,7 +871,7 @@ function PORow({
               <Button
                 variant="outline"
                 size="sm"
-                className="text-green-600 border-green-200 hover:bg-green-50 dark:hover:bg-green-950"
+                className="text-success border-success/30 hover:bg-success-soft dark:hover:bg-success-soft"
                 onClick={(e) => { e.stopPropagation(); onStatusChange("invoiced"); }}
               >
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
@@ -882,7 +882,7 @@ function PORow({
             {needsInvoice && (
               <a
                 href="/admin/invoices"
-                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
                 <FileText className="h-3.5 w-3.5" />

@@ -77,17 +77,17 @@ import type { CalendarEvent } from "@/types";
 // ─── Event type config ────────────────────────────────────────────────────────
 
 const EVENT_TYPES = {
-  promotion:    { label: "Promotion",       chip: "bg-green-500/20 text-green-700 dark:text-green-400",   dot: "bg-green-500"   },
+  promotion:    { label: "Promotion",       chip: "bg-success/20 text-success dark:text-success",   dot: "bg-success"   },
   game_day:     { label: "Game Day",         chip: "bg-blue-500/20 text-blue-700 dark:text-blue-400",     dot: "bg-blue-500"    },
-  holiday:      { label: "Public Holiday",   chip: "bg-orange-400/20 text-orange-700 dark:text-orange-400", dot: "bg-orange-400" },
+  holiday:      { label: "Public Holiday",   chip: "bg-warning/20 text-warning dark:text-warning", dot: "bg-warning" },
   training:     { label: "Training",         chip: "bg-indigo-500/20 text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-500" },
   store_event:  { label: "Store Event",      chip: "bg-purple-500/20 text-purple-700 dark:text-purple-400", dot: "bg-purple-500" },
-  deadline:     { label: "Deadline",         chip: "bg-red-500/20 text-red-600 dark:text-red-400",        dot: "bg-red-500"     },
-  milestone:    { label: "Milestone",        chip: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400", dot: "bg-yellow-500" },
+  deadline:     { label: "Deadline",         chip: "bg-destructive/20 text-destructive dark:text-destructive",        dot: "bg-destructive"     },
+  milestone:    { label: "Milestone",        chip: "bg-warning/20 text-warning", dot: "bg-warning" },
   meeting:      { label: "Meeting",          chip: "bg-slate-500/20 text-slate-600 dark:text-slate-400",  dot: "bg-slate-500"   },
   catering:     { label: "Catering",         chip: "bg-teal-500/20 text-teal-700 dark:text-teal-400",     dot: "bg-teal-500"    },
   catering_prep:{ label: "Catering Prep",    chip: "bg-cyan-500/20 text-cyan-700 dark:text-cyan-400",     dot: "bg-cyan-500"    },
-  maintenance:  { label: "Maintenance",      chip: "bg-orange-600/20 text-orange-700 dark:text-orange-400", dot: "bg-orange-600" },
+  maintenance:  { label: "Maintenance",      chip: "bg-warning/20 text-warning dark:text-warning", dot: "bg-warning" },
 } as const;
 
 type EventTypeKey = keyof typeof EVENT_TYPES;

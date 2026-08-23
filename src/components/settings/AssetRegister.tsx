@@ -52,15 +52,15 @@ const STATUS_CONFIG: Record<
 > = {
   operational: {
     label: "Operational",
-    className: "bg-green-500/15 text-green-400 border-green-500/30",
+    className: "bg-success/15 text-success border-success/30",
   },
   needs_repair: {
     label: "Needs Repair",
-    className: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    className: "bg-warning/15 text-warning border-warning/30",
   },
   out_of_service: {
     label: "Out of Service",
-    className: "bg-red-500/15 text-red-400 border-red-500/30",
+    className: "bg-destructive/15 text-destructive border-destructive/30",
   },
   retired: {
     label: "Retired",
@@ -398,7 +398,7 @@ export default function AssetRegister() {
                         <span
                           className={
                             warrantyExpired
-                              ? "text-red-400 text-xs"
+                              ? "text-destructive text-xs"
                               : "text-muted-foreground text-xs"
                           }
                         >

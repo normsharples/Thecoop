@@ -269,8 +269,8 @@ export default function ReviewsReport() {
           </div>
           <p className={cn(
             "mt-3 text-3xl font-bold",
-            kpis && kpis.trendDelta > 0  && "text-green-500",
-            kpis && kpis.trendDelta < 0  && "text-red-500",
+            kpis && kpis.trendDelta > 0  && "text-success",
+            kpis && kpis.trendDelta < 0  && "text-destructive",
             kpis && kpis.trendDelta === 0 && "text-foreground",
           )}>
             {kpis
@@ -428,7 +428,7 @@ export default function ReviewsReport() {
                   key={review.id}
                   className={cn(
                     "px-6 py-4 hover:bg-muted/10 transition-colors",
-                    isLowRating && "border-l-2 border-red-500"
+                    isLowRating && "border-l-2 border-destructive"
                   )}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -446,12 +446,12 @@ export default function ReviewsReport() {
                           </span>
                         )}
                         {isLowRating && (
-                          <span className="rounded-md bg-red-500/10 px-1.5 py-0.5 text-xs font-medium text-red-500">
+                          <span className="rounded-md bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">
                             Low rating
                           </span>
                         )}
                         {!review.reply && (
-                          <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-500">
+                          <span className="rounded-md bg-warning/10 px-1.5 py-0.5 text-xs font-medium text-warning">
                             No reply
                           </span>
                         )}

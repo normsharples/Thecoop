@@ -87,18 +87,18 @@ export function AlertsBanner() {
             <AlertTriangle
               className={cn(
                 "h-4 w-4 shrink-0 mt-0.5",
-                alert.severity === "urgent" && "text-red-500",
-                alert.severity === "warning" && "text-amber-500",
-                alert.severity === "critical" && "text-red-700"
+                alert.severity === "urgent" && "text-destructive",
+                alert.severity === "warning" && "text-warning",
+                alert.severity === "critical" && "text-destructive"
               )}
             />
             <div className="min-w-0">
               <p
                 className={cn(
                   "text-sm font-semibold",
-                  alert.severity === "urgent" && "text-red-400",
-                  alert.severity === "warning" && "text-amber-400",
-                  alert.severity === "critical" && "text-red-300"
+                  alert.severity === "urgent" && "text-destructive",
+                  alert.severity === "warning" && "text-warning",
+                  alert.severity === "critical" && "text-destructive"
                 )}
               >
                 {alert.title}

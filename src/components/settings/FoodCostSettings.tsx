@@ -461,7 +461,7 @@ function SupplierItemsPanel({ supplier }: { supplier: Supplier }) {
                         <button
                           onClick={saveEdit}
                           disabled={isSaving}
-                          className="rounded p-1 text-green-600 hover:bg-green-500/10 transition-colors"
+                          className="rounded p-1 text-success hover:bg-success/10 transition-colors"
                           title="Save"
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" />
@@ -787,7 +787,7 @@ function SupplierRow({
       <div className={cn("flex items-start gap-3 px-4 py-3", !s.active && "opacity-60")}>
         <div className="mt-0.5 shrink-0">
           {s.active
-            ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+            ? <CheckCircle2 className="h-4 w-4 text-success" />
             : <XCircle className="h-4 w-4 text-muted-foreground" />
           }
         </div>

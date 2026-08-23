@@ -338,7 +338,7 @@ function RecurringExpenseRow({ expense, onEdit }: { expense: RecurringExpense; o
     <div className={cn("flex items-start gap-3 px-4 py-3", !expense.active && "opacity-60")}>
       <div className="mt-0.5 shrink-0">
         {expense.active
-          ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+          ? <CheckCircle2 className="h-4 w-4 text-success" />
           : <XCircle className="h-4 w-4 text-muted-foreground" />}
       </div>
 

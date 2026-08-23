@@ -12,6 +12,8 @@ interface Permissions {
   assignedRestaurants: string[];
   isSuperadmin: boolean;
   isStaff: boolean;
+  isTeamMember: boolean;
+  isShiftSupervisor: boolean;
 }
 
 export function usePermissions(): Permissions {
@@ -29,12 +31,16 @@ export function usePermissions(): Permissions {
         assignedRestaurants: [],
         isSuperadmin: false,
         isStaff: false,
+        isTeamMember: false,
+        isShiftSupervisor: false,
       };
     }
 
     const isSuperadmin  = profile.role === "superadmin";
     const isAreaManager = profile.role === "area_manager";
     const isStaff        = profile.role === "staff";
+    const isTeamMember   = profile.role === "team_member";
+    const isShiftSupervisor = profile.role === "shift_supervisor";
 
     return {
       role: profile.role,
@@ -43,10 +49,12 @@ export function usePermissions(): Permissions {
       canManageSettings: isSuperadmin,
       canViewLeaderboard: isSuperadmin || isAreaManager,
       canManageUsers: isSuperadmin,
-      canViewSalesData: !isStaff,
+      canViewSalesData: !isStaff && !isTeamMember && !isShiftSupervisor,
       assignedRestaurants: profile.restaurant_access,
       isSuperadmin,
       isStaff,
+      isTeamMember,
+      isShiftSupervisor,
     };
   }, [profile]);
 }

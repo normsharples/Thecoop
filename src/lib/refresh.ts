@@ -21,6 +21,12 @@ export const REFRESH_SOURCES: RefreshSource[] = [
   { key: "bite", label: "Bite Online Sales" },
   { key: "uber", label: "Uber Eats Sales" },
   { key: "payouts", label: "Channel Payouts" },
+  // Hourly Kounta sales feed — powers Sales by Hour and Pulse. Deliberately
+  // outside "refresh all" in the watcher, so it is only ever run on request.
+  { key: "salesfeed", label: "Sales by Hour" },
+  // Hourly Uber Eats orders — powers Pulse's Delivery column. Own launchd jobs,
+  // so like salesfeed it sits outside the watcher's "refresh all".
+  { key: "delivery", label: "Delivery Orders" },
 ];
 
 export type RefreshResult = {

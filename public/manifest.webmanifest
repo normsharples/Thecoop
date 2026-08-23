@@ -1,0 +1,18 @@
+{
+  "name": "The Coop",
+  "short_name": "The Coop",
+  "description": "Pollo Rotisserie operations",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}

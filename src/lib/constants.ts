@@ -4,7 +4,9 @@ export const ROLES = {
   SUPERADMIN:   "superadmin",
   AREA_MANAGER: "area_manager",
   MANAGER:      "manager",
+  SHIFT_SUPERVISOR: "shift_supervisor",
   STAFF:        "staff",
+  TEAM_MEMBER:  "team_member",
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
@@ -13,7 +15,9 @@ export const ROLE_LABELS: Record<Role, string> = {
   superadmin:   "Superadmin",
   area_manager: "Area Manager",
   manager:      "Restaurant Manager",
+  shift_supervisor: "Shift Supervisor",
   staff:        "Restaurant Staff",
+  team_member:  "Team Member",
 };
 
 export const NAV_ITEMS = [
@@ -32,7 +36,7 @@ export const NAV_ITEMS = [
   },
   { label: "Leaderboard", path: "/leaderboard", icon: "Trophy" },
   { label: "WHS Audits", path: "/whs-audits", icon: "Shield" },
-  { label: "Cash & Deposits", path: "/admin/cash", icon: "Banknote" },
+  { label: "Banking", path: "/admin/cash", icon: "Banknote" },
   { label: "Stock Counts", path: "/admin/stock-counts", icon: "ClipboardList" },
   { label: "Maintenance", path: "/admin/maintenance", icon: "Wrench" },
   { label: "Catering Orders", path: "/catering", icon: "UtensilsCrossed" },

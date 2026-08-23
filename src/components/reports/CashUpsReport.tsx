@@ -124,7 +124,7 @@ export default function CashUpsReport() {
                     <TableCell
                       className={cn(
                         "text-right tabular-nums font-medium",
-                        tillVariance < 0 ? "text-destructive" : tillVariance > 0 ? "text-green-500" : "text-muted-foreground"
+                        tillVariance < 0 ? "text-destructive" : tillVariance > 0 ? "text-success" : "text-muted-foreground"
                       )}
                     >
                       {tillVariance === 0 ? "—" : `${tillVariance > 0 ? "+" : ""}${formatCurrency(tillVariance)}`}
@@ -137,7 +137,7 @@ export default function CashUpsReport() {
                           : posVariance < 0
                           ? "text-destructive"
                           : posVariance > 0
-                          ? "text-green-500"
+                          ? "text-success"
                           : "text-muted-foreground"
                       )}
                     >

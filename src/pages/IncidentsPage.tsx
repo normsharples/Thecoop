@@ -89,9 +89,9 @@ const INCIDENT_TYPES: { value: string; label: string }[] = [
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  open: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+  open: "bg-warning/10 text-warning border-warning/20",
   investigating: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-  resolved: "bg-green-500/10 text-green-500 border-green-500/20",
+  resolved: "bg-success/10 text-success border-success/20",
   closed: "bg-muted text-muted-foreground border-border",
 };
 

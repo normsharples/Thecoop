@@ -8,6 +8,7 @@ import {
   Users,
   Trash2,
   KeyRound,
+  ClipboardList,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod/v4";
@@ -17,8 +18,20 @@ import { useRestaurants } from "@/hooks/useRestaurants";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { ROLE_LABELS } from "@/lib/constants";
-import { getInitials } from "@/lib/utils";
-import type { Profile } from "@/types";
+import { getInitials, cn } from "@/lib/utils";
+import { useOnboardingList, useOnboardingActions, type OnboardingRow } from "@/hooks/useOnboarding";
+import { LEVEL_LABELS, type AwardLevel } from "@/lib/award";
+import EmployeeOnboardingDrawer from "@/components/onboarding/EmployeeOnboardingDrawer";
+import ChangeRequests from "@/components/onboarding/ChangeRequests";
+import type { Profile, OnboardingStatus } from "@/types";
+
+const ONBOARDING_META: Record<OnboardingStatus, { label: string; className: string }> = {
+  pending:     { label: "Not started", className: "bg-warning/10 text-warning border-warning/30" },
+  in_progress: { label: "In progress", className: "bg-sky-500/10 text-sky-600 border-sky-500/30" },
+  complete:    { label: "Complete",    className: "bg-success/10 text-success border-success/30" },
+  exempt:      { label: "Exempt",      className: "bg-muted text-muted-foreground border-border" },
+  legacy:      { label: "Not required",className: "bg-muted text-muted-foreground border-border" },
+};
 
 const createSchema = z.object({
   username: z
@@ -30,9 +43,26 @@ const createSchema = z.object({
     ),
   full_name: z.string().min(2, "Name is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["superadmin", "area_manager", "manager", "staff"]),
+  role: z.enum(["superadmin", "area_manager", "manager", "shift_supervisor", "staff", "team_member"]),
   restaurant_access: z.array(z.string()),
+  home_restaurant_id: z.string().nullable().optional(),
+  contact_email: z.string().optional(),
+  phone: z.string().optional(),
+  display_colour: z.string().nullable().optional(),
+  is_rosterable: z.boolean().optional(),
+  // Employment terms — captured up front so the contract can be issued as
+  // soon as the person has filled in their own details.
+  employment_type: z.string().optional(),
+  award_level: z.string().optional(),
+  position_title: z.string().optional(),
+  start_date: z.string().optional(),
 });
+
+const EMP_SWATCHES = [
+  "#6366f1", "#ec4899", "#f97316", "#22c55e",
+  "#0ea5e9", "#eab308", "#8b5cf6", "#ef4444",
+  "#14b8a6", "#64748b",
+];
 
 type CreateFormData = z.infer<typeof createSchema>;
 
@@ -60,9 +90,17 @@ async function invokeAdminUsers(body: Record<string, unknown>) {
 export default function TeamSettings() {
   const [showCreate, setShowCreate] = useState(false);
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
+  const [drawerId, setDrawerId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | OnboardingStatus | "none">("all");
   const queryClient = useQueryClient();
   const { profile: currentUser } = useAuth();
   const { data: restaurants } = useRestaurants();
+  const { data: onboardingRows } = useOnboardingList();
+  const { request: requestOnboarding, update: updateOnboarding } = useOnboardingActions();
+
+  const onboardingFor = (userId: string) =>
+    onboardingRows?.find((r) => r.employee_id === userId) ?? null;
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["users"],
@@ -78,12 +116,59 @@ export default function TeamSettings() {
 
   const createMutation = useMutation({
     mutationFn: async (formData: CreateFormData) => {
-      await invokeAdminUsers({ action: "create", ...formData });
+      const { employment_type, award_level, position_title, start_date, ...account } = formData;
+      const rosterable = account.is_rosterable ?? account.role === "team_member";
+
+      const res = await invokeAdminUsers({
+        action: "create",
+        ...account,
+        contact_email: account.contact_email?.trim() || null,
+        phone: account.phone?.trim() || null,
+        home_restaurant_id: account.home_restaurant_id || null,
+        display_colour: account.display_colour || null,
+        is_rosterable: rosterable,
+      });
+      const newId = (res?.id as string | undefined) ?? undefined;
+
+      // The edge function only knows about account fields, so the employment
+      // terms go on in a second write (superadmin-only, enforced by the 063 guard).
+      if (newId && (employment_type || award_level || position_title || start_date)) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            employment_type: employment_type || null,
+            award_level: award_level || null,
+            position_title: position_title || null,
+            start_date: start_date || null,
+          })
+          .eq("id", newId);
+        if (error) throw error;
+      }
+
+      // A trigger enrols rosterable profiles, but do it explicitly too so this
+      // works even if the trigger has not been applied yet. Idempotent.
+      if (newId && rosterable) {
+        await supabase.from("employee_onboarding").upsert(
+          {
+            employee_id: newId,
+            status: "pending",
+            requested_at: new Date().toISOString(),
+            requested_by: currentUser?.id ?? null,
+          },
+          { onConflict: "employee_id", ignoreDuplicates: true }
+        );
+      }
+      return { id: newId, rosterable };
     },
-    onSuccess: () => {
-      toast.success("User created");
+    onSuccess: (res) => {
+      toast.success(
+        res.rosterable ? "Team member added — onboarding started" : "User created"
+      );
       queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["onboarding"] });
       setShowCreate(false);
+      // Straight into their record so pay and award level can be set now.
+      if (res.id && res.rosterable) setDrawerId(res.id);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -95,14 +180,33 @@ export default function TeamSettings() {
       id,
       role,
       restaurant_access,
+      home_restaurant_id,
+      contact_email,
+      phone,
+      display_colour,
+      is_rosterable,
     }: {
       id: string;
       role: string;
       restaurant_access: string[];
+      home_restaurant_id?: string | null;
+      contact_email?: string | null;
+      phone?: string | null;
+      display_colour?: string | null;
+      is_rosterable?: boolean;
     }) => {
       const { error } = await supabase
         .from("profiles")
-        .update({ role, restaurant_access, updated_at: new Date().toISOString() })
+        .update({
+          role,
+          restaurant_access,
+          home_restaurant_id: home_restaurant_id ?? null,
+          contact_email: contact_email ?? null,
+          phone: phone ?? null,
+          display_colour: display_colour ?? null,
+          is_rosterable: is_rosterable ?? false,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", id);
       if (error) throw error;
     },
@@ -146,9 +250,9 @@ export default function TeamSettings() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-foreground">Team Management</h2>
+          <h2 className="text-xl font-semibold text-foreground">Team</h2>
           <p className="text-sm text-muted-foreground">
-            Manage users and their access to restaurants
+            Access, employment details, paperwork and contracts — all in one place
           </p>
         </div>
         <button
@@ -156,7 +260,7 @@ export default function TeamSettings() {
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <UserPlus className="h-4 w-4" />
-          Add User
+          Onboard team member
         </button>
       </div>
 
@@ -189,6 +293,52 @@ export default function TeamSettings() {
         />
       )}
 
+      {/* Detail changes waiting on you (bank / super / legal name / DOB) */}
+      <ChangeRequests />
+
+      {/* Onboarding at a glance */}
+      {onboardingRows && onboardingRows.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          {(["pending", "in_progress", "complete"] as OnboardingStatus[]).map((st) => (
+            <button
+              key={st}
+              onClick={() => setStatusFilter((f) => (f === st ? "all" : st))}
+              className={cn(
+                "rounded-lg border p-3 text-left transition-colors",
+                statusFilter === st ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-muted/30"
+              )}
+            >
+              <p className="text-xs text-muted-foreground">{ONBOARDING_META[st].label}</p>
+              <p className="mt-1 text-2xl font-bold text-foreground">
+                {onboardingRows.filter((r) => r.status === st).length}
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search team"
+          className="h-9 min-w-[180px] flex-1 rounded-md border border-border bg-background px-3 text-sm"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+        >
+          <option value="all">All onboarding states</option>
+          <option value="pending">Not started</option>
+          <option value="in_progress">In progress</option>
+          <option value="complete">Complete</option>
+          <option value="legacy">Not required</option>
+          <option value="exempt">Exempt</option>
+          <option value="none">No onboarding record</option>
+        </select>
+      </div>
+
       {/* Users List */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -206,8 +356,11 @@ export default function TeamSettings() {
                   <th className="px-6 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground font-medium">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  <th className="hidden px-6 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground font-medium lg:table-cell">
                     Restaurants
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Onboarding
                   </th>
                   <th className="px-6 py-3 text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">
                     Actions
@@ -215,7 +368,17 @@ export default function TeamSettings() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {users?.map((user) => (
+                {users
+                  ?.filter((user) => {
+                    const q = search.trim().toLowerCase();
+                    if (q && !user.full_name.toLowerCase().includes(q) &&
+                        !(user.username ?? "").toLowerCase().includes(q)) return false;
+                    if (statusFilter === "all") return true;
+                    const ob = onboardingFor(user.id);
+                    if (statusFilter === "none") return !ob;
+                    return ob?.status === statusFilter;
+                  })
+                  .map((user) => (
                   <tr key={user.id} className="hover:bg-muted/10 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -223,9 +386,12 @@ export default function TeamSettings() {
                           {getInitials(user.full_name)}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-foreground">
+                          <button
+                            onClick={() => setDrawerId(user.id)}
+                            className="text-left text-sm font-medium text-foreground hover:text-primary hover:underline"
+                          >
                             {user.full_name}
-                          </p>
+                          </button>
                           <p className="text-xs text-muted-foreground">
                             {user.username ?? user.email}
                           </p>
@@ -237,7 +403,7 @@ export default function TeamSettings() {
                         {ROLE_LABELS[user.role]}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="hidden px-6 py-4 lg:table-cell">
                       <div className="flex flex-wrap gap-1">
                         {user.role === "superadmin" ? (
                           <span className="text-xs text-muted-foreground">
@@ -258,14 +424,42 @@ export default function TeamSettings() {
                         )}
                       </div>
                     </td>
+                    <td className="px-6 py-4">
+                      <OnboardingCell row={onboardingFor(user.id)} />
+                    </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => setEditingUser(user)}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                      >
-                        <Pencil className="h-3 w-3" />
-                        Edit
-                      </button>
+                      <div className="flex justify-end gap-1">
+                        <button
+                          onClick={() => setDrawerId(user.id)}
+                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        >
+                          <ClipboardList className="h-3 w-3" />
+                          Open
+                        </button>
+                        <button
+                          onClick={() => setEditingUser(user)}
+                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        >
+                          <Pencil className="h-3 w-3" />
+                          Access
+                        </button>
+                        <RowMenu
+                          row={onboardingFor(user.id)}
+                          onStart={() =>
+                            requestOnboarding.mutate({
+                              employeeIds: [user.id],
+                              collectDetails: true,
+                              issueContract: true,
+                            })
+                          }
+                          onStatus={(status) =>
+                            updateOnboarding.mutate({ employeeId: user.id, patch: { status } })
+                          }
+                          onToggleSkip={(skip) =>
+                            updateOnboarding.mutate({ employeeId: user.id, patch: { skip_allowed: skip } })
+                          }
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -279,6 +473,93 @@ export default function TeamSettings() {
             </div>
           )}
         </div>
+      )}
+
+      {drawerId && (
+        <EmployeeOnboardingDrawer employeeId={drawerId} onClose={() => setDrawerId(null)} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * The onboarding controls that used to live on the separate Onboarding tab:
+ * start it, exempt someone from the gate, or let one person past it.
+ */
+function RowMenu({
+  row,
+  onStart,
+  onStatus,
+  onToggleSkip,
+}: {
+  row: OnboardingRow | null;
+  onStart: () => void;
+  onStatus: (status: OnboardingStatus) => void;
+  onToggleSkip: (skip: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+  return (
+    <div className="relative inline-block text-left">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        •••
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={close} />
+          <div className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
+            {(!row || row.status === "legacy" || row.status === "exempt") && (
+              <MenuItem onClick={() => { onStart(); close(); }}>Start onboarding</MenuItem>
+            )}
+            {row && row.status !== "complete" && (
+              <MenuItem onClick={() => { onToggleSkip(!row.skip_allowed); close(); }}>
+                {row.skip_allowed ? "Remove skip permission" : "Let them skip the gate"}
+              </MenuItem>
+            )}
+            {row && row.status !== "exempt" && row.status !== "legacy" && (
+              <MenuItem onClick={() => { onStatus("exempt"); close(); }}>
+                Exempt from onboarding
+              </MenuItem>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function MenuItem({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="block w-full px-3 py-2 text-left text-sm text-foreground hover:bg-muted"
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Status pill + what is still outstanding, per person. */
+function OnboardingCell({ row }: { row: OnboardingRow | null }) {
+  if (!row) {
+    return <span className="text-xs text-muted-foreground">Not required</span>;
+  }
+  const meta = ONBOARDING_META[row.status];
+  const outstanding: string[] = [];
+  if (row.collect_details && !row.details_complete) outstanding.push("details");
+  if (row.collect_details && !row.sensitive_complete) outstanding.push("tax & bank");
+  if (row.issue_contract && !row.contract_signed) outstanding.push("contract");
+
+  return (
+    <div>
+      <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-xs font-medium", meta.className)}>
+        {meta.label}
+      </span>
+      {outstanding.length > 0 && row.status !== "legacy" && row.status !== "exempt" && (
+        <p className="mt-1 text-[11px] text-muted-foreground">Waiting on {outstanding.join(", ")}</p>
       )}
     </div>
   );
@@ -307,6 +588,10 @@ function CreateModal({
   });
 
   const selectedAccess = watch("restaurant_access");
+  const role = watch("role");
+  const isRosterable = watch("is_rosterable") ?? role === "team_member";
+  const homeStore = watch("home_restaurant_id") ?? "";
+  const colour = watch("display_colour") ?? "";
 
   const toggleRestaurant = (id: string) => {
     const current = selectedAccess ?? [];
@@ -322,7 +607,7 @@ function CreateModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-foreground">Add User</h3>
+          <h3 className="text-lg font-semibold text-foreground">Onboard team member</h3>
           <button onClick={onClose} className="rounded-md p-1 hover:bg-accent">
             <X className="h-4 w-4 text-muted-foreground" />
           </button>
@@ -374,32 +659,159 @@ function CreateModal({
               className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               {...register("role")}
             >
-              <option value="manager">Restaurant Manager</option>
+              <option value="team_member">Team Member (roster only)</option>
               <option value="staff">Restaurant Staff (incidents, cash & invoices only)</option>
+              <option value="shift_supervisor">Shift Supervisor (roster view, incidents, banking)</option>
+              <option value="manager">Restaurant Manager</option>
               <option value="area_manager">Area Manager</option>
               <option value="superadmin">Superadmin</option>
             </select>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Restaurant Access
-            </label>
+
+          {role === "team_member" ? (
+            <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              Team members can only see their own roster — no restaurant data access.
+            </p>
+          ) : (
             <div className="space-y-2">
-              {restaurants.map((r) => (
-                <label
-                  key={r.id}
-                  className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedAccess?.includes(r.id) ?? false}
-                    onChange={() => toggleRestaurant(r.id)}
-                    className="rounded border-input"
-                  />
-                  {r.name}
-                </label>
-              ))}
+              <label className="text-sm font-medium text-foreground">
+                Restaurant Access
+              </label>
+              <div className="space-y-2">
+                {restaurants.map((r) => (
+                  <label
+                    key={r.id}
+                    className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedAccess?.includes(r.id) ?? false}
+                      onChange={() => toggleRestaurant(r.id)}
+                      className="rounded border-input"
+                    />
+                    {r.name}
+                  </label>
+                ))}
+              </div>
             </div>
+          )}
+
+          {/* Rostering */}
+          <div className="space-y-3 rounded-lg border border-border p-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <input
+                type="checkbox"
+                checked={isRosterable}
+                onChange={(e) => setValue("is_rosterable", e.target.checked)}
+                className="rounded border-input"
+              />
+              Rosterable (appears in the roster builder)
+            </label>
+
+            {isRosterable && (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Home store</label>
+                  <select
+                    value={homeStore}
+                    onChange={(e) => setValue("home_restaurant_id", e.target.value || null)}
+                    className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">None</option>
+                    {restaurants.map((r) => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Roster colour</label>
+                  <div className="flex flex-wrap gap-2">
+                    {EMP_SWATCHES.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setValue("display_colour", c)}
+                        className="h-7 w-7 rounded-full"
+                        style={{ backgroundColor: c, boxShadow: colour === c ? `0 0 0 2px ${c}` : undefined }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Employment terms — the contract can't be issued without an
+                    award level (or a manual rate, set later on their record). */}
+                <div className="grid grid-cols-2 gap-3 border-t border-border pt-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">Employment type</label>
+                    <select
+                      className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      {...register("employment_type")}
+                    >
+                      <option value="">Select…</option>
+                      <option value="casual">Casual</option>
+                      <option value="part_time">Part-time</option>
+                      <option value="full_time">Full-time</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">Award level</label>
+                    <select
+                      className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      {...register("award_level")}
+                    >
+                      <option value="">Select…</option>
+                      {(Object.keys(LEVEL_LABELS) as AwardLevel[]).map((l) => (
+                        <option key={l} value={l}>{LEVEL_LABELS[l]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">Position title</label>
+                    <input
+                      placeholder="Crew Member"
+                      className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      {...register("position_title")}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">Start date</label>
+                    <input
+                      type="date"
+                      className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      {...register("start_date")}
+                    />
+                  </div>
+                  <p className="col-span-2 text-xs text-muted-foreground">
+                    They'll be asked for their own details and to sign their contract the first time
+                    they log in. Pay rate and the rest are on their record afterwards.
+                  </p>
+                </div>
+              </>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Contact email</label>
+                <input
+                  type="email"
+                  placeholder="jane@email.com"
+                  className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  {...register("contact_email")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Phone</label>
+                <input
+                  type="tel"
+                  placeholder="04…"
+                  className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  {...register("phone")}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Contact details are used for roster notifications (email / push) later.
+            </p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button
@@ -415,7 +827,7 @@ function CreateModal({
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              Create User
+              Create &amp; start onboarding
             </button>
           </div>
         </form>
@@ -441,7 +853,16 @@ function EditModal({
   restaurants: { id: string; name: string }[];
   currentUserId: string;
   onClose: () => void;
-  onSubmit: (data: { id: string; role: string; restaurant_access: string[] }) => void;
+  onSubmit: (data: {
+    id: string;
+    role: string;
+    restaurant_access: string[];
+    home_restaurant_id?: string | null;
+    contact_email?: string | null;
+    phone?: string | null;
+    display_colour?: string | null;
+    is_rosterable?: boolean;
+  }) => void;
   onResetPassword: (password: string) => void;
   onDelete: () => void;
   isSubmitting: boolean;
@@ -451,6 +872,11 @@ function EditModal({
 }) {
   const [role, setRole] = useState(user.role);
   const [access, setAccess] = useState<string[]>(user.restaurant_access);
+  const [isRosterable, setIsRosterable] = useState<boolean>(user.is_rosterable ?? false);
+  const [homeStore, setHomeStore] = useState<string>(user.home_restaurant_id ?? "");
+  const [colour, setColour] = useState<string>(user.display_colour ?? "");
+  const [contactEmail, setContactEmail] = useState<string>(user.contact_email ?? "");
+  const [phone, setPhone] = useState<string>(user.phone ?? "");
   const [newPassword, setNewPassword] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -470,7 +896,16 @@ function EditModal({
       toast.error("Cannot remove the last superadmin role");
       return;
     }
-    onSubmit({ id: user.id, role, restaurant_access: access });
+    onSubmit({
+      id: user.id,
+      role,
+      restaurant_access: role === "team_member" ? [] : access,
+      home_restaurant_id: homeStore || null,
+      contact_email: contactEmail.trim() || null,
+      phone: phone.trim() || null,
+      display_colour: colour || null,
+      is_rosterable: isRosterable,
+    });
   };
 
   const handleResetPassword = () => {
@@ -502,8 +937,10 @@ function EditModal({
               disabled={isSelf && isLastSuperadmin}
               className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
             >
-              <option value="manager">Restaurant Manager</option>
+              <option value="team_member">Team Member (roster only)</option>
               <option value="staff">Restaurant Staff (incidents, cash & invoices only)</option>
+              <option value="shift_supervisor">Shift Supervisor (roster view, incidents, banking)</option>
+              <option value="manager">Restaurant Manager</option>
               <option value="area_manager">Area Manager</option>
               <option value="superadmin">Superadmin</option>
             </select>
@@ -513,25 +950,97 @@ function EditModal({
               </p>
             )}
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Restaurant Access
-            </label>
+          {role === "team_member" ? (
+            <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              Team members can only see their own roster — no restaurant data access.
+            </p>
+          ) : (
             <div className="space-y-2">
-              {restaurants.map((r) => (
-                <label
-                  key={r.id}
-                  className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={access.includes(r.id)}
-                    onChange={() => toggleRestaurant(r.id)}
-                    className="rounded border-input"
-                  />
-                  {r.name}
-                </label>
-              ))}
+              <label className="text-sm font-medium text-foreground">
+                Restaurant Access
+              </label>
+              <div className="space-y-2">
+                {restaurants.map((r) => (
+                  <label
+                    key={r.id}
+                    className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={access.includes(r.id)}
+                      onChange={() => toggleRestaurant(r.id)}
+                      className="rounded border-input"
+                    />
+                    {r.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Rostering */}
+          <div className="space-y-3 rounded-lg border border-border p-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <input
+                type="checkbox"
+                checked={isRosterable}
+                onChange={(e) => setIsRosterable(e.target.checked)}
+                className="rounded border-input"
+              />
+              Rosterable (appears in the roster builder)
+            </label>
+            {isRosterable && (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Home store</label>
+                  <select
+                    value={homeStore}
+                    onChange={(e) => setHomeStore(e.target.value)}
+                    className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">None</option>
+                    {restaurants.map((r) => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">Roster colour</label>
+                  <div className="flex flex-wrap gap-2">
+                    {EMP_SWATCHES.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setColour(c)}
+                        className="h-7 w-7 rounded-full"
+                        style={{ backgroundColor: c, boxShadow: colour === c ? `0 0 0 2px ${c}` : undefined }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Contact email</label>
+                <input
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="jane@email.com"
+                  className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Phone</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="04…"
+                  className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">

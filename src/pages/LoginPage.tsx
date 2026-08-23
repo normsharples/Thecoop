@@ -65,7 +65,7 @@ export default function LoginPage() {
                 type="text"
                 autoComplete="username"
                 autoCapitalize="none"
-                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50"
+                className="flex h-10 w-full rounded-lg border border-border-strong bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50"
                 placeholder="username"
                 {...register("identifier")}
               />
@@ -82,7 +82,7 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 autoComplete="current-password"
-                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50"
+                className="flex h-10 w-full rounded-lg border border-border-strong bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50"
                 placeholder="Enter your password"
                 {...register("password")}
               />

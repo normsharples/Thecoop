@@ -98,7 +98,7 @@ function SourceBadge({ source }: { source: string }) {
     <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
       source==="lightspeed" && "bg-blue-500/10 text-blue-500",
       source==="manual"     && "bg-muted/60 text-muted-foreground",
-      source==="override"   && "bg-amber-500/10 text-amber-500"
+      source==="override"   && "bg-warning/10 text-warning"
     )}>{source}</span>
   );
 }
@@ -107,10 +107,10 @@ function ChangeIndicator({ change }: { change: number | null }) {
   const isPos = change!==null && change>=0;
   return change!==null ? (
     <>
-      {change>0 ? <TrendingUp className="h-4 w-4 text-green-500"/>
-        : change<0 ? <TrendingDown className="h-4 w-4 text-red-500"/>
+      {change>0 ? <TrendingUp className="h-4 w-4 text-success"/>
+        : change<0 ? <TrendingDown className="h-4 w-4 text-destructive"/>
         : <Minus className="h-4 w-4 text-muted-foreground"/>}
-      <span className={cn("text-sm font-medium",isPos?"text-green-500":"text-red-500")}>
+      <span className={cn("text-sm font-medium",isPos?"text-success":"text-destructive")}>
         {change>0?"+":""}{change.toFixed(1)}%
       </span>
     </>
@@ -792,13 +792,13 @@ export default function SalesReport() {
               label="Total Discounts"
               value={formatCurrency(kpis.discounts.cur)}
               sub={`${kpis.discountCount.cur} applied`}
-              highlight={kpis.discounts.cur>0 ? "text-amber-500" : undefined}
+              highlight={kpis.discounts.cur>0 ? "text-warning" : undefined}
             />
             <SmallKpi
               label="Total Refunds"
               value={formatCurrency(kpis.refunds.cur)}
               sub={`${kpis.refundCount.cur} processed`}
-              highlight={kpis.refunds.cur>0 ? "text-red-500" : undefined}
+              highlight={kpis.refunds.cur>0 ? "text-destructive" : undefined}
             />
             <SmallKpi
               label="Discount Rate"
@@ -868,9 +868,9 @@ export default function SalesReport() {
                             <td className="px-4 py-3 text-sm">{format(parseISO(row.date),"d MMM yyyy")}</td>
                             <td className="px-4 py-3 text-sm font-medium">{r?.name??"—"}</td>
                             <td className="px-4 py-3 text-sm tabular-nums">{formatCurrency(row.total_sales)}</td>
-                            <td className="px-4 py-3 text-sm tabular-nums text-amber-500">{row.discounts_amount>0?formatCurrency(row.discounts_amount):"—"}</td>
+                            <td className="px-4 py-3 text-sm tabular-nums text-warning">{row.discounts_amount>0?formatCurrency(row.discounts_amount):"—"}</td>
                             <td className="px-4 py-3 text-sm text-muted-foreground">{row.discounts_count||"—"}</td>
-                            <td className="px-4 py-3 text-sm tabular-nums text-red-500">{row.refunds_amount>0?formatCurrency(row.refunds_amount):"—"}</td>
+                            <td className="px-4 py-3 text-sm tabular-nums text-destructive">{row.refunds_amount>0?formatCurrency(row.refunds_amount):"—"}</td>
                             <td className="px-4 py-3 text-sm text-muted-foreground">{row.refunds_count||"—"}</td>
                             <td className="px-4 py-3 text-sm tabular-nums text-muted-foreground">{row.net_sales!==null?formatCurrency(row.net_sales):"—"}</td>
                           </tr>
