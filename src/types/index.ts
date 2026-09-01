@@ -636,6 +636,10 @@ export interface FoodCostItem {
   cost_per_unit: number;
   supplier: string | null;
   location: string | null;
+  /** Allergen tags. Recipe allergens are derived from these — never typed on a recipe. */
+  allergens: string[];
+  /** Kilograms per "each", so a recipe can call for 180 g of an each-stocked item. */
+  weight_per_each: number | null;
   created_at: string;
 }
 
@@ -648,26 +652,266 @@ export interface StockCountLocation {
   created_at: string;
 }
 
+// ── Recipe book (migration 073) ───────────────────────────────────────────────
+// One table, two types. A prep recipe is a batch made in-house; a menu recipe is
+// what the POS sells. Recipes are global — one spec for every venue.
+
+export type RecipeType = "prep" | "menu";
+export type RecipeComponentType = "item" | "recipe";
+
 export interface Recipe {
   id: string;
   name: string;
+  type: RecipeType;
   category: string | null;
   description: string | null;
+  method_intro: string | null;
+  /** Net usable output, already net of trim and cook loss. */
+  yield_qty: number;
   yield_unit: string;
+  portions: number | null;
+  /** Expected loss vs raw input. Display + production variance only — not in the cost maths. */
+  yield_loss_pct: number | null;
+  /** true = production-logged stocked batch (R2); false = explode at sale. */
+  is_stocked: boolean;
+  output_food_cost_item_id: string | null;
+  shelf_life_hours: number | null;
+  prep_time_mins: number | null;
+  equipment: string | null;
+  station_id: string | null;
+  hero_image_path: string | null;
+  /** Allergens from the process, not an ingredient (shared fryer). */
+  extra_allergens: string[];
+  active: boolean;
+  created_by: string | null;
   created_at: string;
+  updated_at: string;
 }
 
-export interface RecipeIngredient {
+export interface RecipeLine {
   id: string;
   recipe_id: string;
-  food_cost_item_id: string;
-  quantity: number;
-  food_cost_item?: FoodCostItem;
+  component_type: RecipeComponentType;
+  food_cost_item_id: string | null;
+  sub_recipe_id: string | null;
+  qty_entered: number;
+  unit_entered: string | null;
+  /** Converted to the component's own base unit by trigger. null = not convertible. */
+  qty_stock_units: number | null;
+  note: string | null;
+  optional: boolean;
+  sort_order: number;
+  created_at: string;
+  food_cost_item?: FoodCostItem | null;
+  sub_recipe?: Recipe | null;
+}
+
+export interface RecipeStep {
+  id: string;
+  recipe_id: string;
+  step_no: number;
+  body: string;
+  image_path: string | null;
   created_at: string;
 }
 
-export interface RecipeWithIngredients extends Recipe {
-  ingredients: RecipeIngredient[];
+export interface RecipeVenueSetting {
+  recipe_id: string;
+  restaurant_id: string;
+  available: boolean;
+  par_qty: number | null;
+  par_unit: string | null;
+  updated_at: string;
+}
+
+export interface RecipeWithDetail extends Recipe {
+  lines: RecipeLine[];
+  steps: RecipeStep[];
+  venue_settings: RecipeVenueSetting[];
+}
+
+/** recipe_cost() — manager tier only; staff never receive these figures. */
+export interface RecipeCost {
+  total_cost: number;
+  cost_per_yield_unit: number | null;
+  cost_per_portion: number | null;
+  missing_cost_items: number;
+  incomplete: boolean;
+}
+
+export interface RecipeCostRow extends RecipeCost {
+  recipe_id: string;
+}
+
+export type RecipeCostBasis = "live" | "standard";
+
+export interface RecipeIssue {
+  kind: "no_lines" | "unit" | "stocked_without_output" | "missing_cost" | "cycle";
+  detail: string;
+}
+
+export interface RecipeCoverage {
+  total_sales: number;
+  mapped_sales: number;
+  coverage_pct: number;
+  unmapped_products: number;
+}
+
+export interface UnmappedProduct {
+  item_name: string;
+  category_name: string | null;
+  sales_amount: number;
+  quantity: number;
+}
+
+// ── Label printing (migration 076) ───────────────────────────────────────────
+
+export type PrinterKind = "lan_escpos" | "sunmi_cloud";
+
+export interface Printer {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  kind: PrinterKind;
+  /** LAN IP. Give it a DHCP reservation — a moved address stalls the queue. */
+  host: string | null;
+  port: number;
+  columns: number;
+  sn: string | null;
+  active: boolean;
+  is_default: boolean;
+  last_ok_at: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PrintJobStatus = "queued" | "printing" | "done" | "error" | "cancelled";
+
+export interface PrintJob {
+  id: string;
+  restaurant_id: string;
+  printer_id: string | null;
+  job_type: "prep_label" | "test";
+  payload: Record<string, unknown>;
+  status: PrintJobStatus;
+  attempts: number;
+  last_error: string | null;
+  source_type: string | null;
+  source_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+// ── Production + prep list (migration 074) ───────────────────────────────────
+
+export interface ProductionRun {
+  id: string;
+  restaurant_id: string;
+  recipe_id: string;
+  batches: number;
+  /** batches × yield at the time it was made. */
+  expected_qty: number | null;
+  produced_qty: number | null;
+  produced_unit: string | null;
+  business_date: string;
+  made_at: string;
+  made_by: string | null;
+  made_by_name: string | null;
+  notes: string | null;
+  /** false = deliberately not posted (non-stocked recipe), never a silent failure. */
+  posted: boolean;
+  batch_cost: number | null;
+  use_by: string | null;
+  voided_at: string | null;
+  voided_by: string | null;
+  created_at: string;
+  recipe?: Recipe | null;
+}
+
+export interface PrepCheck {
+  id: string;
+  restaurant_id: string;
+  recipe_id: string;
+  business_date: string;
+  on_hand_qty: number;
+  unit: string | null;
+  checked_by: string | null;
+  checked_at: string;
+}
+
+export type OnHandSource = "stock" | "checked" | "unknown";
+
+export interface PrepPlanItem {
+  id: string;
+  restaurant_id: string;
+  recipe_id: string;
+  business_date: string;
+  target_qty: number;
+  unit: string | null;
+  note: string | null;
+  sort_order: number;
+  completed_at: string | null;
+  completed_by: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * prep_board() (migration 075) — EVERY prep recipe at the venue, whether or not
+ * it is on today's plan. Par is a suggestion, not the decision: the manager sets
+ * target_qty and the team works the list down. No cost, so it is safe for staff
+ * and for the tablet.
+ */
+export interface PrepBoardRow {
+  recipe_id: string;
+  name: string;
+  category: string | null;
+  yield_qty: number;
+  yield_unit: string;
+  is_stocked: boolean;
+  hero_image_path: string | null;
+  prep_time_mins: number | null;
+  shelf_life_hours: number | null;
+
+  planned: boolean;
+  target_qty: number | null;
+  plan_note: string | null;
+  plan_item_id: string | null;
+  completed_at: string | null;
+
+  par_qty: number | null;
+  on_hand: number | null;
+  on_hand_source: OnHandSource;
+  /** par − on hand, when both are known. A starting number for the plan. */
+  suggested_qty: number | null;
+  made_today: number;
+  /** target − made today, floored at zero. null when not planned. */
+  remaining: number | null;
+  last_made_at: string | null;
+}
+
+/** @deprecated superseded by PrepBoardRow (migration 075). */
+export interface PrepListRow {
+  recipe_id: string;
+  name: string;
+  category: string | null;
+  yield_qty: number;
+  yield_unit: string;
+  is_stocked: boolean;
+  par_qty: number;
+  on_hand: number | null;
+  on_hand_source: OnHandSource;
+  to_make: number | null;
+  batches_to_make: number | null;
+  prep_time_mins: number | null;
+  shelf_life_hours: number | null;
+  hero_image_path: string | null;
+  made_today: number;
+  last_made_at: string | null;
 }
 
 export interface StockCount {
@@ -934,6 +1178,8 @@ export type InventoryMovementType =
   | "sale_depletion"
   | "waste"
   | "count_adjustment"
+  | "production_in"
+  | "production_out"
   | "transfer_out"
   | "transfer_in"
   | "in_transit_loss";

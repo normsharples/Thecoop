@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 const subTabs = [
   { label: "Overview", path: "/reports/sales", end: true },
   { label: "By Hour", path: "/reports/sales/by-hour", end: false },
+  { label: "Sales Mix", path: "/reports/sales/mix", end: false },
 ];
 
 export default function SalesReportLayout() {

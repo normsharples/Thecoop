@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
+  Activity,
   LayoutDashboard,
   BarChart3,
   CalendarDays,
@@ -20,12 +21,15 @@ import {
   Receipt,
   CalendarRange,
   UserRound,
+  BookOpen,
+  ChefHat,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 
 const mobileTabItems = [
   { label: "Home",     path: "/",              icon: LayoutDashboard },
+  { label: "Pulse",    path: "/pulse",         icon: Activity        },
   { label: "Reports",  path: "/reports",       icon: BarChart3       },
   { label: "Calendar", path: "/calendar",      icon: CalendarDays    },
 ];
@@ -33,6 +37,8 @@ const mobileTabItems = [
 // Staff can only ever reach these three pages — shown directly in the tab
 // bar since there's no "More" sheet needed for just three destinations.
 const staffTabItems = [
+  { label: "Recipes",     path: "/recipes",         icon: BookOpen },
+  { label: "Prep list",   path: "/prep",            icon: ChefHat },
   { label: "Incidents",   path: "/admin/incidents", icon: AlertTriangle },
   { label: "Cash Up",     path: "/admin/cash",      icon: Banknote },
   { label: "Invoices",    path: "/admin/invoices",  icon: Receipt },
@@ -45,6 +51,8 @@ const teamMemberTabItems = [
 ];
 
 const supervisorTabItems = [
+  { label: "Recipes",      path: "/recipes",         icon: BookOpen },
+  { label: "Prep list",    path: "/prep",            icon: ChefHat },
   { label: "Roster",       path: "/roster-view",     icon: CalendarRange },
   { label: "My Roster",    path: "/my-roster",       icon: CalendarDays },
   { label: "Incidents",    path: "/admin/incidents", icon: AlertTriangle },
@@ -52,6 +60,8 @@ const supervisorTabItems = [
 ];
 
 const moreItems = [
+  { label: "Recipes",         path: "/recipes",                 icon: BookOpen },
+  { label: "Prep list",       path: "/prep",                    icon: ChefHat },
   { label: "Rostering",       path: "/rostering",               icon: CalendarRange },
   { label: "My Availability", path: "/my-availability",         icon: CalendarDays },
   { label: "My Profile",      path: "/my-profile",              icon: UserRound },

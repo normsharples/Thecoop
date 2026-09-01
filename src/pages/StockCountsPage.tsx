@@ -35,12 +35,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { FoodCostItem, StockCount, StockCountLine, RecipeWithIngredients } from "@/types";
+import type { FoodCostItem, StockCount, StockCountLine, Recipe, RecipeLine } from "@/types";
+import { useRecipeExploder, formatQty } from "@/hooks/useRecipes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface CountLineWithItem extends StockCountLine {
   food_cost_item: FoodCostItem;
+}
+
+/** A prep recipe the counter can enter a shelf quantity against. */
+interface CountRecipe extends Recipe {
+  lines: (RecipeLine & { food_cost_item?: FoodCostItem | null })[];
 }
 
 interface CountWithMeta extends StockCount {
@@ -85,17 +91,22 @@ function calcTotal(items: FoodCostItem[], qtys: Record<string, string>): number 
   }, 0);
 }
 
+/**
+ * Prepped items counted on the shelf, converted back into the raw ingredients
+ * they contain. `qty` is in the recipe's own yield unit, so 3 kg of a slaw that
+ * yields 2 kg is 1.5 batches — and the explode walks any sub-recipes beneath it.
+ */
 function calcRecipeContributions(
-  recipes: RecipeWithIngredients[],
-  recipeQtys: Record<string, string>
+  recipes: CountRecipe[],
+  recipeQtys: Record<string, string>,
+  explode: (recipeId: string, batches: number) => Map<string, number>
 ): Record<string, number> {
   const contrib: Record<string, number> = {};
   for (const recipe of recipes) {
     const qty = parseFloat(recipeQtys[recipe.id] || "0") || 0;
-    if (qty <= 0) continue;
-    for (const ing of recipe.ingredients) {
-      contrib[ing.food_cost_item_id] =
-        (contrib[ing.food_cost_item_id] ?? 0) + ing.quantity * qty;
+    if (qty <= 0 || !(recipe.yield_qty > 0)) continue;
+    for (const [itemId, amount] of explode(recipe.id, qty / recipe.yield_qty)) {
+      contrib[itemId] = (contrib[itemId] ?? 0) + amount;
     }
   }
   return contrib;
@@ -466,18 +477,23 @@ function CountEntryPanel({
   const [groupBy, setGroupBy] = useState<"category" | "location">("category");
   const [recipesOpen, setRecipesOpen] = useState(true);
 
-  // Fetch recipes with ingredients
-  const { data: recipes = [] } = useQuery<RecipeWithIngredients[]>({
-    queryKey: ["stock_count_recipes_with_ingredients"],
+  // Prep recipes from the recipe book (migration 073). Stocked batches are
+  // excluded — those are counted directly as their own item, not exploded.
+  const explode = useRecipeExploder();
+  const { data: recipes = [] } = useQuery<CountRecipe[]>({
+    queryKey: ["count-prep-recipes"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("stock_count_recipes")
+        .from("recipes")
         .select(
-          "*, ingredients:stock_count_recipe_ingredients(*, food_cost_item:food_cost_items(*))"
+          "*, lines:recipe_lines!recipe_lines_recipe_id_fkey(*, food_cost_item:food_cost_items(*))"
         )
+        .eq("type", "prep")
+        .eq("is_stocked", false)
+        .eq("active", true)
         .order("name");
       if (error) throw error;
-      return (data ?? []) as RecipeWithIngredients[];
+      return (data ?? []) as CountRecipe[];
     },
   });
 
@@ -534,8 +550,8 @@ function CountEntryPanel({
 
   // Recipe contributions per food cost item
   const recipeContribs = useMemo(
-    () => calcRecipeContributions(recipes, recipeQtys),
-    [recipes, recipeQtys]
+    () => calcRecipeContributions(recipes, recipeQtys, explode),
+    [recipes, recipeQtys, explode]
   );
 
   // Grand total includes manual qtys + recipe contributions
@@ -728,18 +744,23 @@ function CountEntryPanel({
                         <p className="text-sm text-foreground leading-tight">
                           {recipe.name}
                         </p>
-                        {rqty > 0 && recipe.ingredients.length > 0 && (
+                        {rqty > 0 && recipe.lines.length > 0 && (
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {recipe.ingredients.map((ing) => {
-                              const qty = ing.quantity * rqty;
-                              return `${qty % 1 === 0 ? qty : qty.toFixed(3)} ${ing.food_cost_item?.unit ?? ""} ${ing.food_cost_item?.name ?? ""}`;
-                            }).join(", ")}
+                            {recipe.lines
+                              .map((l) => {
+                                const batches = recipe.yield_qty > 0 ? rqty / recipe.yield_qty : 0;
+                                const qty = (l.qty_stock_units ?? 0) * batches;
+                                const unit = l.food_cost_item?.unit ?? l.sub_recipe?.yield_unit ?? "";
+                                const name = l.food_cost_item?.name ?? l.sub_recipe?.name ?? "";
+                                return `${formatQty(qty, unit)} ${name}`;
+                              })
+                              .join(", ")}
                           </p>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {recipe.ingredients.length} ingredient
-                        {recipe.ingredients.length !== 1 ? "s" : ""}
+                        {recipe.lines.length} ingredient
+                        {recipe.lines.length !== 1 ? "s" : ""}
                       </p>
                       <div className="flex items-center gap-1">
                         <Input

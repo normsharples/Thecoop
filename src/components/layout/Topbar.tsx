@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, User, ChevronDown } from "lucide-react";
+import { LogOut, User, ChevronDown, Eye, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useViewMode } from "@/contexts/ViewMode";
+import { cn } from "@/lib/utils";
 import { RestaurantSwitcher } from "./RestaurantSwitcher";
 import { BrandSwitcher } from "./BrandSwitcher";
 import { NotificationBell } from "./NotificationBell";
@@ -36,6 +39,7 @@ export function Topbar({ pageTitle }: TopbarProps) {
       </h1>
 
       <div className="ml-auto flex items-center gap-2">
+        <ViewModeSwitch />
         <BrandSwitcher />
         <RestaurantSwitcher />
         <NotificationBell />
@@ -88,5 +92,62 @@ export function Topbar({ pageTitle }: TopbarProps) {
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * Operations ⇄ Staff switch. Only a real superadmin sees it.
+ *
+ * Staff mode narrows the app to what a team member sees. It is a PREVIEW, not
+ * a permission drop — the Supabase session is untouched, so RLS still answers
+ * as a superadmin. The amber pill is there so nobody forgets which mode
+ * they're in and reports a "missing" page as a bug.
+ */
+function ViewModeSwitch() {
+  const { isRealSuperadmin } = usePermissions();
+  const { mode, setMode } = useViewMode();
+
+  if (!isRealSuperadmin) return null;
+
+  const options = [
+    { value: "operations" as const, label: "Operations", Icon: LayoutDashboard },
+    { value: "staff" as const, label: "Staff", Icon: Eye },
+  ];
+
+  return (
+    <div
+      role="group"
+      aria-label="View mode"
+      className={cn(
+        "flex items-center gap-0.5 rounded-lg border p-0.5",
+        mode === "staff" ? "border-warning bg-warning-soft" : "border-border bg-secondary"
+      )}
+    >
+      {options.map(({ value, label, Icon }) => {
+        const active = mode === value;
+        return (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setMode(value)}
+            aria-pressed={active}
+            title={
+              value === "staff"
+                ? "Preview the app as a team member sees it"
+                : "Back to the full operations view"
+            }
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+              active
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }

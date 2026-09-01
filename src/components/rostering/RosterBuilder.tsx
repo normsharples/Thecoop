@@ -1697,14 +1697,14 @@ function ProjectedSalesPanel({
       >
         <span className="flex items-center gap-2 text-sm font-medium text-foreground">
           <ChevronDown className={cn("h-4 w-4 transition-transform", !open && "-rotate-90")} />
-          Projected sales (your projection × last week's hourly split)
+          Projected sales (your projection × the last 2 weeks' average hourly split)
         </span>
         <span className="flex items-center gap-2">
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
             {formatCurrency(weekTotal)} / wk
           </span>
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            shape w/c {refWeekLabel}
+            shape: 2-wk avg to w/c {refWeekLabel}
           </span>
         </span>
       </button>
@@ -1770,8 +1770,9 @@ function ProjectedSalesPanel({
             </div>
           )}
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Day total comes from Projections; hours are shaped from the most recent
-            same-weekday's sales split (week commencing {refWeekLabel}). “no projection”
+            Day total comes from Projections; hours are shaped from the average of the
+            two most recent same-weekdays' sales splits — last week and the week before
+            (most recent week commencing {refWeekLabel}). “no projection”
             = nothing entered in Projections for that day, so Build from sales skips it.
             “est” = no history for that weekday, shaped from the week's average curve;
             “even” = no hourly history at all, spread evenly.

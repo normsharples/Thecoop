@@ -18,6 +18,8 @@ import {
   Briefcase,
   Gauge,
   ShieldAlert,
+  Tablet,
+  Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,10 +36,12 @@ const settingsSections = [
   { label: "Food Cost", path: "/admin/settings/food-cost", icon: Truck },
   { label: "Food Cost Items", path: "/admin/settings/food-cost-items", icon: ShoppingBasket },
   { label: "Stock Counts", path: "/admin/settings/stock-counts", icon: LayoutGrid },
-  { label: "Recipes", path: "/admin/settings/recipes", icon: BookOpen },
+  { label: "Recipes", path: "/recipes", icon: BookOpen },
   { label: "Asset Register", path: "/admin/settings/asset-register", icon: HardDrive },
   { label: "Bank Accounts", path: "/admin/settings/bank-accounts", icon: Landmark },
   { label: "Quick Links", path: "/admin/settings/quick-links", icon: Link2 },
+  { label: "Time Clocks", path: "/admin/settings/time-clocks", icon: Tablet },
+  { label: "Printers", path: "/admin/settings/printers", icon: Printer },
   { label: "Integrations", path: "/admin/settings/integrations", icon: Plug },
 ];
 

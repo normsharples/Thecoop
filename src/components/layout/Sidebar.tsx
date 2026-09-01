@@ -19,6 +19,8 @@ import {
   ListChecks,
   CalendarRange,
   Activity,
+  BookOpen,
+  ChefHat,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -52,6 +54,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   ListChecks,
   CalendarRange,
   Activity,
+  BookOpen,
+  ChefHat,
   Menu,
 };
 
@@ -86,6 +90,8 @@ const navItems: NavItem[] = [
     children: REPORT_SIDEBAR_LINKS,
   },
   // { label: "Leaderboard", path: "/leaderboard", icon: "Trophy" },
+  { label: "Prep list", path: "/prep", icon: "ChefHat", section: "Operate" },
+  { label: "Recipes", path: "/recipes", icon: "BookOpen", section: "Operate" },
   { label: "Rostering", path: "/rostering", icon: "CalendarRange", section: "Operate" },
   { label: "Calendar",  path: "/calendar", icon: "CalendarDays", section: "Operate" },
   {
@@ -113,6 +119,8 @@ const navItems: NavItem[] = [
 // Staff can only ever reach Incidents, the daily Cash Up, and Invoices — no
 // Dashboard, Reports, Leaderboard, Calendar, or other Admin/Settings pages.
 const staffNavItems: NavItem[] = [
+  { label: "Recipes", path: "/recipes", icon: "BookOpen" },
+  { label: "Prep list", path: "/prep", icon: "ChefHat" },
   { label: "Incidents", path: "/admin/incidents", icon: "AlertTriangle" },
   { label: "Cash Up", path: "/admin/cash", icon: "Banknote" },
   { label: "Invoices", path: "/admin/invoices", icon: "Receipt" },
@@ -126,6 +134,8 @@ const teamMemberNavItems: NavItem[] = [
 
 // shift_supervisor: whole-week roster (read-only) + incidents + banking.
 const supervisorNavItems: NavItem[] = [
+  { label: "Recipes", path: "/recipes", icon: "BookOpen" },
+  { label: "Prep list", path: "/prep", icon: "ChefHat" },
   { label: "Roster", path: "/roster-view", icon: "CalendarRange" },
   { label: "My Roster", path: "/my-roster", icon: "CalendarDays" },
   { label: "Incidents", path: "/admin/incidents", icon: "AlertTriangle" },
@@ -314,6 +324,7 @@ function SidebarItem({
  */
 function SidebarUser({ collapsed }: { collapsed: boolean }) {
   const { profile, signOut } = useAuth();
+  const { role: effectiveRole } = usePermissions();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -326,8 +337,10 @@ function SidebarUser({ collapsed }: { collapsed: boolean }) {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  const roleLabel = profile?.role
-    ? profile.role.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
+  // The role the app is currently behaving as — in staff mode that is
+  // "Team member", so the footer never contradicts the header switch.
+  const roleLabel = effectiveRole
+    ? effectiveRole.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
     : "";
 
   return (

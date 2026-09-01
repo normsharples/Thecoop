@@ -9,7 +9,8 @@ export interface DayProjection {
   hours: number[]; // projected $ per hour (length 24), summing to `total`
   total: number; // the entered daily projection (0 if none)
   hasProjection: boolean; // a projection was entered for this date
-  shapeDate: string | null; // reference date whose hourly split was used
+  shapeDate: string | null; // most recent reference date whose hourly split was used
+  daysUsed: number; // how many same-weekdays were averaged into the shape (0-2)
   estimated: boolean; // true = no same-weekday shape, used the week's avg shape
   evenSpread: boolean; // true = no history at all, split evenly
 }
@@ -19,15 +20,18 @@ interface ShapeRow {
   business_date: string;
   hour: number;
   amount: number | string;
+  days_used?: number | null;
 }
 
 /**
  * Sales projection, Norm's model (rev 22 Aug):
  *   • DAY TOTAL = the figure entered in Projections (daily_projections) for that
  *     date — the source of truth. No figure → the day is skipped (no shifts).
- *   • HOURLY SHAPE = the sales-by-hour split of the most recent COMPLETED
- *     same-weekday (from the last full week, walking back week-by-week if that
- *     weekday has no data), scaled so the hours sum exactly to the day total.
+ *   • HOURLY SHAPE = the AVERAGE sales-by-hour split of the two most recent
+ *     COMPLETED same-weekdays — last week and the week before (walking back
+ *     week-by-week if a weekday has no data), scaled so the hours sum exactly
+ *     to the day total. Each week is normalised before averaging, so both get
+ *     equal say in the curve.
  *   • No growth factor — the entered total already reflects the forecast.
  */
 export function useSalesProjection(
@@ -93,21 +97,26 @@ export function useSalesProjection(
     const rows = shapeRows ?? [];
 
     // Assemble per-weekday hourly arrays from the aggregated rows.
-    const rawByWd = new Map<number, { date: string; hours: number[] }>();
+    const rawByWd = new Map<number, { date: string; hours: number[]; daysUsed: number }>();
     for (const r of rows) {
       let e = rawByWd.get(r.weekday);
       if (!e) {
-        e = { date: r.business_date, hours: new Array(24).fill(0) };
+        e = { date: r.business_date, hours: new Array(24).fill(0), daysUsed: Number(r.days_used ?? 1) };
         rawByWd.set(r.weekday, e);
       }
       e.hours[r.hour] += Number(r.amount ?? 0);
     }
 
     // Normalise each weekday to fractions of its day total.
-    const shapeByWeekday = new Map<number, { date: string; frac: number[] }>();
+    const shapeByWeekday = new Map<number, { date: string; frac: number[]; daysUsed: number }>();
     for (const [wd, e] of rawByWd) {
       const sum = e.hours.reduce((a, v) => a + v, 0);
-      if (sum > 0) shapeByWeekday.set(wd, { date: e.date, frac: e.hours.map((v) => v / sum) });
+      if (sum > 0)
+        shapeByWeekday.set(wd, {
+          date: e.date,
+          frac: e.hours.map((v) => v / sum),
+          daysUsed: e.daysUsed,
+        });
     }
 
     // Average of every available weekday shape — used only if a specific weekday
@@ -135,12 +144,14 @@ export function useSalesProjection(
       let estimated = false;
       let evenSpread = false;
       let shapeDate: string | null = null;
+      let daysUsed = 0;
 
       if (!hasProjection) {
         hours = new Array(24).fill(0);
       } else if (shape) {
         hours = shape.frac.map((f) => f * total);
         shapeDate = shape.date;
+        daysUsed = shape.daysUsed;
       } else if (avgFrac) {
         // No history for this weekday → shape from the week's average curve.
         hours = avgFrac.map((f) => f * total);
@@ -153,7 +164,15 @@ export function useSalesProjection(
       }
 
       projectedByDate.set(d, hours);
-      detailByDate.set(d, { hours, total, hasProjection, shapeDate, estimated, evenSpread });
+      detailByDate.set(d, {
+        hours,
+        total,
+        hasProjection,
+        shapeDate,
+        daysUsed,
+        estimated,
+        evenSpread,
+      });
     }
 
     return {

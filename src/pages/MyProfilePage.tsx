@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import {
   useEmployeeSensitive, useCompanySettings, useEmployeeDocuments, useDocumentActions,
@@ -268,12 +269,14 @@ function DetailsTab({ profile }: { profile: Profile }) {
  * authoriser needs their own name, title and signature on file.
  */
 function SigningAuthorityCard({ profile }: { profile: Profile }) {
+  const { role: effectiveRole } = usePermissions();
   const [title, setTitle] = useState(profile.signatory_title ?? "");
   const [image, setImage] = useState(profile.signature_image ?? "");
   const [busy, setBusy] = useState(false);
 
   // Only people who can start someone's onboarding ever sign a contract.
-  if (!["superadmin", "area_manager", "manager"].includes(profile.role)) return null;
+  // Effective role, so this hides while previewing staff mode.
+  if (!["superadmin", "area_manager", "manager"].includes(effectiveRole ?? "")) return null;
 
   const onFile = (file: File | null) => {
     if (!file) return;

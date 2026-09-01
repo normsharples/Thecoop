@@ -10,7 +10,7 @@ import { Topbar } from "./Topbar";
 import { MobileNav } from "./MobileNav";
 import { BrandTheme } from "./BrandTheme";
 import { AskDrawer } from "@/components/ask/AskDrawer";
-import { Loader2 } from "lucide-react";
+import { Eye, Loader2 } from "lucide-react";
 
 // The "staff" role can only ever see these sections — everything else
 // (Dashboard, Reports, Leaderboard, Calendar, other Admin pages, Settings)
@@ -78,7 +78,8 @@ function LoadingScreen() {
 
 export function AppLayout() {
   const { user, profile, isLoading } = useAuth();
-  const { isStaff, isTeamMember, isShiftSupervisor } = usePermissions();
+  const { isStaff, isTeamMember, isShiftSupervisor, role: effectiveRole, isStaffMode } =
+    usePermissions();
   const { data: onboarding, isLoading: onboardingLoading } = useMyOnboarding();
   const { data: openContract } = useMyOpenContract();
   const location = useLocation();
@@ -113,6 +114,9 @@ export function AppLayout() {
       (onboarding.details_complete && onboarding.sensitive_complete));
   const waitingOnUs = employeeSideDone && !onboarding?.contract_signed && !openContract;
 
+  // Deliberately profile.role, not the effective role: staff mode is a preview,
+  // and a superadmin previewing it must not get hard-gated behind the
+  // onboarding wizard with no way back to the switch.
   const canPassGate =
     ["superadmin", "area_manager", "manager"].includes(profile.role) ||
     onboarding?.skip_allowed === true;
@@ -161,7 +165,7 @@ export function AppLayout() {
   // The assistant reads sales and labour, so it sits behind the same line as the
   // rest of that data: manager and above. RLS still scopes every answer to the
   // venues the person can see, so this only decides who gets the button.
-  const canAsk = ["superadmin", "area_manager", "manager"].includes(profile.role);
+  const canAsk = ["superadmin", "area_manager", "manager"].includes(effectiveRole ?? "");
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -169,6 +173,12 @@ export function AppLayout() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar pageTitle={pageTitle} />
+        {isStaffMode && (
+          <div className="flex shrink-0 items-center justify-center gap-2 border-b border-warning bg-warning-soft px-4 py-1.5 text-[11px] font-medium text-warning">
+            <Eye className="h-3.5 w-3.5" />
+            Staff mode — showing only what a team member sees. Your data access is unchanged.
+          </div>
+        )}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6">
           {onboardingOutstanding && onboarding && <OnboardingBanner onboarding={onboarding} />}
           <Suspense

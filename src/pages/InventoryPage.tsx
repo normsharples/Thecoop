@@ -25,6 +25,8 @@ const MOVE_META: Record<InventoryMovementType, { label: string; tone: string }> 
   transfer_out:     { label: "Transfer out",tone: "text-warning" },
   in_transit_loss:  { label: "Transit loss",tone: "text-destructive" },
   count_adjustment: { label: "Count adjust",tone: "text-purple-500" },
+  production_in:    { label: "Batch made",  tone: "text-success" },
+  production_out:   { label: "Batch used",  tone: "text-warning" },
 };
 
 function ItemMovements({

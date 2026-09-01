@@ -191,9 +191,11 @@ export default function ForecastGraph({
     if (dayDetail.evenSpread)
       return "No hourly history yet — sales spread evenly across opening hours.";
     if (dayDetail.estimated) return "No history for this weekday yet — shaped on the average day.";
-    return dayDetail.shapeDate
-      ? `Hourly shape from ${format(parseISO(dayDetail.shapeDate), "EEE d MMM")}.`
-      : null;
+    if (!dayDetail.shapeDate) return null;
+    const ref = format(parseISO(dayDetail.shapeDate), "EEE d MMM");
+    return dayDetail.daysUsed > 1
+      ? `Hourly shape averaged from the last ${dayDetail.daysUsed} same-weekdays (most recent ${ref}).`
+      : `Hourly shape from ${ref}.`;
   })();
 
   const subtitle =

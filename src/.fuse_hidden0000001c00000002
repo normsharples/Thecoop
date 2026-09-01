@@ -1,7 +1,6 @@
 import { lazy } from "react";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { ViewModeProvider } from "@/contexts/ViewMode";
 
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
@@ -62,18 +61,14 @@ const WHSAuditTemplates = lazy(() => import("@/components/settings/WHSAuditTempl
 const FoodCostSettings = lazy(() => import("@/components/settings/FoodCostSettings"));
 const FoodCostItems = lazy(() => import("@/components/settings/FoodCostItems"));
 const StockCountSettings = lazy(() => import("@/components/settings/StockCountSettings"));
+const RecipesSettings = lazy(() => import("@/components/settings/RecipesSettings"));
 const AssetRegister = lazy(() => import("@/components/settings/AssetRegister"));
 const BankAccounts = lazy(() => import("@/components/settings/BankAccounts"));
 const IntegrationsSettings = lazy(() => import("@/components/settings/IntegrationsSettings"));
 const BrandsSettings = lazy(() => import("@/components/settings/BrandsSettings"));
 const VenuesSettings = lazy(() => import("@/components/settings/VenuesSettings"));
 const OrderingScheduleSettings = lazy(() => import("@/components/settings/OrderingScheduleSettings"));
-const TimeClockSettings = lazy(() => import("@/components/settings/TimeClockSettings"));
-const PrintersSettings = lazy(() => import("@/components/settings/PrintersSettings"));
 const TasksPage = lazy(() => import("@/pages/TasksPage"));
-const RecipesPage = lazy(() => import("@/pages/RecipesPage"));
-const RecipeDetailPage = lazy(() => import("@/pages/RecipeDetailPage"));
-const PrepListPage = lazy(() => import("@/pages/PrepListPage"));
 
 const SalesManualEntryPage = lazy(() => import("@/pages/SalesManualEntryPage"));
 const LabourManualEntryPage = lazy(() => import("@/pages/LabourManualEntryPage"));
@@ -107,9 +102,6 @@ const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: "pulse", element: <PulsePage /> },
       { path: "tasks", element: <TasksPage /> },
-      { path: "recipes", element: <RecipesPage /> },
-      { path: "recipes/:id", element: <RecipeDetailPage /> },
-      { path: "prep", element: <PrepListPage /> },
       { path: "rostering", element: <RosteringPage /> },
       { path: "my-roster", element: <MyRosterPage /> },
       { path: "roster-view", element: <RosterViewPage /> },
@@ -197,13 +189,10 @@ const router = createBrowserRouter([
               { path: "food-cost", element: <FoodCostSettings /> },
               { path: "food-cost-items", element: <FoodCostItems /> },
               { path: "stock-counts", element: <StockCountSettings /> },
-              // Superseded by the Recipes page (migration 073); keep the old URL alive.
-              { path: "recipes", element: <Navigate to="/recipes" replace /> },
+              { path: "recipes", element: <RecipesSettings /> },
               { path: "asset-register", element: <AssetRegister /> },
               { path: "bank-accounts", element: <BankAccounts /> },
               { path: "quick-links", element: <QuickLinksSettings /> },
-              { path: "time-clocks", element: <TimeClockSettings /> },
-              { path: "printers", element: <PrintersSettings /> },
               { path: "integrations", element: <IntegrationsSettings /> },
             ],
           },
@@ -214,9 +203,5 @@ const router = createBrowserRouter([
 ]);
 
 export default function App() {
-  return (
-    <ViewModeProvider>
-      <RouterProvider router={router} />
-    </ViewModeProvider>
-  );
+  return <RouterProvider router={router} />;
 }

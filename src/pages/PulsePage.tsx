@@ -3,8 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, addDays, subDays } from "date-fns";
 import {
   Activity,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   RefreshCw,
   DollarSign,
   Truck,
@@ -66,14 +68,14 @@ function Kpi({
   tone?: "default" | "green" | "amber" | "red";
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-3 sm:p-4">
       <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="h-4 w-4" />
-        <span className="eyebrow">{label}</span>
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="eyebrow truncate">{label}</span>
       </div>
       <p
         className={cn(
-          "mt-2 text-2xl font-bold tabular-nums",
+          "mt-1.5 text-xl font-bold tabular-nums sm:mt-2 sm:text-2xl",
           tone === "green" && "text-success",
           tone === "amber" && "text-warning",
           tone === "red" && "text-destructive",
@@ -194,6 +196,92 @@ function PulseTooltip({
   );
 }
 
+// ── Mobile hour card (replaces the table row on small screens) ───────────────
+function MobileHourCard({ row: r, spmhTarget }: { row: PulseHour; spmhTarget: number | null }) {
+  const [open, setOpen] = useState(false);
+  const behind = r.projected > 0 && !r.isFuture && r.netSales < r.projected * 0.9;
+  const varianceSign = r.variance != null ? (r.variance > 0 ? "+" : r.variance < 0 ? "−" : "") : "";
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-border bg-card overflow-hidden",
+        r.isCurrent && "ring-1 ring-warning border-warning/40"
+      )}
+    >
+      <button
+        onClick={() => setOpen(!open)}
+        className={cn(
+          "flex w-full items-center gap-3 px-3 py-2.5 text-left",
+          r.isFuture && "opacity-50"
+        )}
+      >
+        {/* Time */}
+        <span className="w-16 shrink-0 text-sm font-semibold text-foreground">
+          {r.label}
+          {r.labourSource === "rostered" && r.labourHours > 0 && (
+            <span className="ml-1 text-[9px] font-semibold text-muted-foreground">R</span>
+          )}
+        </span>
+        {/* Net sales */}
+        <span className={cn(
+          "flex-1 text-right text-sm font-bold tabular-nums",
+          behind ? "text-destructive" : r.netSales > 0 ? "text-foreground" : "text-muted-foreground"
+        )}>
+          {r.isFuture && r.netSales === 0 ? "—" : money(r.netSales)}
+        </span>
+        {/* Variance badge */}
+        {r.variance != null && r.variance !== 0 && (
+          <span className={cn(
+            "min-w-[52px] rounded-md px-1.5 py-0.5 text-right text-[11px] font-semibold tabular-nums",
+            r.variance > 0 ? "bg-success-soft text-success" : "bg-destructive-soft text-destructive"
+          )}>
+            {varianceSign}{money(Math.abs(r.variance))}
+          </span>
+        )}
+        {/* SPMH */}
+        <span className={cn(
+          "w-10 text-right text-xs font-semibold tabular-nums",
+          r.spmh != null && spmhTarget
+            ? r.spmh >= spmhTarget ? "text-success" : r.spmh >= spmhTarget * 0.9 ? "text-warning" : "text-destructive"
+            : "text-muted-foreground"
+        )}>
+          {spmhFmt(r.spmh)}
+        </span>
+        {/* Chevron */}
+        {open ? (
+          <ChevronUp className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        )}
+      </button>
+
+      {open && (
+        <div className={cn(
+          "border-t border-border px-3 py-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs",
+          r.isCurrent && "bg-warning-soft/50"
+        )}>
+          <div className="flex justify-between"><span className="text-muted-foreground">Projected</span><span className="tabular-nums font-medium">{r.projected > 0 ? money(r.projected) : "—"}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Gross</span><span className="tabular-nums font-medium">{r.grossSales > 0 ? money(r.grossSales) : "—"}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Delivery</span><span className="tabular-nums font-medium">{r.delivery > 0 ? money(r.delivery) : "—"}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Labour cost</span><span className="tabular-nums font-medium">{r.labourCost > 0 ? money(r.labourCost) : "—"}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Labour hrs</span><span className="tabular-nums font-medium">{r.labourHours > 0 ? hrs(r.labourHours) : "—"}</span></div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Variance</span>
+            <span className={cn(
+              "tabular-nums font-medium",
+              r.variance != null && r.variance > 0 && "text-success",
+              r.variance != null && r.variance < 0 && "text-destructive"
+            )}>
+              {r.variance == null ? "—" : `${varianceSign}${money(Math.abs(r.variance))}${r.variancePct != null ? ` (${varianceSign}${Math.abs(r.variancePct).toFixed(0)}%)` : ""}`}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PulsePage() {
   const queryClient = useQueryClient();
   const scope = useRestaurantScope();
@@ -257,77 +345,99 @@ export default function PulsePage() {
   return (
     <div className="space-y-4">
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <Activity className="h-5 w-5 text-success" />
-          <h1 className="text-xl font-semibold text-foreground">Pulse</h1>
-          {isToday && (
-            <span className="flex items-center gap-1.5 rounded-full bg-success-soft px-2 py-0.5 text-[11px] font-semibold text-success">
-              <span className="h-1.5 w-1.5 rounded-full bg-success" />
-              Live
-            </span>
-          )}
+      <div className="space-y-2 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+        {/* Title row */}
+        <div className="flex items-center justify-between sm:justify-start sm:gap-2">
+          <div className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-success" />
+            <h1 className="text-lg font-semibold text-foreground sm:text-xl">Pulse</h1>
+            {isToday && (
+              <span className="flex items-center gap-1.5 rounded-full bg-success-soft px-2 py-0.5 text-[11px] font-semibold text-success">
+                <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                Live
+              </span>
+            )}
+          </div>
+          {/* Refresh — visible inline on mobile, moves to end on desktop */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60 sm:hidden"
+          >
+            {refreshing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className={cn("h-3.5 w-3.5", pulse.isFetching && "animate-spin")} />
+            )}
+          </button>
         </div>
 
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setDate(format(subDays(parseISO(date), 1), "yyyy-MM-dd"))}
-            className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-accent"
-            aria-label="Previous day"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => e.target.value && setDate(e.target.value)}
-            className="rounded-lg border border-border-strong bg-card px-2.5 py-1.5 text-sm text-foreground"
-          />
-          <button
-            onClick={() => setDate(format(addDays(parseISO(date), 1), "yyyy-MM-dd"))}
-            className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-accent"
-            aria-label="Next day"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-          {!isToday && (
+        {/* Date nav + toggle row */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1">
             <button
-              onClick={() => setDate(todayISO())}
-              className="ml-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
+              onClick={() => setDate(format(subDays(parseISO(date), 1), "yyyy-MM-dd"))}
+              className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-accent"
+              aria-label="Previous day"
             >
-              Today
+              <ChevronLeft className="h-4 w-4" />
             </button>
-          )}
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => e.target.value && setDate(e.target.value)}
+              className="rounded-lg border border-border-strong bg-card px-2 py-1.5 text-sm text-foreground"
+            />
+            <button
+              onClick={() => setDate(format(addDays(parseISO(date), 1), "yyyy-MM-dd"))}
+              className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-accent"
+              aria-label="Next day"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            {!isToday && (
+              <button
+                onClick={() => setDate(todayISO())}
+                className="ml-0.5 rounded-lg border border-border px-2 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
+              >
+                Today
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center rounded-lg border border-border p-0.5">
+            {([
+              { key: false, label: "Trading" },
+              { key: true, label: "24h" },
+            ] as const).map((opt) => (
+              <button
+                key={String(opt.key)}
+                onClick={() => setFullDay(opt.key)}
+                className={cn(
+                  "rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                  fullDay === opt.key
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <span className="text-sm text-muted-foreground">
+        <span className="hidden text-sm text-muted-foreground sm:inline">
           {format(parseISO(date), "EEEE d MMMM")} · {scopeLabel}
         </span>
+        <p className="text-xs text-muted-foreground sm:hidden">
+          {format(parseISO(date), "EEE d MMM")} · {scopeLabel}
+        </p>
 
-        <div className="ml-auto flex items-center rounded-lg border border-border p-0.5">
-          {([
-            { key: false, label: "Trading hours" },
-            { key: true, label: "24h" },
-          ] as const).map((opt) => (
-            <button
-              key={String(opt.key)}
-              onClick={() => setFullDay(opt.key)}
-              className={cn(
-                "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                fullDay === opt.key
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
+        {/* Desktop-only refresh button */}
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60"
+          className="ml-auto hidden items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60 sm:flex"
         >
           {refreshing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -389,47 +499,49 @@ export default function PulsePage() {
       </div>
 
       {/* ── Chart ────────────────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="rounded-xl border border-border bg-card p-3 sm:p-4">
         <h2 className="text-sm font-semibold text-foreground">Hour by hour</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Bars: net sales, with delivery beside it. Dashed: projected. Line: SPMH (right axis).
+          Bars: net sales + delivery. Dashed: projected. Line: SPMH.
         </p>
-        <div className="mt-3 h-[320px]">
+        <div className="mt-3 h-[240px] sm:h-[320px]">
           {pulse.isLoading ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={pulse.hours} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+              <ComposedChart data={pulse.hours} margin={{ top: 4, right: 4, bottom: 0, left: -8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                   axisLine={{ stroke: "hsl(var(--border))" }}
                   tickLine={false}
+                  interval="preserveStartEnd"
+                  angle={-45}
+                  textAnchor="end"
+                  height={40}
                 />
                 <YAxis
                   yAxisId="money"
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v: number) => `$${Math.round(v)}`}
-                  width={56}
+                  width={44}
                 />
                 <YAxis
                   yAxisId="spmh"
                   orientation="right"
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v: number) => `$${Math.round(v)}`}
-                  width={48}
+                  width={36}
                 />
                 <Tooltip content={<PulseTooltip />} cursor={{ fill: "hsl(var(--surface-sunken))" }} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                {/* Side by side, not stacked: delivery is a SLICE of net sales,
-                    so stacking it on top would read as a bigger hour than it was. */}
+                <Legend wrapperStyle={{ fontSize: 10 }} />
                 <Bar
                   yAxisId="money"
                   dataKey="netSales"
@@ -478,8 +590,42 @@ export default function PulsePage() {
         </div>
       </div>
 
-      {/* ── Table ────────────────────────────────────────────────────────── */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
+      {/* ── Mobile card list (< md) ─────────────────────────────────────── */}
+      <div className="space-y-2 md:hidden">
+        {pulse.isLoading && (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        {!pulse.isLoading && pulse.hours.map((r) => (
+          <MobileHourCard key={r.hour} row={r} spmhTarget={spmhTarget} />
+        ))}
+        {!pulse.isLoading && pulse.hours.length > 0 && (
+          <div className="rounded-xl border border-border bg-surface-subtle p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-foreground">Day total</span>
+              <span className="text-sm font-bold tabular-nums text-foreground">{money(pulse.totals.netSales)}</span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              <div className="flex justify-between"><span className="text-muted-foreground">Projected</span><span className="tabular-nums font-medium">{money(pulse.totals.projected)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Gross</span><span className="tabular-nums font-medium">{money(pulse.totals.grossSales)}</span></div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Variance</span>
+                <span className={cn("tabular-nums font-medium", pulse.totals.variance != null && pulse.totals.variance > 0 && "text-success", pulse.totals.variance != null && pulse.totals.variance < 0 && "text-destructive")}>
+                  {pulse.totals.variance == null ? "—" : `${pulse.totals.variance >= 0 ? "+" : "−"}${money(Math.abs(pulse.totals.variance))}`}
+                </span>
+              </div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Delivery</span><span className="tabular-nums font-medium">{money(pulse.totals.delivery)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Labour</span><span className="tabular-nums font-medium">{money(pulse.totals.labourCost)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Hours</span><span className="tabular-nums font-medium">{hrs(pulse.totals.labourHours)}</span></div>
+              <div className="flex justify-between col-span-2"><span className="text-muted-foreground">SPMH</span><span className="tabular-nums font-semibold">{spmhFmt(pulse.totals.spmh)}</span></div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Desktop table (≥ md) ──────────────────────────────────────── */}
+      <div className="hidden md:block overflow-hidden rounded-xl border border-border bg-card">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

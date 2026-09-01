@@ -30,6 +30,7 @@ export const REPORT_NAV: ReportNavItem[] = [
     children: [
       { label: "Overview", path: "/reports/sales", end: true },
       { label: "By Hour", path: "/reports/sales/by-hour" },
+      { label: "Sales Mix", path: "/reports/sales/mix" },
     ],
   },
   { label: "Labour", path: "/reports/labour" },
