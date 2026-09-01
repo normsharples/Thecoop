@@ -5,7 +5,8 @@ import { z } from "zod/v4";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, startOfWeek, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { Database, Users, Loader2, Trash2, Info, RefreshCw } from "lucide-react";
+import { Database, Users, Loader2, Trash2, Info, RefreshCw, History } from "lucide-react";
+import RosterArchiveImport from "@/components/settings/RosterArchiveImport";
 import { triggerRefresh, refreshErrorMessage, REFRESH_SOURCES } from "@/lib/refresh";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -372,12 +373,16 @@ export default function DataManagementPage() {
         <TabsList>
           <TabsTrigger value="labour"><Users className="h-3.5 w-3.5 mr-1.5" /> Weekly Labour</TabsTrigger>
           <TabsTrigger value="refresh"><RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Refresh Data</TabsTrigger>
+          <TabsTrigger value="archive"><History className="h-3.5 w-3.5 mr-1.5" /> Roster Archive</TabsTrigger>
         </TabsList>
         <TabsContent value="labour" className="pt-4">
           <WeeklyLabourTab />
         </TabsContent>
         <TabsContent value="refresh" className="pt-4">
           <RefreshDataTab />
+        </TabsContent>
+        <TabsContent value="archive" className="pt-4">
+          <RosterArchiveImport />
         </TabsContent>
       </Tabs>
     </div>
