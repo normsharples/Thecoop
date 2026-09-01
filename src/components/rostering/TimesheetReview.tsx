@@ -141,10 +141,13 @@ export default function TimesheetReview() {
     return m;
   }, [entries]);
 
+  const needsAttention = (e: TimesheetRow) =>
+    e.approval_status === "flagged" ||
+    (e.source === "auto" && e.approval_status === "pending");
   const shown = flaggedOnly
-    ? entries.filter((e) => e.approval_status === "flagged")
+    ? entries.filter(needsAttention)
     : entries;
-  const flaggedCount = entries.filter((e) => e.approval_status === "flagged").length;
+  const flaggedCount = entries.filter(needsAttention).length;
   const totalMins = entries
     .filter((e) => e.approval_status !== "rejected")
     .reduce((s, e) => s + (e.worked_minutes ?? 0), 0);
@@ -313,7 +316,12 @@ function EntryRow({
     clock_out: hm(entry.clock_out),
   });
 
-  const [label, cls] = STATUS[entry.approval_status] ?? ["", ""];
+  // A roster-generated row is scheduled time, not worked time — say so plainly
+  // rather than showing it as an ordinary open punch.
+  const isNoClockIn = entry.source === "auto" && entry.approval_status === "pending";
+  const [label, cls] = isNoClockIn
+    ? ["No clock-in", "bg-warning/15 text-warning"]
+    : STATUS[entry.approval_status] ?? ["", ""];
   const worked = entry.worked_minutes != null ? (entry.worked_minutes / 60).toFixed(2) + "h" : "—";
 
   const save = async () => {

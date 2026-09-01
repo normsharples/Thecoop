@@ -280,7 +280,7 @@ export interface TimeEntry {
   clock_out: string | null;
   break_start: string | null;
   break_end: string | null;
-  source: "kiosk" | "app" | "manual";
+  source: "kiosk" | "app" | "manual" | "auto";  // auto = generated from the roster, never clocked
   worked_minutes: number | null;
   approval_status: TimeEntryApproval;
   flag_reason: string | null;
