@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { weekDates } from "@/lib/roster";
-import type { TimeEntry } from "@/types";
+import type { TimeEntry, TimesheetLeaveType } from "@/types";
 
 export type TimesheetRow = TimeEntry & {
   employee?: {
@@ -73,10 +73,46 @@ export function useTimesheets(restaurantIds: string[], weekStartISO: string) {
     onSuccess: invalidate,
   });
 
+  // Leave is written through an RPC: it also creates/links the approved
+  // leave_requests row, which RLS on a plain client insert wouldn't cover.
+  const setLeave = useMutation({
+    mutationFn: async (p: { id: string; leaveType: TimesheetLeaveType | null }) => {
+      const { error } = await supabase.rpc("set_timesheet_leave", {
+        p_entry_id: p.id,
+        p_leave_type: p.leaveType,
+      });
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
+  const create = useMutation({
+    mutationFn: async (p: {
+      restaurant_id: string;
+      employee_id: string;
+      work_date: string;
+      clock_in: string;
+      clock_out: string;
+      break_start?: string | null;
+      break_end?: string | null;
+    }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await supabase.from("time_entries").insert({
+        ...p,
+        source: "manual",
+        created_by: userData?.user?.id ?? null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
   return {
     entries,
     isLoading,
     update: update.mutateAsync,
     review: review.mutateAsync,
+    setLeave: setLeave.mutateAsync,
+    create: create.mutateAsync,
   };
 }

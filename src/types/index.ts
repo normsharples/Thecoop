@@ -263,6 +263,10 @@ export interface Notification {
 // Time & attendance (migration 052 — payroll T1)
 // ============================================================================
 
+// Leave that can be recorded against a timesheet. "other" is deliberately
+// excluded — payroll needs to know whether the day is paid.
+export type TimesheetLeaveType = Exclude<LeaveType, "other">;
+
 export type TimeEntryApproval =
   | "pending"       // still clocked in / not yet finalised
   | "auto_approved" // within tolerance of the rostered shift
@@ -283,6 +287,8 @@ export interface TimeEntry {
   source: "kiosk" | "app" | "manual" | "auto";  // auto = generated from the roster, never clocked
   worked_minutes: number | null;
   approval_status: TimeEntryApproval;
+  leave_type: TimesheetLeaveType | null;  // set => this day is leave, not a punch
+  leave_request_id: string | null;     // linked row in leave_requests
   flag_reason: string | null;
   approved_by: string | null;
   approved_at: string | null;

@@ -10,12 +10,15 @@ import {
   AlertTriangle,
   Loader2,
   MonitorSmartphone,
+  Plus,
+  Palmtree,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
 import { useTimesheets, type TimesheetRow } from "@/hooks/useTimesheets";
+import AddTimesheetDialog from "./AddTimesheetDialog";
 import { usePublicHolidays, useAwardConfig, usePayrollConfig } from "@/hooks/useAward";
 import {
   aggregateWeek,
@@ -36,9 +39,15 @@ interface EmpMeta {
   base_pay_rate: number | null;
   salary_annual: number | null;
 }
-import type { TimeEntry } from "@/types";
+import type { TimeEntry, TimesheetLeaveType } from "@/types";
 import { mondayOf, toISODate, weekDates, DAY_LABELS } from "@/lib/roster";
 import { cn } from "@/lib/utils";
+
+const LEAVE_LABELS: Record<TimesheetLeaveType, string> = {
+  annual: "Annual leave",
+  sick: "Sick leave",
+  unpaid: "Unpaid leave",
+};
 
 const STATUS: Record<string, [string, string]> = {
   pending: ["Open", "bg-blue-500/15 text-blue-600"],
@@ -97,7 +106,11 @@ export default function TimesheetReview() {
   );
   const multiStore = storeIds.length > 1;
 
-  const { entries, isLoading, update, review } = useTimesheets(storeIds, weekStart);
+  const { entries, isLoading, update, review, setLeave, create } = useTimesheets(
+    storeIds,
+    weekStart
+  );
+  const [addOpen, setAddOpen] = useState(false);
 
   // Award classification (MA000003) for the "Award" view.
   const stateByStore = useMemo(
@@ -215,6 +228,12 @@ export default function TimesheetReview() {
               Flagged only
             </label>
           )}
+          <button
+            onClick={() => setAddOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" /> Add timesheet
+          </button>
           <Link
             to="/kiosk"
             className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent"
@@ -268,6 +287,7 @@ export default function TimesheetReview() {
                         storeLabel={multiStore ? storeName[e.restaurant_id] : undefined}
                         onSave={update}
                         onReview={review}
+                        onSetLeave={setLeave}
                       />
                     ))}
                   </div>
@@ -276,6 +296,15 @@ export default function TimesheetReview() {
           )}
         </div>
       )}
+
+      <AddTimesheetDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        stores={stores}
+        defaultStoreId={storeIds[0]}
+        defaultDate={weekStart}
+        onCreate={create}
+      />
     </div>
   );
 }
@@ -301,14 +330,17 @@ function EntryRow({
   storeLabel,
   onSave,
   onReview,
+  onSetLeave,
 }: {
   entry: TimesheetRow;
   storeLabel?: string;
   onSave: (p: { id: string; patch: Partial<TimeEntry> }) => Promise<unknown>;
   onReview: (p: { id: string; approve: boolean }) => Promise<unknown>;
+  onSetLeave: (p: { id: string; leaveType: TimesheetLeaveType | null }) => Promise<unknown>;
 }) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
   const [f, setF] = useState({
     clock_in: hm(entry.clock_in),
     break_start: hm(entry.break_start),
@@ -319,9 +351,11 @@ function EntryRow({
   // A roster-generated row is scheduled time, not worked time — say so plainly
   // rather than showing it as an ordinary open punch.
   const isNoClockIn = entry.source === "auto" && entry.approval_status === "pending";
-  const [label, cls] = isNoClockIn
-    ? ["No clock-in", "bg-warning/15 text-warning"]
-    : STATUS[entry.approval_status] ?? ["", ""];
+  const [label, cls] = entry.leave_type
+    ? [LEAVE_LABELS[entry.leave_type], "bg-primary/15 text-primary"]
+    : isNoClockIn
+      ? ["No clock-in", "bg-warning/15 text-warning"]
+      : STATUS[entry.approval_status] ?? ["", ""];
   const worked = entry.worked_minutes != null ? (entry.worked_minutes / 60).toFixed(2) + "h" : "—";
 
   const save = async () => {
@@ -339,6 +373,19 @@ function EntryRow({
       setEditing(false);
     } catch (e) {
       toast.error((e as { message?: string })?.message || "Couldn't save");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const applyLeave = async (leaveType: TimesheetLeaveType | null) => {
+    setBusy(true);
+    setLeaveOpen(false);
+    try {
+      await onSetLeave({ id: entry.id, leaveType });
+      toast.success(leaveType ? `Marked as ${LEAVE_LABELS[leaveType].toLowerCase()}` : "Leave cleared");
+    } catch (e) {
+      toast.error((e as { message?: string })?.message || "Couldn't set leave");
     } finally {
       setBusy(false);
     }
@@ -400,6 +447,47 @@ function EntryRow({
             >
               <Pencil className="h-4 w-4" />
             </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setLeaveOpen((v) => !v)}
+                disabled={busy}
+                className={cn(
+                  "rounded-lg p-2 hover:bg-accent disabled:opacity-50",
+                  entry.leave_type ? "text-primary" : "text-muted-foreground"
+                )}
+                title={entry.leave_type ? "Change leave" : "Set as leave"}
+              >
+                <Palmtree className="h-4 w-4" />
+              </button>
+              {leaveOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setLeaveOpen(false)} />
+                  <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+                    {(["annual", "sick", "unpaid"] as TimesheetLeaveType[]).map((lt) => (
+                      <button
+                        key={lt}
+                        onClick={() => applyLeave(lt)}
+                        className={cn(
+                          "block w-full px-3 py-2 text-left text-sm hover:bg-accent",
+                          entry.leave_type === lt ? "font-medium text-primary" : "text-foreground"
+                        )}
+                      >
+                        {LEAVE_LABELS[lt]}
+                      </button>
+                    ))}
+                    {entry.leave_type && (
+                      <button
+                        onClick={() => applyLeave(null)}
+                        className="block w-full border-t border-border px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent"
+                      >
+                        Clear leave
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
             {entry.clock_out && entry.approval_status !== "approved" && (
               <button
                 onClick={() => doReview(true)}
