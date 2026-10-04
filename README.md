@@ -1,4 +1,4 @@
-# The Coop — Pollo Rotisserie Operations Dashboard
+# ORBIT — Pollo Rotisserie Operations Dashboard
 
 Internal multi-restaurant ops dashboard for Pollo Rotisserie (3 Melbourne locations).
 

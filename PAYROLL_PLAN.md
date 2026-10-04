@@ -1,11 +1,11 @@
-# The Coop — Payroll & Timesheets Design
+# ORBIT — Payroll & Timesheets Design
 
 Designed via grill session (2026-08). Built after the rostering subsystem (migrations 042–051).
 Award: **Fast Food Industry Award MA000003** (Australia). Country: AU. Super/loading already in `app_settings` 'payroll'.
 
 ## Locked decisions
 
-**Actual hours source** — In-app clock in/out with manager approval. The Coop becomes the
+**Actual hours source** — In-app clock in/out with manager approval. ORBIT becomes the
 system of record for worked hours, phasing Deputy out gradually (Deputy stays source of truth
 for `labour_daily` until Coop matches it).
 
@@ -19,7 +19,7 @@ worked − measured break.
 in Payroll settings); variances flag to the store manager's review queue. Nothing outside
 tolerance is payable until a manager approves.
 
-**Pay engine** — **Full award interpretation** (MA000003), built in layers. The Coop **holds the
+**Pay engine** — **Full award interpretation** (MA000003), built in layers. ORBIT **holds the
 rates and computes gross itself** (user accepted the July-sync upkeep) — needed anyway for
 in-app SPMH / wage-% accuracy. Buckets: ordinary / Saturday / Sunday / public holiday / overtime,
 plus junior % and casual loading + super.
@@ -33,7 +33,7 @@ confirmed annually by the operator.
 **Salaried staff** — Clock in/out for attendance + accurate labour cost, but pay = `salary_annual/52`
 (no penalty/OT). Feed cost cards, not gross buckets.
 
-**Output** — **Xero CSV** export. The Coop stops short of tax/PAYG/STP — Xero handles those and
+**Output** — **Xero CSV** export. ORBIT stops short of tax/PAYG/STP — Xero handles those and
 payslips. Pay period: **weekly**.
 
 **Visibility** — Store managers see their **own store's** pay + rates. Area managers + superadmin

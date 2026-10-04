@@ -59,7 +59,7 @@ import VenueSyncSetup, {
 } from "@/components/settings/VenueSyncSetup";
 
 /**
- * Sync Agents — the Coop Agent desktop app on each venue computer (../coop-agent).
+ * Sync Agents — the ORBIT Agent desktop app on each venue computer (../coop-agent).
  *
  * An agent runs the scrapers (Lightspeed, Deputy, Uber, Bite, Google…) on a
  * schedule, answers the Refresh buttons and prints prep labels. It is paired with
@@ -178,9 +178,9 @@ function CodePanel({ code, expires }: { code: string; expires: string | null }) 
         </Button>
       </div>
       <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
-        <li>Install Coop Agent on the venue computer and open it.</li>
+        <li>Install ORBIT Agent on the venue computer and open it.</li>
         <li>Type this code into the <em>Pair this computer</em> screen.</li>
-        <li>Sign in to each site in the Coop Browser window that opens.</li>
+        <li>Sign in to each site in the ORBIT Browser window that opens.</li>
       </ol>
       {expires && (
         <p className="text-xs text-muted-foreground">
@@ -395,7 +395,7 @@ function SchedulesCard({ isAdmin }: { isAdmin: boolean }) {
         <h3 className="text-base font-semibold text-card-foreground">Default schedules</h3>
       </div>
       <p className="mb-4 text-sm text-muted-foreground">
-        Melbourne time, for every agent unless that computer has its own (set in the Coop Agent app — shown as{" "}
+        Melbourne time, for every agent unless that computer has its own (set in the ORBIT Agent app — shown as{" "}
         <em>Custom schedules</em> above). <code className="text-xs">daily 04:00</code> or{" "}
         <code className="text-xs">hourly :05 09-23</code>. Blank = only when someone presses Refresh. A computer
         that was off at the scheduled time catches up when it's turned on.
@@ -565,7 +565,7 @@ export default function SyncAgentSettings() {
           )}
         </div>
         <p className="mb-6 text-sm text-muted-foreground">
-          The Coop Agent app on each venue computer pulls sales, labour, reviews and delivery data in, answers the
+          The ORBIT Agent app on each venue computer pulls sales, labour, reviews and delivery data in, answers the
           Refresh buttons and prints prep labels. Each one only writes its own venue's data.
         </p>
 
@@ -805,7 +805,7 @@ export default function SyncAgentSettings() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Pairing code — {newCode?.name}</DialogTitle>
-            <DialogDescription>Enter this in Coop Agent on that computer.</DialogDescription>
+            <DialogDescription>Enter this in ORBIT Agent on that computer.</DialogDescription>
           </DialogHeader>
           {newCode && <CodePanel code={newCode.pair_code} expires={newCode.pair_expires_at} />}
           <DialogFooter>
@@ -822,7 +822,7 @@ export default function SyncAgentSettings() {
             <AlertDialogTitle>Re-pair {confirmRepair?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               The computer that's paired now will stop syncing straight away and ask for a code. Use this when
-              replacing a computer or reinstalling Coop Agent.
+              replacing a computer or reinstalling ORBIT Agent.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

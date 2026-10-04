@@ -1,4 +1,4 @@
-# The Coop — Onboarding & Employment Contracts
+# ORBIT — Onboarding & Employment Contracts
 
 Design locked via grill-me, 22 Aug 2026. Sits on top of [rostering](ROSTER_DASHBOARD.md) and
 [payroll](PAYROLL_PLAN.md). Migration series **063+**.
@@ -28,7 +28,7 @@ masked in the UI (`•••• 4821`) until explicitly revealed. This matters b
 putting a TFN on `profiles` would hand every store manager the whole team's tax file numbers.
 
 Note: TFN is stored as plaintext protected by RLS, not encrypted at rest beyond Supabase's own disk
-encryption. If that is not acceptable, the alternative is to not store TFN in The Coop at all and
+encryption. If that is not acceptable, the alternative is to not store TFN in ORBIT at all and
 keep TFN declarations in Xero/ATO only — the rest of the flow works unchanged.
 
 ## Data model (migration 063)

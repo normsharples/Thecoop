@@ -1,4 +1,4 @@
-# The Coop — Live (Perpetual) Inventory: Build Plan
+# ORBIT — Live (Perpetual) Inventory: Build Plan
 
 Status: **Phase A complete & fully clickable** (030–032 + Inventory page + invoice line-item picker + Waste page + count reconciliation). **Phase B (transfers) built** — 033 + Transfers page. **Phase D built** — migration 034 + Transfers report + usage-based Food Cost report + P&L COGS basis toggle. **Phase C pending** (needs the Lightspeed item-sales feed).
 
@@ -18,7 +18,7 @@ Then, per venue, create a stock count with **is_opening = true**, enter physical
 ---
 
 ## Goal
-Move The Coop from periodic stock counts to a **perpetual inventory ledger** per venue:
+Move ORBIT from periodic stock counts to a **perpetual inventory ledger** per venue:
 invoices add stock, sales deplete it (via recipes), waste depletes it, counts reconcile it,
 and stock transfers move it between venues with cost landing on the receiving venue.
 

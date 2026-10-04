@@ -88,10 +88,12 @@ const config: Config = {
           6: "hsl(var(--info))",
         },
         // ── Brand accent ────────────────────────────────────────────────
-        // Set per-brand at runtime. Used for brand marks only — the app
-        // chrome stays navy so switching brand never restyles the UI.
+        // Set per-brand at runtime, defaulting to ORBIT orange. Used for
+        // brand marks only — the chrome stays ink so switching brand never
+        // restyles the UI. `brand-ink` is the text-safe shade of the same hue.
         brand: {
           accent: "hsl(var(--brand-accent))",
+          ink: "hsl(var(--brand-ink))",
         },
       },
       borderRadius: {
@@ -111,11 +113,11 @@ const config: Config = {
       boxShadow: {
         // Flat by default — the design separates surfaces with borders,
         // not elevation. Shadows are reserved for genuinely floating layers.
-        sm: "0 1px 2px 0 hsl(220 43% 11% / 0.04)",
-        DEFAULT: "0 1px 2px 0 hsl(220 43% 11% / 0.04)",
-        md: "0 2px 6px -1px hsl(220 43% 11% / 0.07)",
-        lg: "0 8px 24px -6px hsl(220 43% 11% / 0.12)",
-        popover: "0 12px 32px -8px hsl(220 43% 11% / 0.18)",
+        sm: "0 1px 2px 0 hsl(217 46% 10% / 0.04)",
+        DEFAULT: "0 1px 2px 0 hsl(217 46% 10% / 0.04)",
+        md: "0 2px 6px -1px hsl(217 46% 10% / 0.07)",
+        lg: "0 8px 24px -6px hsl(217 46% 10% / 0.12)",
+        popover: "0 12px 32px -8px hsl(217 46% 10% / 0.18)",
       },
       keyframes: {
         "accordion-down": {

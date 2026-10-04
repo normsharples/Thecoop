@@ -39,13 +39,13 @@ import { cn } from "@/lib/utils";
 import type { Restaurant } from "@/types";
 
 /**
- * "Set up a venue" — everything a brand needs to get The Coop syncing at one
+ * "Set up a venue" — everything a brand needs to get ORBIT syncing at one
  * venue, in one dialog:
  *
  *   1. Which systems the venue uses + the few details each needs
  *      (saved to venue_sync_settings, migration 090 — no code changes per brand)
  *   2. Download the installer. Its FILE NAME carries a fresh pairing code, so
- *      the Coop Agent pairs itself on first launch: one file, run it, done.
+ *      the ORBIT Agent pairs itself on first launch: one file, run it, done.
  *
  * Open to the brand's own managers (anyone who manages the venue's roster).
  */
@@ -63,11 +63,18 @@ export interface VenueSyncConfig {
 
 interface AgentRelease {
   version?: string;
+  /** Full download links (GitHub Releases) — written by "Publish Coop Agent". */
+  windows_url?: string;
+  mac_url?: string;
+  /** Legacy: object paths in the Supabase `agent-releases` bucket. */
   windows?: string;
   mac?: string;
   windows_version?: string;
   mac_version?: string;
 }
+
+/** The clipboard marker ORBIT Agent looks for on first launch to pair itself. */
+export const clipboardPairText = (code: string) => `ORBIT-AGENT-PAIR:${code}`;
 
 type SystemKey = "lightspeed" | "kounta" | "deputy" | "uber" | "bite" | "doordash" | "google";
 
@@ -203,13 +210,16 @@ const slug = (s: string) =>
   s.normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/[\s_]+/g, "-").replace(/-+/g, "-").slice(0, 40) || "Venue";
 
 export function installerUrl(release: AgentRelease, platform: "windows" | "mac", venueName: string, code: string) {
+  // GitHub Releases: a fixed file name, so the code travels on the clipboard instead.
+  const direct = release[`${platform}_url`];
+  if (direct) return direct;
   const path = release[platform];
   if (!path) return null;
   // The pairing code must sit right before the extension — that's what the app looks for.
   const filename =
     platform === "windows"
-      ? `Coop-Agent-Setup-${slug(venueName)}-${code}.exe`
-      : `Coop-Agent-${slug(venueName)}-${code}.dmg`;
+      ? `ORBIT-Agent-Setup-${slug(venueName)}-${code}.exe`
+      : `ORBIT-Agent-${slug(venueName)}-${code}.dmg`;
   return supabase.storage.from("agent-releases").getPublicUrl(path, { download: filename }).data.publicUrl;
 }
 
@@ -352,17 +362,44 @@ export default function VenueSyncSetup({
     onError: (e: unknown) => toast.error(errText(e, "Couldn't create the installer")),
   });
 
+  const [copied, setCopied] = useState<boolean | null>(null);
+
   const download = async (platform: "windows" | "mac") => {
     if (!venue || !release) return;
-    const got = issued ?? (await issue.mutateAsync().catch(() => null));
+    // Put the pairing code on the clipboard so the app can pair itself when it
+    // first opens. The clipboard write has to start inside the click, so with
+    // ClipboardItem (Safari, Chrome) it's handed a promise for the code.
+    const codePromise: Promise<{ code: string; expires: string } | null> = issued
+      ? Promise.resolve(issued)
+      : issue.mutateAsync().catch(() => null);
+    let clip: Promise<void>;
+    try {
+      if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+        clip = navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": codePromise.then((g) => {
+              if (!g) throw new Error("no code");
+              return new Blob([clipboardPairText(g.code)], { type: "text/plain" });
+            }),
+          }),
+        ]);
+      } else {
+        clip = codePromise.then((g) => (g ? navigator.clipboard.writeText(clipboardPairText(g.code)) : Promise.reject()));
+      }
+    } catch {
+      clip = Promise.reject();
+    }
+    const got = await codePromise;
     if (!got) return;
+    setCopied(await clip.then(() => true, () => false));
     const url = installerUrl(release, platform, venue.name, got.code);
     if (url) window.location.href = url;
   };
 
   const preferred = thisPlatform();
   const platforms: ("windows" | "mac")[] = preferred === "mac" ? ["mac", "windows"] : ["windows", "mac"];
-  const noRelease = !release?.windows && !release?.mac;
+  const hasInstaller = (p: "windows" | "mac") => !!(release?.[`${p}_url`] || release?.[p]);
+  const noRelease = !hasInstaller("windows") && !hasInstaller("mac");
 
   const close = () => {
     setForm(null);
@@ -374,7 +411,7 @@ export default function VenueSyncSetup({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {step === "systems" ? "Set up a venue" : `Install Coop Agent at ${venue?.name}`}
+            {step === "systems" ? "Set up a venue" : `Install ORBIT Agent at ${venue?.name}`}
           </DialogTitle>
           <DialogDescription>
             {step === "systems"
@@ -463,7 +500,7 @@ export default function VenueSyncSetup({
                             error={errors.biteUrl} />
                           <Field id="f-bite-site" label="Site ID" value={form.biteSite}
                             onChange={(v) => set({ biteSite: v })} placeholder="e.g. 3697" error={errors.biteSite}
-                            hint="Ask Bite support, or Coop support can find it." />
+                            hint="Ask Bite support, or ORBIT support can find it." />
                           <Field id="f-bite-connect" label="Payouts ID (optional)" value={form.biteConnect}
                             onChange={(v) => set({ biteConnect: v })} placeholder="e.g. 3028" error={errors.biteConnect}
                             hint="Needed for Bite payouts only." />
@@ -471,7 +508,7 @@ export default function VenueSyncSetup({
                       )}
                       {on && sys.key === "doordash" && (
                         <p className="mt-2 pl-7 text-xs text-muted-foreground">
-                          Nothing to fill in — just sign in to DoorDash Merchant in the Coop Browser.
+                          Nothing to fill in — just sign in to DoorDash Merchant in the ORBIT Browser.
                         </p>
                       )}
                       {on && sys.key === "google" && (
@@ -503,13 +540,13 @@ export default function VenueSyncSetup({
 
             {noRelease ? (
               <p className="rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
-                The installer hasn't been published yet. Ask your Coop admin to run “Publish Coop Agent”. Meanwhile
-                you can still create a pairing code and type it into Coop Agent.
+                The installer hasn't been published yet. Ask your ORBIT admin to run “Publish ORBIT Agent”. Meanwhile
+                you can still create a pairing code and type it into ORBIT Agent.
               </p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {platforms.map((p) => {
-                  const available = !!release?.[p];
+                  const available = hasInstaller(p);
                   const Icon = p === "mac" ? Apple : Monitor;
                   return (
                     <Button
@@ -524,7 +561,7 @@ export default function VenueSyncSetup({
                       <span className="text-left">
                         <span className="block font-semibold">Download for {p === "mac" ? "Mac" : "Windows"}</span>
                         <span className="block text-xs font-normal opacity-80">
-                          {available ? `Coop Agent ${release?.[`${p}_version`] ?? release?.version ?? ""}` : "Not published yet"}
+                          {available ? `ORBIT Agent ${release?.[`${p}_version`] ?? release?.version ?? ""}` : "Not published yet"}
                         </span>
                       </span>
                     </Button>
@@ -534,10 +571,10 @@ export default function VenueSyncSetup({
             )}
 
             <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
-              <li>Download on the venue's computer (or copy the file across) and run it.</li>
+              <li>Download it on the venue's computer and run it. (Don't copy anything else in between — the code is on your clipboard.)</li>
               <li>
                 It installs, pairs itself to <strong className="text-foreground">{venue.name}</strong> and opens the
-                Coop Browser.
+                ORBIT Browser.
               </li>
               <li>Sign in to each site it lists. Done — it runs in the background from then on.</li>
             </ol>
@@ -545,7 +582,13 @@ export default function VenueSyncSetup({
             <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
               {issued ? (
                 <>
-                  If the computer asks for a code, type{" "}
+                  {copied === true && (
+                    <span className="mb-1 flex items-center gap-1.5 font-medium text-success">
+                      <Check className="h-3.5 w-3.5" /> Pairing code copied — run the file on this computer and it
+                      connects itself.
+                    </span>
+                  )}
+                  Installing on a different computer, or it asks for a code? Type{" "}
                   <code className="font-mono text-sm font-semibold tracking-wider text-foreground">{issued.code}</code>.
                   Single use, valid for 48 hours.
                 </>
@@ -561,8 +604,8 @@ export default function VenueSyncSetup({
             </div>
             <p className="text-xs text-muted-foreground">
               First launch on Windows: if SmartScreen appears, choose <em>More info → Run anyway</em>. On a Mac, if it's
-              blocked, open System Settings → Privacy &amp; Security → <em>Open Anyway</em>, and allow access to Downloads
-              when asked (that's how it finds its code).
+              blocked, open System Settings → Privacy &amp; Security → <em>Open Anyway</em>. If it asks to paste from your
+              browser, allow it — that's how it picks up its code.
             </p>
           </div>
         )}

@@ -1,8 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  DollarSign, CalendarDays, CreditCard, Star,
-  TrendingUp, TrendingDown, Minus,
-} from "lucide-react";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { format, subDays, subYears, parseISO } from "date-fns";
 import { cn, formatCurrency } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -57,11 +54,7 @@ export function DailySnapshot({ date }: { date: string }) {
 
   if (!data || isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="rounded-xl border border-border bg-card p-4 h-28 animate-pulse" />
-        ))}
-      </div>
+      <div className="h-[168px] animate-pulse rounded-xl border border-border bg-card" />
     );
   }
 
@@ -94,107 +87,120 @@ export function DailySnapshot({ date }: { date: string }) {
   const avgRating = combineRatings(storeRatings);
   const ratingReviews = totalReviewCount(storeRatings);
 
-  type StatStatus = "success" | "warning" | "destructive";
-
-  const stats = [
-    {
-      label: "Daily Revenue (Net)",
-      value: dayRev > 0 ? formatCurrency(dayRev) : "—",
-      grossValue: dayGross > 0 ? formatCurrency(dayGross) : "—",
-      trend: salesTrend,
-      trendLabel: "vs prev day",
-      subLabel: dailySalesTarget ? `target ${formatCurrency(dailySalesTarget)}` : undefined,
-      icon: <DollarSign className="h-4 w-4" />,
-      status: (salesTrend !== null && salesTrend >= 0 ? "success" : "warning") as StatStatus,
-    },
-    {
-      label: "Same Day Last Year (Net)",
-      value: lyDayRev > 0 ? formatCurrency(lyDayRev) : "—",
-      grossValue: lyDayGross > 0 ? formatCurrency(lyDayGross) : "—",
-      trend: yoyTrend,
-      trendLabel: "vs today",
-      subLabel: format(parseISO(lyDay), "d MMM yyyy"),
-      icon: <CalendarDays className="h-4 w-4" />,
-      status: (yoyTrend !== null && yoyTrend >= 0 ? "success" : "warning") as StatStatus,
-    },
-    {
-      label: "Avg Transaction",
-      value: dayAvgTx !== null ? formatCurrency(dayAvgTx) : "—",
-      grossValue: undefined as string | undefined,
-      trend: avgTxTrend,
-      trendLabel: "vs prev day",
-      subLabel: undefined,
-      icon: <CreditCard className="h-4 w-4" />,
-      status: (avgTxTrend !== null && avgTxTrend >= 0 ? "success" : "warning") as StatStatus,
-    },
-    {
-      label: "Google Rating",
-      value: avgRating !== null ? avgRating.toFixed(1) : "—",
-      grossValue: undefined as string | undefined,
-      trend: null as number | null,
-      trendLabel: "current",
-      subLabel: ratingReviews !== null ? `${ratingReviews.toLocaleString()} reviews` : undefined,
-      icon: <Star className="h-4 w-4" />,
-      status: (avgRating !== null
-        ? avgRating >= 4.5 ? "success" : avgRating >= 4.0 ? "warning" : "destructive"
-        : "success") as StatStatus,
-    },
-  ];
+  const ratingWord =
+    avgRating === null ? "No data"
+    : avgRating >= 4.5 ? "Excellent"
+    : avgRating >= 4.0 ? "Good"
+    : "Needs work";
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {stats.map((stat) => (
-        <div key={stat.label} className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-start justify-between">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">{stat.label}</p>
-            <div className="rounded-md bg-muted p-1.5 text-muted-foreground">{stat.icon}</div>
+    <section className="rounded-xl border border-border bg-card">
+      <div className="flex flex-wrap gap-x-10 gap-y-7 p-5 lg:p-6">
+
+        {/* The hero. One number leads the page — everything else supports it. */}
+        <div className="flex min-w-0 flex-1 basis-[260px] flex-col gap-2.5">
+          <p className="eyebrow">Net revenue</p>
+          <div className="flex flex-wrap items-baseline gap-3.5">
+            <span className="text-[44px] font-semibold leading-none tracking-[-0.025em] tabular-nums">
+              {dayRev > 0 ? formatCurrency(dayRev) : "—"}
+            </span>
+            <Delta trend={salesTrend} />
           </div>
-          <p className="mt-2 text-2xl font-bold">{stat.value}</p>
-          {stat.grossValue !== undefined && (
-            <p className="mt-0.5 text-xs text-muted-foreground">Gross: {stat.grossValue}</p>
-          )}
-          {stat.subLabel && (
-            <p className="mt-0.5 text-xs text-muted-foreground">{stat.subLabel}</p>
-          )}
-          <div className="mt-1.5 flex items-center gap-1.5">
-            {stat.trend !== null ? (
-              <>
-                {stat.trend > 0 ? (
-                  <TrendingUp className={cn("h-4 w-4", stat.status === "success" ? "text-success" : "text-destructive")} />
-                ) : stat.trend < 0 ? (
-                  <TrendingDown className={cn("h-4 w-4", stat.status === "success" ? "text-success" : "text-destructive")} />
-                ) : (
-                  <Minus className="h-4 w-4 text-muted-foreground" />
-                )}
-                <span className={cn(
-                  "text-sm font-medium",
-                  stat.status === "success" && "text-success",
-                  stat.status === "warning" && "text-warning",
-                  stat.status === "destructive" && "text-destructive",
-                )}>
-                  {stat.trend > 0 ? "+" : ""}{stat.trend.toFixed(1)}%
-                </span>
-              </>
-            ) : (
-              <span className={cn(
-                "text-sm font-medium",
-                stat.status === "success" && "text-success",
-                stat.status === "warning" && "text-warning",
-                stat.status === "destructive" && "text-destructive",
-              )}>
-                {stat.label === "Google Rating"
-                  ? (avgRating !== null
-                    ? avgRating >= 4.5 ? "Excellent" : avgRating >= 4.0 ? "Good" : "Needs work"
-                    : "No data")
-                  : stat.status === "destructive" ? "Over target"
-                  : stat.status === "warning" ? "Near target"
-                  : "On target"}
-              </span>
-            )}
-            <span className="text-xs text-muted-foreground">{stat.trendLabel}</span>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {dayGross > 0 ? `${formatCurrency(dayGross)} gross` : "No sales recorded"}
+            {dailySalesTarget ? ` · target ${formatCurrency(dailySalesTarget)}` : ""}
+          </p>
         </div>
-      ))}
+
+        <div className="grid flex-1 basis-[320px] grid-cols-1 gap-7 sm:grid-cols-3">
+          <Figure
+            label="Avg transaction"
+            value={dayAvgTx !== null ? formatCurrency(dayAvgTx) : "—"}
+            note={`${dayTx.toLocaleString()} transactions`}
+            trend={avgTxTrend}
+          />
+          <Figure
+            label="Same day last year"
+            value={lyDayRev > 0 ? formatCurrency(lyDayRev) : "—"}
+            note={lyDayGross > 0
+              ? `${formatCurrency(lyDayGross)} gross · ${format(parseISO(lyDay), "d MMM yyyy")}`
+              : format(parseISO(lyDay), "d MMM yyyy")}
+            trend={yoyTrend}
+          />
+          <Figure
+            label="Google rating"
+            value={avgRating !== null ? avgRating.toFixed(1) : "—"}
+            note={ratingReviews !== null
+              ? `${ratingWord} · ${ratingReviews.toLocaleString()} reviews`
+              : ratingWord}
+            tone={avgRating === null ? "muted"
+              : avgRating >= 4.5 ? "success"
+              : avgRating >= 4.0 ? "warning"
+              : "destructive"}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** A supporting figure: eyebrow, value, one line of context. */
+function Figure({
+  label, value, note, trend, tone,
+}: {
+  label: string;
+  value: string;
+  note: string;
+  trend?: number | null;
+  tone?: "success" | "warning" | "destructive" | "muted";
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <p className="eyebrow">{label}</p>
+      <p className="text-2xl font-semibold leading-tight tracking-[-0.02em] tabular-nums">{value}</p>
+      <p className="flex items-center gap-2 text-xs text-muted-foreground">
+        {tone && tone !== "muted" && (
+          <span
+            className={cn(
+              "h-1.5 w-1.5 shrink-0 rounded-full",
+              tone === "success" && "bg-success",
+              tone === "warning" && "bg-warning",
+              tone === "destructive" && "bg-destructive",
+            )}
+          />
+        )}
+        {trend !== undefined && trend !== null && (
+          <span className={cn("font-medium", trend >= 0 ? "text-success" : "text-destructive")}>
+            {trend > 0 ? "+" : ""}{trend.toFixed(1)}%
+          </span>
+        )}
+        <span className="truncate">{note}</span>
+      </p>
     </div>
+  );
+}
+
+/** The one place a percentage change is set loud: beside the hero figure. */
+function Delta({ trend }: { trend: number | null }) {
+  if (trend === null) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+        <Minus className="h-3 w-3" />
+        No comparison
+      </span>
+    );
+  }
+  const up = trend >= 0;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold",
+        up ? "bg-success-soft text-success" : "bg-destructive-soft text-destructive",
+      )}
+    >
+      {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+      {trend > 0 ? "+" : ""}{trend.toFixed(1)}%
+      <span className="font-normal opacity-80">vs prev day</span>
+    </span>
   );
 }

@@ -1,12 +1,12 @@
 {
-  "name": "The Coop",
-  "short_name": "The Coop",
-  "description": "Pollo Rotisserie operations",
+  "name": "ORBIT",
+  "short_name": "ORBIT",
+  "description": "Operations, Rostering, Business insights, Team",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#f97316",
+  "background_color": "#0E1726",
+  "theme_color": "#0E1726",
   "icons": [
     {
       "src": "/favicon.svg",

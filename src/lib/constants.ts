@@ -1,4 +1,4 @@
-export const APP_NAME = "The Coop";
+export const APP_NAME = "ORBIT";
 
 export const ROLES = {
   SUPERADMIN:   "superadmin",

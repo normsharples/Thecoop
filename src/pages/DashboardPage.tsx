@@ -7,17 +7,13 @@ import { triggerRefresh, refreshErrorMessage } from "@/lib/refresh";
 import { CustomisableDashboard } from "@/components/dashboard/CustomisableDashboard";
 import { useDashboardLayout } from "@/hooks/useDashboardLayout";
 import type { DashboardPeriod } from "@/lib/dashboardWidgets";
+import { useSetPageContextLine } from "@/contexts/PageContextLine";
 
 type Mode = "daily" | "weekly" | "custom";
 
 const todayStr = format(new Date(), "yyyy-MM-dd");
 const yesterdayStr = format(subDays(new Date(), 1), "yyyy-MM-dd");
 const weekAgoStr = format(subDays(new Date(), 7), "yyyy-MM-dd");
-
-const DAILY_PRESETS = [
-  { label: "Yesterday", value: yesterdayStr },
-  { label: "Today", value: todayStr },
-];
 
 export default function DashboardPage() {
   const [mode, setMode] = useState<Mode>("daily");
@@ -58,6 +54,13 @@ export default function DashboardPage() {
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
   const weekEndStr = format(weekEnd, "yyyy-MM-dd");
 
+  function prevDay() {
+    setSelectedDate(format(subDays(anchor, 1), "yyyy-MM-dd"));
+  }
+  function nextDay() {
+    setSelectedDate(format(addDays(anchor, 1), "yyyy-MM-dd"));
+  }
+
   function prevWeek() {
     setSelectedDate(format(subWeeks(weekStart, 1), "yyyy-MM-dd"));
   }
@@ -88,141 +91,167 @@ export default function DashboardPage() {
             prevFrom: customPrevFrom, prevTo: customPrevTo, comparisonLabel: "vs prev period",
           };
 
+  // The topbar's second line: which period is on screen, and what it is
+  // measured against. Nothing in the body repeats it.
+  useSetPageContextLine(
+    mode === "daily"
+      ? `${format(anchor, "EEEE d MMMM yyyy")} · against the previous day`
+      : mode === "weekly"
+        ? `Week of ${weekLabel} · against the previous week`
+        : customValid
+          ? `${customLabel} · against the previous ${customLen} days`
+          : "Choose a valid date range"
+  );
+
   return (
     <div className="space-y-6">
 
-      {/* ── Controls bar ──────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3">
+      {/* ── Controls bar ────────────────────────────────────────
+          Three objects, not nine: the period segment, the stepper for the
+          chosen period, and the actions. Which day or week is on screen is
+          spelled out in the topbar's context line, so nothing restates it
+          here. */}
+      <div className="flex flex-wrap items-center gap-2">
 
-        {/* Mode toggle */}
-        <div className="flex rounded-lg border border-input overflow-hidden text-xs font-medium">
-          <button
-            onClick={() => setMode("daily")}
-            className={cn(
-              "px-3 py-1.5 transition-colors",
-              mode === "daily"
-                ? "bg-primary text-primary-foreground"
-                : "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            Daily
-          </button>
-          <button
-            onClick={() => setMode("weekly")}
-            className={cn(
-              "px-3 py-1.5 transition-colors",
-              mode === "weekly"
-                ? "bg-primary text-primary-foreground"
-                : "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            Weekly
-          </button>
-          <button
-            onClick={() => setMode("custom")}
-            className={cn(
-              "px-3 py-1.5 transition-colors",
-              mode === "custom"
-                ? "bg-primary text-primary-foreground"
-                : "bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            Custom Range
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-
-          {mode === "daily" ? (
-            <>
-              {DAILY_PRESETS.map((p) => (
-                <button
-                  key={p.value}
-                  onClick={() => setSelectedDate(p.value)}
-                  className={cn(
-                    "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                    selectedDate === p.value
-                      ? "bg-primary text-primary-foreground"
-                      : "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  {p.label}
-                </button>
-              ))}
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-                className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-              <span className="text-xs text-muted-foreground">
-                Showing {dailyDisplayDate}
-              </span>
-            </>
-          ) : mode === "weekly" ? (
-            /* Week navigation */
-            <div className="flex items-center gap-1">
-              <button
-                onClick={prevWeek}
-                className="rounded-md border border-input bg-background p-1.5 hover:bg-accent transition-colors"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </button>
-              <span className="px-2 text-xs font-medium text-foreground min-w-[160px] text-center">
-                {weekLabel}
-              </span>
-              <button
-                onClick={nextWeek}
-                className="rounded-md border border-input bg-background p-1.5 hover:bg-accent transition-colors"
-              >
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ) : (
-            /* Custom range */
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="date"
-                value={customFrom}
-                max={customTo}
-                onChange={(e) => e.target.value && setCustomFrom(e.target.value)}
-                className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-              <span className="text-xs text-muted-foreground">→</span>
-              <input
-                type="date"
-                value={customTo}
-                min={customFrom}
-                onChange={(e) => e.target.value && setCustomTo(e.target.value)}
-                className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-              <span className="text-xs text-muted-foreground">
-                {customValid ? customLabel : "Start date must be before end date"}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {canCustomise && !editing && (
-          <button
-            onClick={() => setEditing(true)}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
-            title="Choose, arrange and size the widgets on this dashboard"
-          >
-            <LayoutGrid className="h-3.5 w-3.5" />
-            Customise
-          </button>
-        )}
-        <button
-          onClick={handleRefreshData}
-          disabled={refreshing}
-          className={cn(canCustomise && !editing ? "" : "ml-auto", "inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors")}
-          title="Reload the open Chrome tabs and pull the latest data into the dashboard"
+        {/* Period */}
+        <div
+          role="group"
+          aria-label="Period"
+          className="flex gap-0.5 rounded-lg border border-border-strong bg-card p-0.5"
         >
-          {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          Refresh Data
-        </button>
+          {([
+            { value: "daily" as Mode, label: "Day" },
+            { value: "weekly" as Mode, label: "Week" },
+            { value: "custom" as Mode, label: "Custom" },
+          ]).map((m) => (
+            <button
+              key={m.value}
+              onClick={() => setMode(m.value)}
+              aria-pressed={mode === m.value}
+              className={cn(
+                "rounded-md px-3.5 py-1.5 text-[13px] transition-colors",
+                mode === m.value
+                  ? "bg-primary font-medium text-primary-foreground"
+                  : "text-secondary-foreground hover:bg-accent"
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Stepper — one control, whichever period is chosen */}
+        {mode === "daily" ? (
+          <div className="flex items-center gap-0.5 rounded-lg border border-border-strong bg-card p-0.5">
+            <button
+              onClick={prevDay}
+              aria-label="Previous day"
+              className="rounded-md p-1.5 text-secondary-foreground transition-colors hover:bg-accent"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="min-w-[132px] text-center text-[13px] font-medium tabular-nums text-foreground">
+              {dailyDisplayDate === "Today" || dailyDisplayDate === "Yesterday"
+                ? `${dailyDisplayDate}, ${format(anchor, "d MMM")}`
+                : format(anchor, "EEE d MMM yyyy")}
+            </span>
+            <button
+              onClick={nextDay}
+              aria-label="Next day"
+              disabled={selectedDate >= todayStr}
+              className="rounded-md p-1.5 text-secondary-foreground transition-colors hover:bg-accent disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        ) : mode === "weekly" ? (
+          <div className="flex items-center gap-0.5 rounded-lg border border-border-strong bg-card p-0.5">
+            <button
+              onClick={prevWeek}
+              aria-label="Previous week"
+              className="rounded-md p-1.5 text-secondary-foreground transition-colors hover:bg-accent"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="min-w-[160px] text-center text-[13px] font-medium tabular-nums text-foreground">
+              {weekLabel}
+            </span>
+            <button
+              onClick={nextWeek}
+              aria-label="Next week"
+              className="rounded-md p-1.5 text-secondary-foreground transition-colors hover:bg-accent"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="range-from" className="sr-only">Range start</label>
+            <input
+              id="range-from"
+              type="date"
+              value={customFrom}
+              max={customTo}
+              onChange={(e) => e.target.value && setCustomFrom(e.target.value)}
+              className="rounded-lg border border-border-strong bg-card px-2.5 py-1.5 text-[13px] tabular-nums text-foreground [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-ring/40 dark:[color-scheme:dark]"
+            />
+            <span className="text-xs text-muted-foreground">to</span>
+            <label htmlFor="range-to" className="sr-only">Range end</label>
+            <input
+              id="range-to"
+              type="date"
+              value={customTo}
+              min={customFrom}
+              onChange={(e) => e.target.value && setCustomTo(e.target.value)}
+              className="rounded-lg border border-border-strong bg-card px-2.5 py-1.5 text-[13px] tabular-nums text-foreground [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-ring/40 dark:[color-scheme:dark]"
+            />
+            {!customValid && (
+              <span className="text-xs text-destructive">Start date must be before end date</span>
+            )}
+          </div>
+        )}
+
+        {/* The picker stays available in day mode — quietly, as an icon. */}
+        {mode === "daily" && (
+          <div className="relative">
+            <CalendarDays className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <label htmlFor="dashboard-date" className="sr-only">Choose a date</label>
+            <input
+              id="dashboard-date"
+              type="date"
+              value={selectedDate}
+              max={todayStr}
+              onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+              className="rounded-lg border border-border-strong bg-card py-1.5 pl-8 pr-2.5 text-[13px] tabular-nums text-foreground [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-ring/40 dark:[color-scheme:dark]"
+            />
+          </div>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {canCustomise && !editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-border-strong bg-card px-3 py-2 text-[13px] font-medium text-secondary-foreground transition-colors hover:bg-accent"
+              title="Choose, arrange and size the widgets on this dashboard"
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Customise
+            </button>
+          )}
+          <button
+            onClick={handleRefreshData}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-60"
+            title="Reload the open Chrome tabs and pull the latest data into the dashboard"
+          >
+            {refreshing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Refresh data
+          </button>
+        </div>
       </div>
 
       {mode === "custom" && !customValid ? null : (

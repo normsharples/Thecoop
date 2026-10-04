@@ -93,7 +93,7 @@ export function AskDrawer({ page }: { page?: string }) {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          aria-label="Ask The Coop"
+          aria-label="Ask ORBIT"
           className="fixed bottom-20 right-4 z-40 inline-flex h-12 items-center gap-2 rounded-full border border-primary-hover bg-primary px-4 text-sm font-medium text-primary-foreground shadow-lg transition-colors hover:bg-primary-hover lg:bottom-6 lg:right-6"
         >
           <Sparkles className="h-4 w-4" />
@@ -115,7 +115,7 @@ export function AskDrawer({ page }: { page?: string }) {
               <Sparkles className="h-4 w-4 text-primary" />
               <div className="min-w-0 flex-1">
                 <h2 className="truncate font-display text-[17px] font-semibold text-foreground">
-                  Ask The Coop
+                  Ask ORBIT
                 </h2>
                 <p className="truncate text-[11px] text-muted-foreground">{scopeLabel}</p>
               </div>

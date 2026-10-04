@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 94" width="48" height="94" role="img" aria-label="ORBIT">
+  <!-- ORBIT rocket mark, traced from the brand artboard. The porthole is cut
+       with fill-rule="evenodd" so the mark sits on navy, cream or white. -->
+  <path fill="currentColor" fill-rule="evenodd" d="M24 2c3.6 4.4 6.4 8.4 8 12.5 2.4 5.1 4.5 10.6 5.4 16.5.5 3.4.6 6.8.5 10v10.9c2.5 2.3 6.2 8.8 9.2 17.2H1c3-8.4 6.7-14.9 9.2-17.2V41c-.1-3.2 0-6.6.5-10 .9-5.9 3-11.4 5.4-16.5 1.6-4.1 4.4-8.1 8-12.5Zm0 19.7a6.4 6.4 0 1 0 0 12.8 6.4 6.4 0 0 0 0-12.8Z"/>
+  <path fill="#FF692E" d="M17 69.1h14L24 92.4 17 69.1Z"/>
+</svg>

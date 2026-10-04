@@ -36,6 +36,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn, getInitials } from "@/lib/utils";
 import { REPORT_SIDEBAR_LINKS } from "@/lib/reportNav";
 import { useBrandFeatures } from "@/hooks/useBrandFeatures";
+import { OrbitRocket, OrbitWordmark } from "@/components/brand/OrbitLogo";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
@@ -151,7 +152,7 @@ const supervisorNavItems: NavItem[] = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { isSuperadmin, isStaff, isTeamMember, isShiftSupervisor } = usePermissions();
-  const { name: brandName, Icon: BrandLogo } = useActiveBrand();
+  const { brand, name: brandName, Icon: BrandLogo } = useActiveBrand();
   const location = useLocation();
 
   const { isPathEnabled } = useBrandFeatures();
@@ -185,13 +186,23 @@ export function Sidebar() {
       {/* Brand */}
       <div className="flex h-[60px] shrink-0 items-center border-b border-sidebar-border px-[18px]">
         <div className={cn("flex items-center gap-2.5", collapsed && "mx-auto")}>
-          <div className="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand-accent text-white">
-            <BrandLogo className="h-[15px] w-[15px]" />
-          </div>
-          {!collapsed && (
-            <span className="font-display text-[19px] font-semibold tracking-tight text-white">
-              {brandName}
-            </span>
+          {/* No brand selected → the ORBIT lockup itself. With a brand, the
+              tenant's mark in its own colour; the chrome stays ink either way. */}
+          {brand ? (
+            <>
+              <div className="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-brand-accent text-white">
+                <BrandLogo className="h-[15px] w-[15px]" />
+              </div>
+              {!collapsed && (
+                <span className="font-display text-[19px] font-semibold tracking-tight text-white">
+                  {brandName}
+                </span>
+              )}
+            </>
+          ) : collapsed ? (
+            <OrbitRocket className="h-[24px] w-auto text-white" />
+          ) : (
+            <OrbitWordmark className="text-[19px] text-white" />
           )}
         </div>
       </div>

@@ -15,7 +15,7 @@ import type { Brand } from "@/types";
  *   1. an explicitly selected brand, else
  *   2. the brand of the currently selected venue, else
  *   3. the only brand (if there's exactly one), else
- *   4. none → the neutral "The Coop" look.
+ *   4. none → the neutral ORBIT look.
  */
 export function useActiveBrand() {
   const { data: brands = [] } = useBrands();

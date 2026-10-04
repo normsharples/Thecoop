@@ -4,6 +4,7 @@ import { LogOut, User, ChevronDown, Eye, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useViewMode } from "@/contexts/ViewMode";
+import { usePageContextLine } from "@/contexts/PageContextLine";
 import { cn } from "@/lib/utils";
 import { RestaurantSwitcher } from "./RestaurantSwitcher";
 import { BrandSwitcher } from "./BrandSwitcher";
@@ -17,6 +18,7 @@ interface TopbarProps {
 export function Topbar({ pageTitle }: TopbarProps) {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const contextLine = usePageContextLine();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -31,12 +33,18 @@ export function Topbar({ pageTitle }: TopbarProps) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 flex h-[60px] shrink-0 items-center gap-4 border-b border-border bg-card px-4 lg:px-6">
+    <header className="sticky top-0 z-40 flex min-h-[60px] shrink-0 items-center gap-4 border-b border-border bg-card px-4 py-2.5 lg:px-6">
       {/* The page name leads, set in the serif — it is the one editorial note
-          in an otherwise dense, tabular interface. */}
-      <h1 className="truncate font-display text-[22px] font-semibold tracking-tight text-foreground">
-        {pageTitle}
-      </h1>
+          in an otherwise dense, tabular interface. Under it, the page's own
+          context line: scope · period · at most one live count. */}
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <h1 className="truncate font-display text-[22px] font-semibold leading-tight tracking-tight text-foreground">
+          {pageTitle}
+        </h1>
+        {contextLine && (
+          <p className="truncate text-xs text-muted-foreground">{contextLine}</p>
+        )}
+      </div>
 
       <div className="ml-auto flex items-center gap-2">
         <ViewModeSwitch />

@@ -34,9 +34,9 @@ export const BRAND_ICONS: Record<string, LucideIcon> = {
 
 export const BRAND_ICON_KEYS = Object.keys(BRAND_ICONS);
 
-export const DEFAULT_BRAND_COLOR = "#C9A84C"; // Pollo gold
+export const DEFAULT_BRAND_COLOR = "#FF692E"; // ORBIT orange
 export const DEFAULT_BRAND_ICON = "Bird";
-export const DEFAULT_BRAND_NAME = "The Coop";
+export const DEFAULT_BRAND_NAME = "ORBIT";
 
 export function brandIcon(key: string | null | undefined): LucideIcon {
   return (key && BRAND_ICONS[key]) || Bird;

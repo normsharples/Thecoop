@@ -4,7 +4,7 @@
 // calling http://localhost — mixed content / CORS / Private Network Access), so
 // instead we INSERT a row into Supabase `refresh_requests`. A local watcher
 // (refresh-watcher/watch.mjs) polls that table, runs the matching scraper against
-// the open Coop Chrome, and marks the row done/error. We then poll the row for
+// the open ORBIT Chrome, and marks the row done/error. We then poll the row for
 // its outcome. This works in Safari, on iPad, anywhere. See REFRESH_ON_DEMAND.md.
 
 import { supabase } from "@/lib/supabase";
@@ -42,7 +42,7 @@ const TIMEOUT_MS = 8 * 60 * 1000;
 
 /**
  * Insert a pending refresh request and return its id.
- * `restaurantId` targets one venue's Coop Agent; omit it to ask every agent.
+ * `restaurantId` targets one venue's ORBIT Agent; omit it to ask every agent.
  */
 export async function queueRefresh(source: string, restaurantId?: string | null): Promise<string> {
   const { data: userData } = await supabase.auth.getUser();
@@ -98,8 +98,8 @@ export async function triggerRefresh(source: string, restaurantId?: string | nul
 /** Human-readable failure message from a RefreshResult. */
 export function refreshErrorMessage(res: RefreshResult): string {
   if (res.error === "no-watcher")
-    return "Nothing picked up the refresh. Check Coop Agent is running on the venue computer (Settings → Sync Agents shows which are online).";
+    return "Nothing picked up the refresh. Check ORBIT Agent is running on the venue computer (Settings → Sync Agents shows which are online).";
   if (res.error === "timeout")
-    return "Refresh is taking too long — check Settings → Sync Agents, or the Coop Agent window on the venue computer.";
+    return "Refresh is taking too long — check Settings → Sync Agents, or the ORBIT Agent window on the venue computer.";
   return res.error || "Refresh failed";
 }

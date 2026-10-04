@@ -47,7 +47,7 @@ import { cn } from "@/lib/utils";
 import type { Restaurant } from "@/types";
 
 /**
- * Time Clocks — pair a tablet with the standalone Coop Clock app (../coop-clock).
+ * Time Clocks — pair a tablet with the standalone ORBIT Clock app (../coop-clock).
  *
  * The clock never signs anybody in: it runs on the Supabase anon key and every call
  * carries a device token that maps the tablet to one venue. Creating a token is
@@ -370,7 +370,7 @@ export default function TimeClockSettings() {
           </Button>
         </div>
         <p className="mb-6 text-sm text-muted-foreground">
-          Tablets running the Coop Clock app. Each one is tied to a venue and takes punches from
+          Tablets running the ORBIT Clock app. Each one is tied to a venue and takes punches from
           anyone rostered there — no login on the tablet, just each person's PIN.
         </p>
 
@@ -466,7 +466,7 @@ export default function TimeClockSettings() {
       <div className="rounded-xl border border-border bg-card p-6">
         <h3 className="mb-1 text-base font-semibold text-card-foreground">Clock app address</h3>
         <p className="mb-4 text-sm text-muted-foreground">
-          Where the Coop Clock app is hosted. Only used to build one-tap pairing links.
+          Where the ORBIT Clock app is hosted. Only used to build one-tap pairing links.
         </p>
         <div className="flex flex-wrap items-end gap-2">
           <div className="min-w-[240px] flex-1 space-y-1.5">

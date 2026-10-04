@@ -282,14 +282,14 @@ export default function PayRun() {
           <div className="rounded-xl border border-border bg-card p-4">
             <h3 className="mb-3 text-sm font-semibold text-foreground">Reconciliation vs Deputy</h3>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <Recon label="Coop hours" value={`${coopHours.toFixed(1)}h`} />
+              <Recon label="ORBIT hours" value={`${coopHours.toFixed(1)}h`} />
               <Recon
                 label="Deputy hours"
                 value={`${depHours.toFixed(1)}h`}
                 delta={depHours ? coopHours - depHours : null}
                 unit="h"
               />
-              <Recon label="Coop gross" value={money(coopGross)} />
+              <Recon label="ORBIT gross" value={money(coopGross)} />
               <Recon
                 label="Deputy cost"
                 value={depCost ? money(depCost) : "—"}
@@ -299,7 +299,7 @@ export default function PayRun() {
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
               Deputy stays the source of truth until these line up. Deputy cost is wage cost (excl. super);
-              Coop gross excludes super too, so they're comparable. Investigate variances before exporting.
+              ORBIT gross excludes super too, so they're comparable. Investigate variances before exporting.
             </p>
           </div>
 
@@ -454,7 +454,7 @@ function Recon({
           )}
         >
           {delta >= 0 ? "+" : ""}
-          {unit === "$" ? money(delta) : `${delta.toFixed(1)}${unit ?? ""}`} vs Coop
+          {unit === "$" ? money(delta) : `${delta.toFixed(1)}${unit ?? ""}`} vs ORBIT
         </div>
       )}
     </div>

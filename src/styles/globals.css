@@ -4,137 +4,149 @@
 
 @layer base {
   :root {
-    /* ── The Coop — navy / teal, high contrast ─────────────────────────────
-       Neutrals    #101828 #1D2939 #344054 #475467 #667085 #98A2B3
-                   #D0D5DD #E4E7EC #EAECF0 #EDF0F5 #F2F4F7 #F7F8FA #FAFBFC
-       Navy        #1E4A8C  (primary)   #15366B hover   #2C5FA8 light
-       Teal        #0E7C66  (positive)  #ECFDF3 tint
-       Amber       #B54708  (watch)     #FFFAEB tint
-       Red         #B42318  (off track) #FEF3F2 tint
+    /* ── ORBIT — navy / orange, high contrast ──────────────────────────────
+       Operations · Rostering · Business insights · Team
+
+       Ink         #0E1726  (ORBIT navy — the mark, the sidebar, the type)
+       Orange      #FF692E  (ORBIT orange — accent only, never a text colour
+                             on light ground; use --brand-ink #C2410C there)
+       Canvas      #F6F5F2  (warm paper, from the artboard's light panel)
+       Neutrals    #121E33 #1D2939 #344054 #475467 #667085 #98A2B3
+                   #D6D3CC #E4E1DA #EDEBE5 #F2F0EC #F6F5F2 #FAF9F6
+       Teal        #0E7C66  (on track)   #ECFDF3 tint
+       Gold        #A16207  (watch — pulled off brand orange so the two
+                             never read as the same signal)
+       Red         #B42318  (off track)  #FEF3F2 tint
        ------------------------------------------------------------------ */
 
-    --background: 220 23% 97%;             /* #F7F8FA  app canvas          */
-    --foreground: 220 43% 11%;             /* #101828                      */
+    --background: 45 18% 96%;              /* #F6F5F2  app canvas          */
+    --foreground: 217 46% 10%;             /* #0E1726  ORBIT navy          */
 
     --card: 0 0% 100%;                     /* #FFFFFF                      */
-    --card-foreground: 220 43% 11%;        /* #101828                      */
+    --card-foreground: 217 46% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 43% 11%;
+    --popover-foreground: 217 46% 10%;
 
-    --primary: 216 65% 33%;                /* #1E4A8C  navy                */
+    --primary: 218 48% 14%;                /* #121E33  ink, a hair lifted  */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 216 24% 96%;              /* #F2F4F7                      */
-    --secondary-foreground: 217 24% 27%;   /* #344054                      */
+    --secondary: 42 14% 94%;               /* #F2F0EC                      */
+    --secondary-foreground: 217 20% 26%;   /* #344054                      */
 
-    --muted: 218 29% 94%;                  /* #EDF0F5                      */
-    --muted-foreground: 221 13% 46%;       /* #667085                      */
+    --muted: 42 13% 93%;                   /* #EDEBE5                      */
+    --muted-foreground: 217 11% 45%;       /* #667085                      */
 
-    --accent: 216 24% 96%;                 /* #F2F4F7  hover surface       */
-    --accent-foreground: 220 43% 11%;      /* #101828                      */
+    --accent: 42 14% 94%;                  /* #F2F0EC  hover surface       */
+    --accent-foreground: 217 46% 10%;
 
     --destructive: 4 76% 40%;              /* #B42318                      */
     --destructive-foreground: 0 0% 100%;
     --success: 168 80% 27%;                /* #0E7C66                      */
     --success-foreground: 0 0% 100%;
-    --warning: 22 92% 37%;                 /* #B54708                      */
+    --warning: 35 92% 33%;                 /* #A16207                      */
     --warning-foreground: 0 0% 100%;
 
-    --border: 218 17% 91%;                 /* #E4E7EC                      */
-    --input: 217 16% 84%;                  /* #D0D5DD                      */
-    --ring: 216 65% 33%;                   /* #1E4A8C                      */
+    --border: 42 11% 89%;                  /* #E4E1DA                      */
+    --input: 42 9% 82%;                    /* #D6D3CC                      */
+    --ring: 17 88% 46%;                    /* #DE4E0E  orange focus, AA ok */
     --radius: 0.5rem;
 
     /* ── Extended surface + status tokens ──────────────────────────────── */
-    --surface-subtle: 210 25% 98%;         /* #FAFBFC  table headers etc.  */
-    --surface-sunken: 218 29% 94%;         /* #EDF0F5  track / rail        */
-    --border-strong: 217 16% 84%;          /* #D0D5DD  control borders     */
+    --surface-subtle: 45 24% 98%;          /* #FAF9F6  table headers etc.  */
+    --surface-sunken: 42 13% 93%;          /* #EDEBE5  track / rail        */
+    --border-strong: 42 9% 82%;            /* #D6D3CC  control borders     */
 
-    --primary-hover: 217 67% 25%;          /* #15366B                      */
-    --primary-soft: 218 37% 88%;           /* #D6DEEC  chart fill, light   */
-    --primary-softer: 221 100% 97%;        /* #EFF4FF  tint background     */
-    --chart-2: 218 37% 80%;                /* #B8C6DE                      */
+    --primary-hover: 217 44% 22%;          /* #202F4D                      */
+    --primary-soft: 217 26% 85%;           /* #CFD6E1  chart fill, light   */
+    --primary-softer: 217 30% 96%;         /* #F0F2F7  tint background     */
+    --chart-2: 17 100% 59%;                /* #FF692E  orange second serie */
 
     --success-soft: 145 81% 96%;           /* #ECFDF3                      */
     --success-strong: 167 46% 42%;         /* #3A9C86                      */
-    --warning-soft: 45 100% 96%;           /* #FFFAEB                      */
-    --warning-strong: 42 99% 65%;          /* #FEC84B                      */
+    --warning-soft: 48 90% 95%;            /* #FDF6E3                      */
+    --warning-strong: 45 95% 55%;          /* #FACC15                      */
     --destructive-soft: 5 86% 97%;         /* #FEF3F2                      */
     --destructive-border: 4 96% 80%;       /* #FDA29B                      */
     --info: 258 54% 52%;                   /* #6941C6                      */
 
-    /* Sidebar — a dark slab against the light canvas */
-    --sidebar: 220 43% 11%;                /* #101828                      */
-    --sidebar-foreground: 218 15% 65%;     /* #98A2B3                      */
+    /* Sidebar — the ORBIT navy slab against the warm canvas */
+    --sidebar: 217 46% 10%;                /* #0E1726                      */
+    --sidebar-foreground: 217 13% 64%;     /* #98A2B3                      */
     --sidebar-active: 0 0% 100%;
-    --sidebar-active-bg: 214 33% 17%;      /* #1D2939                      */
-    --sidebar-border: 214 33% 17%;         /* #1D2939                      */
-    --sidebar-heading: 216 18% 34%;        /* #475467                      */
-    --sidebar-mark: 168 80% 27%;           /* #0E7C66  active rail         */
+    --sidebar-active-bg: 217 40% 16%;      /* #1A2538                      */
+    --sidebar-border: 217 40% 16%;
+    --sidebar-heading: 217 16% 38%;        /* #4A5568                      */
+    --sidebar-mark: 17 100% 59%;           /* #FF692E  active rail         */
 
-    /* Brand accent — set at runtime per brand. Deliberately NOT --primary:
-       the app chrome stays navy so multi-brand does not restyle the UI. */
-    --brand-accent: 168 80% 27%;
+    /* Brand accent — set at runtime per brand, defaults to ORBIT orange.
+       Deliberately NOT --primary: the chrome stays ink so multi-brand does
+       not restyle the UI. --brand-ink is the same hue dark enough for text
+       on a light ground; reach for it instead of brand-accent for type. */
+    --brand-accent: 17 100% 59%;           /* #FF692E                      */
+    --brand-ink: 17 88% 40%;               /* #C2410C                      */
   }
 
   .dark {
-    --background: 220 43% 7%;
-    --foreground: 216 24% 96%;
+    --background: 217 46% 6%;
+    --foreground: 42 20% 95%;
 
-    --card: 220 38% 10%;
-    --card-foreground: 216 24% 96%;
-    --popover: 220 38% 10%;
-    --popover-foreground: 216 24% 96%;
+    --card: 217 42% 9%;
+    --card-foreground: 42 20% 95%;
+    --popover: 217 42% 9%;
+    --popover-foreground: 42 20% 95%;
 
-    --primary: 216 70% 58%;                /* lifted navy for dark ground  */
-    --primary-foreground: 220 43% 8%;
+    /* On the dark ground the orange carries enough contrast to lead, so
+       ORBIT orange is the primary here while ink leads in light mode. */
+    --primary: 17 100% 59%;                /* #FF692E                      */
+    --primary-foreground: 217 46% 8%;
 
-    --secondary: 214 33% 15%;
-    --secondary-foreground: 216 24% 96%;
+    --secondary: 217 33% 15%;
+    --secondary-foreground: 42 20% 95%;
 
-    --muted: 214 33% 15%;
-    --muted-foreground: 218 15% 60%;
+    --muted: 217 33% 15%;
+    --muted-foreground: 217 12% 60%;
 
-    --accent: 214 33% 18%;
-    --accent-foreground: 216 24% 96%;
+    --accent: 217 33% 18%;
+    --accent-foreground: 42 20% 95%;
 
     --destructive: 4 70% 55%;
     --destructive-foreground: 0 0% 100%;
     --success: 167 55% 45%;
-    --success-foreground: 220 43% 8%;
-    --warning: 33 85% 55%;
-    --warning-foreground: 220 43% 8%;
+    --success-foreground: 217 46% 8%;
+    --warning: 42 90% 55%;
+    --warning-foreground: 217 46% 8%;
 
-    --border: 214 30% 18%;
-    --input: 214 28% 24%;
-    --ring: 216 70% 58%;
+    --border: 217 30% 18%;
+    --input: 217 28% 24%;
+    --ring: 17 100% 59%;
 
-    --surface-subtle: 220 38% 12%;
-    --surface-sunken: 214 33% 15%;
-    --border-strong: 214 28% 26%;
+    --surface-subtle: 217 40% 11%;
+    --surface-sunken: 217 33% 15%;
+    --border-strong: 217 28% 26%;
 
-    --primary-hover: 216 70% 66%;
-    --primary-soft: 216 40% 28%;
-    --primary-softer: 216 40% 18%;
-    --chart-2: 216 35% 42%;
+    --primary-hover: 17 100% 66%;
+    --primary-soft: 17 45% 28%;
+    --primary-softer: 17 40% 16%;
+    --chart-2: 42 20% 72%;
 
     --success-soft: 168 45% 14%;
     --success-strong: 167 50% 50%;
-    --warning-soft: 30 55% 14%;
-    --warning-strong: 42 90% 62%;
+    --warning-soft: 40 50% 14%;
+    --warning-strong: 45 90% 62%;
     --destructive-soft: 4 45% 15%;
     --destructive-border: 4 55% 40%;
     --info: 258 60% 66%;
 
-    --sidebar: 220 45% 6%;
-    --sidebar-foreground: 218 15% 62%;
+    --sidebar: 217 48% 5%;
+    --sidebar-foreground: 217 13% 62%;
     --sidebar-active: 0 0% 100%;
-    --sidebar-active-bg: 214 33% 14%;
-    --sidebar-border: 214 30% 14%;
-    --sidebar-heading: 216 18% 38%;
-    --sidebar-mark: 167 55% 45%;
+    --sidebar-active-bg: 217 36% 13%;
+    --sidebar-border: 217 32% 13%;
+    --sidebar-heading: 217 16% 38%;
+    --sidebar-mark: 17 100% 59%;
 
-    --brand-accent: 167 55% 45%;
+    --brand-accent: 17 100% 59%;
+    --brand-ink: 17 100% 66%;
   }
 }
 

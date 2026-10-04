@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod/v4";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Bird, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { OrbitWordmark } from "@/components/brand/OrbitLogo";
 import { toast } from "sonner";
 
 const loginSchema = z.object({
@@ -42,10 +43,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <Bird className="h-10 w-10 text-primary" />
-            <h1 className="text-3xl font-bold text-foreground">The Coop</h1>
-          </div>
+          <OrbitWordmark className="mb-2.5 text-[34px] text-foreground" />
           <p className="text-muted-foreground text-sm">Pollo Rotisserie Operations</p>
         </div>
 

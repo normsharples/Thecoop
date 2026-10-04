@@ -1,4 +1,4 @@
-// The Coop — service worker (web push).
+// ORBIT — service worker (web push).
 // Kept minimal: no offline caching, just push display + click handling.
 
 self.addEventListener("install", () => self.skipWaiting());
@@ -9,9 +9,9 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch (_e) {
-    data = { title: "The Coop", body: event.data ? event.data.text() : "" };
+    data = { title: "ORBIT", body: event.data ? event.data.text() : "" };
   }
-  const title = data.title || "The Coop";
+  const title = data.title || "ORBIT";
   const options = {
     body: data.body || "",
     icon: "/favicon.svg",

@@ -1,4 +1,4 @@
-# The Coop — Recipe Book: Build Plan
+# ORBIT — Recipe Book: Build Plan
 
 Status: **R1 + R2 BUILT (24 Aug 2026)** — migrations `073_recipe_book.sql`,
 `074_recipe_production.sql` and `075_prep_plan.sql`; Recipes page, card, editor,
@@ -259,7 +259,7 @@ POS aliases and nightly sales depletion that close the perpetual-inventory loop.
 | 3 | Sales depletion | **Shadow first, per-venue go-live.** Nightly job explodes `sales_mix_daily` products through recipes into *theoretical* usage with no ledger writes; superadmin flips a venue to `live` once coverage and variance look sane, and it starts posting `sale_depletion` movements |
 | 4 | Sequencing vs the feed | **Build recipes now; fix the Sales-By-Product scraper in parallel.** R1/R2 need no sales feed at all |
 | 5 | Team side | **Cards + par-driven prep list.** Par vs on-hand tells the venue what to make; ticking a batch done *is* the production log |
-| 6 | Access point | **Both** the Coop app (staff-visible nav) **and** the coop-clock tablet (anon RPC, cost-free payload) |
+| 6 | Access point | **Both** ORBIT app (staff-visible nav) **and** the coop-clock tablet (anon RPC, cost-free payload) |
 | 7 | Costing basis | **Both** — `standard` (global `food_cost_items.cost_per_unit`) and `live` (that venue's `inventory_levels.avg_cost`). Default display live, fall back to standard. Cost rolls up through nested prep recipes |
 | 8 | Units | **Enter in any unit, auto-convert.** Store `qty_entered`/`unit_entered` + computed `qty_stock_units` (same pattern as `invoice_lines`). Recipes carry a yield and an optional **yield-loss %** for trim and cook shrinkage |
 | 9 | Venue scope | **Global recipes** — one spec for all three venues. Per venue only: `available`, `par_qty`, and its own live cost |

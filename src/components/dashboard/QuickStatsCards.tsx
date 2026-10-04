@@ -127,11 +127,11 @@ export function QuickStatsCards({ date }: { date?: string }) {
             : null;
 
         return (
-          <div key={restaurant.id} className="rounded-xl border border-border bg-card p-4">
-            <h3 className="text-base font-semibold">{restaurant.name}</h3>
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground">Sales Today</span>
+          <div key={restaurant.id} className="rounded-xl border border-border bg-card p-5">
+            <h3 className="text-[17px] font-semibold tracking-tight">{restaurant.name}</h3>
+            <div className="mt-4 divide-y divide-border">
+              <div className="flex items-center justify-between py-2.5">
+                <span className="eyebrow">Sales Today</span>
                 <div className="flex flex-col items-end gap-0.5">
                   <div className="flex items-center gap-2">
                     {yoyPct !== null && (
@@ -139,7 +139,7 @@ export function QuickStatsCards({ date }: { date?: string }) {
                         {yoyPct >= 0 ? "+" : ""}{yoyPct.toFixed(1)}% YoY
                       </span>
                     )}
-                    <span className="text-sm font-medium">
+                    <span className="text-[15px] font-medium tabular-nums">
                       {currentSales !== null ? formatCurrency(currentSales) : "—"} <span className="text-[10px] font-normal text-muted-foreground">net</span>
                     </span>
                   </div>
@@ -148,13 +148,13 @@ export function QuickStatsCards({ date }: { date?: string }) {
                   </span>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground">Labour %</span>
+              <div className="flex items-center justify-between py-2.5">
+                <span className="eyebrow">Labour %</span>
                 <div className="flex items-center gap-2">
                   {labourPct !== null && <StatusDot status={labourStatus(labourPct)} />}
                   <span
                     className={cn(
-                      "text-sm font-medium",
+                      "text-[15px] font-medium tabular-nums",
                       labourPct !== null && labourStatus(labourPct) === "destructive" && "text-destructive",
                       labourPct !== null && labourStatus(labourPct) === "warning" && "text-warning"
                     )}
@@ -163,17 +163,17 @@ export function QuickStatsCards({ date }: { date?: string }) {
                   </span>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground">Sales / Hour</span>
-                <span className="text-sm font-medium">
+              <div className="flex items-center justify-between py-2.5">
+                <span className="eyebrow">Sales / Hour</span>
+                <span className="text-[15px] font-medium tabular-nums">
                   {spmh !== null ? formatCurrency(spmh) : "—"}
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground">Google Rating</span>
+              <div className="flex items-center justify-between py-2.5">
+                <span className="eyebrow">Google Rating</span>
                 <div className="flex items-center gap-2">
                   {rating !== null && <StatusDot status={ratingStatus(rating)} />}
-                  <span className="text-sm font-medium">
+                  <span className="text-[15px] font-medium tabular-nums">
                     {rating !== null ? rating.toFixed(1) : "—"}
                   </span>
                 </div>

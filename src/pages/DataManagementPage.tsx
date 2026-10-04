@@ -348,7 +348,7 @@ function RefreshDataTab() {
       <p className="text-xs text-muted-foreground">
         Use <span className="font-medium text-foreground">Refresh Data</span> on the Dashboard to refresh all sources at
         once. The per-source buttons above are for refreshing just one. Each refresh reloads the matching tab in your open
-        Coop Chrome, reads the latest figures, and writes them to Supabase.
+        ORBIT Chrome, reads the latest figures, and writes them to Supabase.
       </p>
     </div>
   );

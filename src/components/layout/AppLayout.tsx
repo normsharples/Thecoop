@@ -9,6 +9,7 @@ import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { MobileNav } from "./MobileNav";
 import { BrandTheme } from "./BrandTheme";
+import { PageContextProvider } from "@/contexts/PageContextLine";
 import { BrandFeatureGate } from "./BrandFeatureGate";
 import { AskDrawer } from "@/components/ask/AskDrawer";
 import { Eye, Loader2 } from "lucide-react";
@@ -162,7 +163,7 @@ export function AppLayout() {
   const pageTitle =
     (isStaff || isShiftSupervisor) && location.pathname === "/admin/cash"
       ? "Daily Cash Up"
-      : pageTitles[location.pathname] ?? "The Coop";
+      : pageTitles[location.pathname] ?? "ORBIT";
 
   // The assistant reads sales and labour, so it sits behind the same line as the
   // rest of that data: manager and above. RLS still scopes every answer to the
@@ -170,6 +171,7 @@ export function AppLayout() {
   const canAsk = ["superadmin", "area_manager", "manager"].includes(effectiveRole ?? "");
 
   return (
+    <PageContextProvider>
     <div className="flex h-screen overflow-hidden bg-background">
       <BrandTheme />
       <Sidebar />
@@ -199,5 +201,6 @@ export function AppLayout() {
       </div>
       {canAsk && <AskDrawer page={pageTitle} />}
     </div>
+    </PageContextProvider>
   );
 }

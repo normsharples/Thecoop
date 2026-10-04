@@ -1,4 +1,4 @@
-# Ask The Coop — the in-app assistant
+# Ask ORBIT — the in-app assistant
 
 Ask a question in plain English ("what was the busiest day this month?") and get
 an answer built from the live data, with the venue scoping the rest of the app
