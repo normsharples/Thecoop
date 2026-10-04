@@ -1,20 +1,12 @@
 import { useState } from "react";
 import { format, subDays, addDays, subWeeks, startOfWeek, endOfWeek, parseISO, differenceInCalendarDays } from "date-fns";
-import { CalendarDays, ChevronLeft, ChevronRight, Smartphone, Truck, RefreshCw, Loader2 } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw, Loader2, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { triggerRefresh, refreshErrorMessage } from "@/lib/refresh";
-import { AlertsBanner } from "@/components/dashboard/AlertsBanner";
-import { DailySnapshot } from "@/components/dashboard/DailySnapshot";
-import { DailySecondaryCards } from "@/components/dashboard/DailySecondaryCards";
-import { QuickStatsCards } from "@/components/dashboard/QuickStatsCards";
-import { WeeklySnapshot } from "@/components/dashboard/WeeklySnapshot";
-import { WeeklyStatsCards } from "@/components/dashboard/WeeklyStatsCards";
-import { WeeklySecondaryCards } from "@/components/dashboard/WeeklySecondaryCards";
-import { ChannelSalesCard } from "@/components/dashboard/ChannelSalesCard";
-import { WeeklyRevenueTrend } from "@/components/dashboard/WeeklyRevenueTrend";
-import { RecentReviews } from "@/components/dashboard/RecentReviews";
-import { QuickLinks } from "@/components/dashboard/QuickLinks";
+import { CustomisableDashboard } from "@/components/dashboard/CustomisableDashboard";
+import { useDashboardLayout } from "@/hooks/useDashboardLayout";
+import type { DashboardPeriod } from "@/lib/dashboardWidgets";
 
 type Mode = "daily" | "weekly" | "custom";
 
@@ -33,6 +25,8 @@ export default function DashboardPage() {
   const [customFrom, setCustomFrom] = useState(weekAgoStr);
   const [customTo, setCustomTo] = useState(yesterdayStr);
   const [refreshing, setRefreshing] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const { canCustomise } = useDashboardLayout();
 
   async function handleRefreshData() {
     if (refreshing) return;
@@ -77,9 +71,25 @@ export default function DashboardPage() {
     : selectedDate === yesterdayStr ? "Yesterday"
     : format(anchor, "d MMM yyyy");
 
+  // ── Resolved period, handed to every widget ───────────────────────────────
+  const period: DashboardPeriod =
+    mode === "daily"
+      ? {
+          mode, date: selectedDate, from: selectedDate, to: selectedDate,
+          prevFrom: prevDayStr, prevTo: prevDayStr, comparisonLabel: "vs prev day",
+        }
+      : mode === "weekly"
+        ? {
+            mode, date: selectedDate, from: weekStartStr, to: weekEndStr,
+            prevFrom: prevWeekStart, prevTo: prevWeekEnd, comparisonLabel: "vs prev week",
+          }
+        : {
+            mode, date: customTo, from: customFrom, to: customTo,
+            prevFrom: customPrevFrom, prevTo: customPrevTo, comparisonLabel: "vs prev period",
+          };
+
   return (
     <div className="space-y-6">
-      <AlertsBanner />
 
       {/* ── Controls bar ──────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3">
@@ -194,10 +204,20 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {canCustomise && !editing && (
+          <button
+            onClick={() => setEditing(true)}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+            title="Choose, arrange and size the widgets on this dashboard"
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Customise
+          </button>
+        )}
         <button
           onClick={handleRefreshData}
           disabled={refreshing}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors"
+          className={cn(canCustomise && !editing ? "" : "ml-auto", "inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors")}
           title="Reload the open Chrome tabs and pull the latest data into the dashboard"
         >
           {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
@@ -205,88 +225,13 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* ── Daily view ────────────────────────────────────────────────────── */}
-      {mode === "daily" && (
-        <>
-          <DailySnapshot date={selectedDate} />
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <DailySecondaryCards date={selectedDate} />
-            <ChannelSalesCard
-              label="Web / App Sales" field="online_sales" icon={Smartphone}
-              from={selectedDate} to={selectedDate}
-              prevFrom={prevDayStr} prevTo={prevDayStr}
-              comparisonLabel="vs prev day"
-            />
-            <ChannelSalesCard
-              label="Delivery Sales" field="delivery_sales" icon={Truck}
-              from={selectedDate} to={selectedDate}
-              prevFrom={prevDayStr} prevTo={prevDayStr}
-              comparisonLabel="vs prev day"
-            />
-          </div>
-          <QuickStatsCards date={selectedDate} />
-        </>
+      {mode === "custom" && !customValid ? null : (
+        <CustomisableDashboard
+          period={period}
+          editing={editing}
+          onDoneEditing={() => setEditing(false)}
+        />
       )}
-
-      {/* ── Weekly view ───────────────────────────────────────────────────── */}
-      {mode === "weekly" && (
-        <>
-          <WeeklySnapshot date={selectedDate} />
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <WeeklySecondaryCards date={selectedDate} />
-            <ChannelSalesCard
-              label="Web / App Sales" field="online_sales" icon={Smartphone}
-              from={weekStartStr} to={weekEndStr}
-              prevFrom={prevWeekStart} prevTo={prevWeekEnd}
-              comparisonLabel="vs prev week"
-            />
-            <ChannelSalesCard
-              label="Delivery Sales" field="delivery_sales" icon={Truck}
-              from={weekStartStr} to={weekEndStr}
-              prevFrom={prevWeekStart} prevTo={prevWeekEnd}
-              comparisonLabel="vs prev week"
-            />
-          </div>
-          <WeeklyStatsCards date={selectedDate} />
-        </>
-      )}
-
-      {/* ── Custom range view ─────────────────────────────────────────────── */}
-      {mode === "custom" && customValid && (
-        <>
-          <WeeklySnapshot
-            date={customTo} from={customFrom} to={customTo}
-            comparisonLabel="vs prev period" revenueLabel="Revenue (Net)"
-          />
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <WeeklySecondaryCards
-              date={customTo} from={customFrom} to={customTo}
-              comparisonLabel="vs prev period"
-            />
-            <ChannelSalesCard
-              label="Web / App Sales" field="online_sales" icon={Smartphone}
-              from={customFrom} to={customTo}
-              prevFrom={customPrevFrom} prevTo={customPrevTo}
-              comparisonLabel="vs prev period"
-            />
-            <ChannelSalesCard
-              label="Delivery Sales" field="delivery_sales" icon={Truck}
-              from={customFrom} to={customTo}
-              prevFrom={customPrevFrom} prevTo={customPrevTo}
-              comparisonLabel="vs prev period"
-            />
-          </div>
-          <WeeklyStatsCards
-            date={customTo} from={customFrom} to={customTo}
-            revenueLabel="Revenue"
-          />
-        </>
-      )}
-
-      {/* ── Shared ────────────────────────────────────────────────────────── */}
-      <WeeklyRevenueTrend date={mode === "custom" ? customTo : selectedDate} />
-      <RecentReviews />
-      <QuickLinks />
     </div>
   );
 }

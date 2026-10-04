@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   Tablet,
   Printer,
+  MonitorCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ const settingsSections = [
   { label: "Quick Links", path: "/admin/settings/quick-links", icon: Link2 },
   { label: "Time Clocks", path: "/admin/settings/time-clocks", icon: Tablet },
   { label: "Printers", path: "/admin/settings/printers", icon: Printer },
+  { label: "Sync Agents", path: "/admin/settings/sync-agents", icon: MonitorCog },
   { label: "Integrations", path: "/admin/settings/integrations", icon: Plug },
 ];
 

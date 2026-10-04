@@ -69,6 +69,7 @@ const BrandsSettings = lazy(() => import("@/components/settings/BrandsSettings")
 const VenuesSettings = lazy(() => import("@/components/settings/VenuesSettings"));
 const OrderingScheduleSettings = lazy(() => import("@/components/settings/OrderingScheduleSettings"));
 const TimeClockSettings = lazy(() => import("@/components/settings/TimeClockSettings"));
+const SyncAgentSettings = lazy(() => import("@/components/settings/SyncAgentSettings"));
 const PrintersSettings = lazy(() => import("@/components/settings/PrintersSettings"));
 const TasksPage = lazy(() => import("@/pages/TasksPage"));
 const RecipesPage = lazy(() => import("@/pages/RecipesPage"));
@@ -110,6 +111,7 @@ const router = createBrowserRouter([
       { path: "recipes", element: <RecipesPage /> },
       { path: "recipes/:id", element: <RecipeDetailPage /> },
       { path: "prep", element: <PrepListPage /> },
+      { path: "ordering", element: <PurchaseOrdersPage /> },
       { path: "rostering", element: <RosteringPage /> },
       { path: "my-roster", element: <MyRosterPage /> },
       { path: "roster-view", element: <RosterViewPage /> },
@@ -155,7 +157,8 @@ const router = createBrowserRouter([
           { path: "invoices", element: <InvoicesPage /> },
           { path: "expenses", element: <ExpensesPage /> },
           { path: "data-management", element: <DataManagementPage /> },
-          { path: "purchase-orders", element: <PurchaseOrdersPage /> },
+          // Moved to its own Operate tab — keep old links working.
+          { path: "purchase-orders", element: <Navigate to="/ordering" replace /> },
           { path: "inventory", element: <InventoryPage /> },
           { path: "transfers", element: <TransfersPage /> },
           { path: "waste", element: <WastePage /> },
@@ -171,8 +174,8 @@ const router = createBrowserRouter([
             path: "food",
             element: <FoodPage />,
             children: [
-              { index: true, element: <Navigate to="purchase-orders" replace /> },
-              { path: "purchase-orders", element: <PurchaseOrdersPage /> },
+              { index: true, element: <Navigate to="invoices" replace /> },
+              { path: "purchase-orders", element: <Navigate to="/ordering" replace /> },
               { path: "invoices", element: <InvoicesPage /> },
               { path: "transfers", element: <TransfersPage /> },
               { path: "inventory", element: <InventoryPage /> },
@@ -203,6 +206,7 @@ const router = createBrowserRouter([
               { path: "bank-accounts", element: <BankAccounts /> },
               { path: "quick-links", element: <QuickLinksSettings /> },
               { path: "time-clocks", element: <TimeClockSettings /> },
+              { path: "sync-agents", element: <SyncAgentSettings /> },
               { path: "printers", element: <PrintersSettings /> },
               { path: "integrations", element: <IntegrationsSettings /> },
             ],

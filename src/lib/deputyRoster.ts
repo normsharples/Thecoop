@@ -21,6 +21,8 @@ export interface ParseResult {
   skipped: { line: number; reason: string; raw: Record<string, string> }[];
   headers: string[];
   mapped: Record<string, string | null>;
+  /** Set when the file is recognisably a different Deputy export. */
+  wrongExport: string | null;
 }
 
 // Deputy's exporter and its Resource API disagree on casing/spacing, and the
@@ -39,6 +41,29 @@ const ALIASES = {
   published: ["Published"],
   open:      ["Open", "Open Shift", "Unassigned"],
 };
+
+/**
+ * Deputy's exporter has 35+ data sources behind one identical-looking flow, and
+ * picking the wrong one yields a file that parses fine and produces nothing.
+ * Name the mistake instead of reporting a thousand "missing times" rows.
+ */
+const EXPORT_FINGERPRINTS: { name: string; columns: string[]; needed: number }[] = [
+  { name: "Employee", columns: ["FirstName", "LastName", "DateOfBirth", "EmergencyAddress", "StressProfile", "TerminationDate"], needed: 3 },
+  { name: "Timesheet", columns: ["TimeApproved", "IsInProgress", "PayRuleId", "TimeApprover"], needed: 2 },
+  { name: "Company / Location", columns: ["BusinessNumber", "IsWorkplace", "IsPayrollEntity", "TradingName"], needed: 2 },
+  { name: "Leave", columns: ["LeaveRule", "DateStart", "DateEnd", "ApprovalStatus"], needed: 2 },
+];
+
+function detectWrongExport(headers: string[]): string | null {
+  const squashed = new Set(headers.map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, "")));
+  for (const fp of EXPORT_FINGERPRINTS) {
+    const hits = fp.columns.filter((c) =>
+      squashed.has(c.toLowerCase().replace(/[^a-z0-9]/g, ""))
+    ).length;
+    if (hits >= fp.needed) return fp.name;
+  }
+  return null;
+}
 
 const truthy = (v: string) => ["1", "true", "yes", "y", "t"].includes(v.trim().toLowerCase());
 
@@ -118,6 +143,13 @@ export function parseDeputyRoster(text: string): ParseResult {
   const rows: ArchiveRow[] = [];
   const skipped: ParseResult["skipped"] = [];
 
+  // If there is no usable date or time column at all, this isn't a Roster
+  // export — bail before generating a skip line per row.
+  const wrongExport = !col.date || (!col.start && !col.end) ? detectWrongExport(headers) : null;
+  if (wrongExport) {
+    return { rows: [], skipped: [], headers, mapped: col, wrongExport };
+  }
+
   objects.forEach((o, i) => {
     const line = i + 2; // 1-indexed, plus the header row
     const rawDate = col.date ? o[col.date] : "";
@@ -162,5 +194,5 @@ export function parseDeputyRoster(text: string): ParseResult {
     });
   });
 
-  return { rows, skipped, headers, mapped: col };
+  return { rows, skipped, headers, mapped: col, wrongExport: null };
 }

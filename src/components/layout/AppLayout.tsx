@@ -9,6 +9,7 @@ import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { MobileNav } from "./MobileNav";
 import { BrandTheme } from "./BrandTheme";
+import { BrandFeatureGate } from "./BrandFeatureGate";
 import { AskDrawer } from "@/components/ask/AskDrawer";
 import { Eye, Loader2 } from "lucide-react";
 
@@ -33,7 +34,7 @@ const pageTitles: Record<string, string> = {
   "/my-availability": "My Availability",
   "/my-profile": "My Profile",
   "/tasks": "Today's Tasks",
-  "/pulse": "Pulse Report",
+  "/pulse": "Daily Activity Report",
   "/reports": "Reports",
   "/reports/sales": "Sales Report",
   "/reports/labour": "Labour Report",
@@ -42,6 +43,7 @@ const pageTitles: Record<string, string> = {
   "/reports/cash-ups": "Daily Cash Ups",
   "/leaderboard": "Leaderboard",
   "/calendar":    "Calendar",
+  "/ordering":    "Ordering",
   "/admin/cash": "Banking",
   "/admin/invoices": "Invoices",
   "/admin/stock-counts": "Stock Counts",
@@ -188,7 +190,9 @@ export function AppLayout() {
               </div>
             }
           >
-            <Outlet />
+            <BrandFeatureGate>
+              <Outlet />
+            </BrandFeatureGate>
           </Suspense>
         </main>
         <MobileNav />

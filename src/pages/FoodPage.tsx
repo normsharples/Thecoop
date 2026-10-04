@@ -3,7 +3,6 @@ import { UtensilsCrossed } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { label: "Purchase Orders", path: "/admin/food/purchase-orders" },
   { label: "Invoices", path: "/admin/food/invoices" },
   { label: "Transfers", path: "/admin/food/transfers" },
   { label: "Inventory", path: "/admin/food/inventory" },

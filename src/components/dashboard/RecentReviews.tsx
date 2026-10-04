@@ -3,7 +3,7 @@ import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useScopedRestaurantIds } from "@/contexts/WidgetScope";
 import { useGoogleRatings, combineRatings, totalReviewCount } from "@/hooks/useGoogleRatings";
 import { formatDistanceToNow } from "date-fns";
 
@@ -25,7 +25,7 @@ function StarRating({ rating }: { rating: number }) {
 
 export function RecentReviews() {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const selectedRestaurantIds = useScopedRestaurantIds();
 
   const restaurantIds = selectedRestaurantIds.length
     ? selectedRestaurantIds

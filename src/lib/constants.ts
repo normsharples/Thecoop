@@ -22,7 +22,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 export const NAV_ITEMS = [
   { label: "Dashboard", path: "/", icon: "LayoutDashboard" },
-  { label: "Pulse Report", path: "/pulse", icon: "Activity" },
+  { label: "Daily Activity Report", path: "/pulse", icon: "Activity" },
   {
     label: "Reports",
     path: "/reports",
@@ -65,7 +65,7 @@ export const NAV_ITEMS = [
 
 export const MOBILE_NAV_ITEMS = [
   { label: "Dashboard", path: "/", icon: "LayoutDashboard" },
-  { label: "Pulse", path: "/pulse", icon: "Activity" },
+  { label: "Daily Activity", path: "/pulse", icon: "Activity" },
   { label: "Reports", path: "/reports", icon: "BarChart3" },
   { label: "Leaderboard", path: "/leaderboard", icon: "Trophy" },
   { label: "Calendar", path: "/admin/calendar", icon: "CalendarDays" },

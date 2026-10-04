@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format, subDays, subMonths, parseISO } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useScopedRestaurantIds } from "@/contexts/WidgetScope";
 import { TARGET_METRICS } from "@/hooks/useTargets";
 import { cn } from "@/lib/utils";
 import type { Target, SalesDaily, LabourDaily, GoogleReview } from "@/types";
@@ -146,7 +146,7 @@ function Skeleton() {
 
 export function DashboardReport({ date }: { date: string }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const selectedRestaurantIds = useScopedRestaurantIds();
 
   const restaurantIds: string[] = selectedRestaurantIds.length
     ? selectedRestaurantIds

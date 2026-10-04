@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useBrandFeatures } from "@/hooks/useBrandFeatures";
 
 // Sub-tabs shown inside the Reports → Sales section.
 const subTabs = [
@@ -9,10 +10,13 @@ const subTabs = [
 ];
 
 export default function SalesReportLayout() {
+  const { isPathEnabled } = useBrandFeatures();
+  const tabs = subTabs.filter((t) => isPathEnabled(t.path));
+
   return (
     <div className="space-y-4">
       <nav className="flex gap-1 rounded-lg border border-border bg-card p-1 w-fit">
-        {subTabs.map((tab) => (
+        {tabs.map((tab) => (
           <NavLink
             key={tab.path}
             to={tab.path}

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useScopedRestaurantIds } from "@/contexts/WidgetScope";
 import { useGoogleRatings } from "@/hooks/useGoogleRatings";
 import { format, parseISO, subYears } from "date-fns";
 
@@ -35,7 +35,7 @@ function ratingStatus(rating: number): Status {
 
 export function QuickStatsCards({ date }: { date?: string }) {
   const { data: restaurants, isLoading: restaurantsLoading } = useRestaurants();
-  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const selectedRestaurantIds = useScopedRestaurantIds();
   const today = date ?? format(new Date(), "yyyy-MM-dd");
   const prevYearDate = format(subYears(parseISO(today), 1), "yyyy-MM-dd");
 

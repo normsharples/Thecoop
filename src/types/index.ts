@@ -9,7 +9,16 @@ export interface Restaurant {
   state?: "NSW" | "VIC" | "QLD" | "SA" | "WA" | "TAS" | "NT" | "ACT" | null; // drives public-holiday calendar (payroll)
   pnl_cogs_basis?: "purchases" | "usage";
   brand_id?: string | null;
+  /** Migration 086 — purchase orders are sent from / replied to this address. */
+  orders_email?: string | null;
   created_at: string;
+}
+
+export interface BrandFeatures {
+  /** Report paths (from lib/reportNav) switched off for this brand. */
+  disabled_reports?: string[];
+  /** Module keys (from lib/brandFeatures) switched off for this brand. */
+  disabled_modules?: string[];
 }
 
 export interface Brand {
@@ -17,6 +26,8 @@ export interface Brand {
   name: string;
   color: string;
   icon: string;
+  /** Added in migration 084 — may be missing before it's applied. */
+  features?: BrandFeatures | null;
   created_at: string;
 }
 
@@ -358,7 +369,7 @@ export interface SalesDaily {
   sales_by_category: SalesByCategory[] | null;
   sales_by_product:  SalesByProduct[]  | null;
   sales_by_hour: SalesByHour[] | null;
-  source: "lightspeed" | "manual" | "override";
+  source: "lightspeed" | "square" | "manual" | "override";
   manual_notes: string | null;
   entered_by: string | null;
   discounts_amount: number;

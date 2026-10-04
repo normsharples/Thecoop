@@ -3,12 +3,12 @@ import { DollarSign, Receipt, Users, Star, TrendingUp, TrendingDown, Minus } fro
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useScopedRestaurantIds } from "@/contexts/WidgetScope";
 import { format, subDays, parseISO } from "date-fns";
 
 export function TodaySnapshot({ date }: { date?: string }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const selectedRestaurantIds = useScopedRestaurantIds();
   const today = date ?? format(new Date(), "yyyy-MM-dd");
   const yesterday = format(subDays(parseISO(today), 1), "yyyy-MM-dd");
 

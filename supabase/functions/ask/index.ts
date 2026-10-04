@@ -273,7 +273,7 @@ Say which date range and which venues you used. That one line is what makes the 
 
 WHAT THE NUMBERS MEAN
 
-- Gross sales is the till total including GST. Net sales is ex-GST. The Sales report leads with gross; Pulse leads with net.
+- Gross sales is the till total including GST. Net sales is ex-GST. The Sales report leads with gross; the Daily Activity Report (formerly Pulse) leads with net.
 - There is no discount or refund data in this database. If asked about discounts or refunds, say the figures aren't synced rather than reporting zero.
 - Delivery sales (Uber Eats and similar) already sit inside the POS totals — report them alongside, never add them on top.
 - Labour percent is labour cost as a percentage of sales. SPMH is sales per man hour — sales divided by hours worked. Both are the numbers the Labour report shows.

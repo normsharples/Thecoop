@@ -3,7 +3,7 @@ import { format, startOfWeek, endOfWeek, subYears, parseISO } from "date-fns";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useScopedRestaurantIds } from "@/contexts/WidgetScope";
 import { useGoogleRatings } from "@/hooks/useGoogleRatings";
 import type { SalesDaily, LabourDaily } from "@/types";
 
@@ -40,7 +40,7 @@ export function WeeklyStatsCards({
   date: string; from?: string; to?: string; revenueLabel?: string;
 }) {
   const { data: restaurants, isLoading: restaurantsLoading } = useRestaurants();
-  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const selectedRestaurantIds = useScopedRestaurantIds();
 
   const useCustom = !!(from && to);
   const weekStart = useCustom ? parseISO(from!) : startOfWeek(parseISO(date), { weekStartsOn: 1 });

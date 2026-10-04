@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown, Minus, type LucideIcon } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useScopedRestaurantIds } from "@/contexts/WidgetScope";
 
 type SalesField = "online_sales" | "delivery_sales";
 
@@ -22,7 +22,7 @@ export function ChannelSalesCard({
   label, field, icon: Icon, from, to, prevFrom, prevTo, comparisonLabel,
 }: ChannelSalesCardProps) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const selectedRestaurantIds = useScopedRestaurantIds();
 
   const restaurantIds: string[] = selectedRestaurantIds.length
     ? selectedRestaurantIds

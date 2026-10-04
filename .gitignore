@@ -34,3 +34,6 @@ dist-ssr
 # local scratch
 _to_delete/
 diagnose_onboarding.sql
+
+# Supabase CLI cache
+supabase/.temp/

@@ -4,7 +4,7 @@ import { Receipt, Gauge, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useScopedRestaurantIds } from "@/contexts/WidgetScope";
 import type { SalesDaily, LabourDaily } from "@/types";
 
 export function WeeklySecondaryCards({
@@ -13,7 +13,7 @@ export function WeeklySecondaryCards({
   date: string; from?: string; to?: string; comparisonLabel?: string;
 }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const selectedRestaurantIds = useScopedRestaurantIds();
 
   const restaurantIds: string[] = selectedRestaurantIds.length
     ? selectedRestaurantIds

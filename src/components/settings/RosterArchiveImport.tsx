@@ -63,6 +63,11 @@ export default function RosterArchiveImport() {
     try {
       const text = await file.text();
       const result = parseDeputyRoster(text);
+      if (result.wrongExport) {
+        toast.error(`That's the ${result.wrongExport} export, not Roster`);
+        setPreview(result);
+        return;
+      }
       if (result.rows.length === 0 && result.skipped.length === 0) {
         toast.error("No rows found in that file");
         return;
@@ -177,6 +182,34 @@ export default function RosterArchiveImport() {
         </label>
       ) : (
         <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+          {preview.wrongExport ? (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+                <p className="flex items-center gap-1.5 text-sm font-medium text-destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  This is the {preview.wrongExport} export, not the Roster export
+                </p>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  In Deputy's Data Exporter, change the data source to{" "}
+                  <strong className="text-foreground">Roster</strong> and export again. Roster files
+                  have Date, StartTime, EndTime and Mealbreak columns.
+                </p>
+                {preview.wrongExport === "Employee" && (
+                  <p className="mt-2 text-sm text-warning">
+                    Nothing was imported. That file holds dates of birth, home addresses and
+                    emergency contacts — delete the download once you've re-exported.
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setPreview(null)}
+                className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-accent"
+              >
+                Choose another file
+              </button>
+            </div>
+          ) : (
+          <>
           <div className="flex flex-wrap items-center gap-4">
             <span className="inline-flex items-center gap-1.5 text-sm font-medium text-success">
               <CheckCircle2 className="h-4 w-4" /> {preview.rows.length} shifts ready
@@ -273,6 +306,8 @@ export default function RosterArchiveImport() {
               Cancel
             </button>
           </div>
+          </>
+          )}
         </div>
       )}
     </div>

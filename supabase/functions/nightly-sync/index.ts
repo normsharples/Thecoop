@@ -1,6 +1,6 @@
 // nightly-sync
 // Master orchestrator running at 4:00 AM AEST.
-// Runs: Lightspeed → Deputy → Google Reviews → process-alerts in sequence.
+// Runs: Lightspeed → Square → Deputy → Google Reviews → process-alerts in sequence.
 // Continues on failure, logs each step, sends summary if errors occurred.
 // Schedule via Supabase cron: "0 17 * * *" (UTC = 4 AM AEDT / 3 AM AEST)
 
@@ -69,6 +69,23 @@ serve(async (req) => {
     steps.push(result);
     if (error) errors.push(`Lightspeed: ${error}`);
     console.log(`[nightly-sync] Lightspeed done in ${result.duration_ms}ms — ${result.status}`);
+  }
+
+  // ── Step 1b: Square Sales (venues on Square) ─────────────────────────────
+  {
+    const t = Date.now();
+    console.log("[nightly-sync] Running Square sales sync...");
+    const { data, error } = await invokeFunction(supabase, "sync-square", { action: "sync" });
+    const result: StepResult = {
+      step: "sync-square",
+      status: error ? "error" : "success",
+      data,
+      error: error ?? undefined,
+      duration_ms: Date.now() - t,
+    };
+    steps.push(result);
+    if (error) errors.push(`Square: ${error}`);
+    console.log(`[nightly-sync] Square done in ${result.duration_ms}ms — ${result.status}`);
   }
 
   // ── Step 2: Deputy Labour ────────────────────────────────────────────────

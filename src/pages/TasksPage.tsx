@@ -160,7 +160,7 @@ export default function TasksPage() {
           kind: "order",
           auto,
           done: auto || completedSet.has(`${v.id}:${key}`),
-          link: "/admin/purchase-orders",
+          link: "/ordering",
         });
       }
 

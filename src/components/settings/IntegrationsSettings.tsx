@@ -18,6 +18,7 @@ import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
 import { format } from "date-fns";
 import type { IntegrationCredential, IntegrationSetting, SyncLog, Restaurant } from "@/types";
+import { SquareVenueCard } from "./SquareIntegration";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -308,6 +309,7 @@ function SyncLogsTable({
 }) {
   const providerLabel: Record<string, string> = {
     lightspeed: "Lightspeed",
+    square: "Square",
     deputy: "Deputy",
     google_reviews: "Google Reviews",
     nightly_sync: "Nightly Sync",
@@ -636,7 +638,7 @@ export default function IntegrationsSettings() {
         <div>
           <h2 className="text-xl font-semibold text-foreground">Integrations</h2>
           <p className="text-sm text-muted-foreground">
-            Connect Lightspeed POS, Deputy rostering, and Google Business for automated sync.
+            Connect your POS (Lightspeed or Square), Deputy rostering, and Google Business for automated sync.
           </p>
         </div>
       </div>
@@ -672,6 +674,35 @@ export default function IntegrationsSettings() {
           })}
           <p className="text-xs text-muted-foreground pt-1">
             For OAuth V1: paste tokens manually. Refresh tokens are auto-renewed on each sync run.
+          </p>
+        </div>
+      </Section>
+
+      {/* ── Square POS ───────────────────────────────────────────────────── */}
+      <Section
+        title="Square POS"
+        subtitle="For venues that trade on Square — sales, hourly and product mix feed every report"
+        defaultOpen={!!credentials?.some((c) => c.provider === "square")}
+      >
+        <div className="space-y-3">
+          {restaurants?.map((restaurant) => (
+            <SquareVenueCard
+              key={restaurant.id}
+              restaurant={restaurant}
+              credential={credentials?.find(
+                (c) => c.restaurant_id === restaurant.id && c.provider === "square"
+              )}
+              hasLightspeed={!!credentials?.some(
+                (c) =>
+                  c.restaurant_id === restaurant.id &&
+                  c.provider === "lightspeed" &&
+                  !c.is_manual_only &&
+                  !!c.credentials?.access_token
+              )}
+            />
+          ))}
+          <p className="pt-1 text-xs text-muted-foreground">
+            Syncs yesterday and today every night, plus whenever you hit Sync now. Connecting pulls the last 30 days.
           </p>
         </div>
       </Section>

@@ -7,14 +7,14 @@ import { format, subDays, subYears, parseISO } from "date-fns";
 import { cn, formatCurrency } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useScopedRestaurantIds } from "@/contexts/WidgetScope";
 import { useGoogleRatings, combineRatings, totalReviewCount } from "@/hooks/useGoogleRatings";
 import { TARGET_METRICS } from "@/hooks/useTargets";
 import type { SalesDaily, Target } from "@/types";
 
 export function DailySnapshot({ date }: { date: string }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const selectedRestaurantIds = useScopedRestaurantIds();
 
   const restaurantIds: string[] = selectedRestaurantIds.length
     ? selectedRestaurantIds

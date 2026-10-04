@@ -286,7 +286,7 @@ function RestaurantTargets({ restaurant }: { restaurant: Restaurant }) {
             type="currency"
           />
           <p className="text-xs text-muted-foreground mt-2">
-            Per-day sales targets used by Pulse Report and Alerts.
+            Per-day sales targets used by the Daily Activity Report and Alerts.
           </p>
         </SectionCard>
 

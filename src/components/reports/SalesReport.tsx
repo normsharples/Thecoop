@@ -96,7 +96,7 @@ function getPrevYearRange(range: DateRange): DateRange {
 function SourceBadge({ source }: { source: string }) {
   return (
     <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
-      source==="lightspeed" && "bg-blue-500/10 text-blue-500",
+      (source==="lightspeed" || source==="square") && "bg-primary-soft text-primary",
       source==="manual"     && "bg-muted/60 text-muted-foreground",
       source==="override"   && "bg-warning/10 text-warning"
     )}>{source}</span>

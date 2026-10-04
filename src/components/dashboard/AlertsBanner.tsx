@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useScopedRestaurantIds } from "@/contexts/WidgetScope";
 import type { AlertHistory } from "@/types";
 
 type AlertWithRestaurant = AlertHistory & { restaurant?: { name: string } };
@@ -15,7 +15,7 @@ export function AlertsBanner() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const selectedRestaurantIds = useScopedRestaurantIds();
 
   const restaurantIds = selectedRestaurantIds.length
     ? selectedRestaurantIds

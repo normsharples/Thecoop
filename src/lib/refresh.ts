@@ -40,14 +40,18 @@ export type RefreshResult = {
 const POLL_MS = 3000;
 const TIMEOUT_MS = 8 * 60 * 1000;
 
-/** Insert a pending refresh request and return its id. */
-export async function queueRefresh(source: string): Promise<string> {
+/**
+ * Insert a pending refresh request and return its id.
+ * `restaurantId` targets one venue's Coop Agent; omit it to ask every agent.
+ */
+export async function queueRefresh(source: string, restaurantId?: string | null): Promise<string> {
   const { data: userData } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from("refresh_requests")
     .insert({
       source,
       status: "pending",
+      restaurant_id: restaurantId ?? null,
       requested_by: userData?.user?.id ?? null,
     })
     .select("id")
@@ -60,10 +64,10 @@ export async function queueRefresh(source: string): Promise<string> {
  * Queue a refresh and wait for the local watcher to finish it.
  * `source` is a key from REFRESH_SOURCES, or "all".
  */
-export async function triggerRefresh(source: string): Promise<RefreshResult> {
+export async function triggerRefresh(source: string, restaurantId?: string | null): Promise<RefreshResult> {
   let id: string;
   try {
-    id = await queueRefresh(source);
+    id = await queueRefresh(source, restaurantId);
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
@@ -94,8 +98,8 @@ export async function triggerRefresh(source: string): Promise<RefreshResult> {
 /** Human-readable failure message from a RefreshResult. */
 export function refreshErrorMessage(res: RefreshResult): string {
   if (res.error === "no-watcher")
-    return "No response from your Mac. Start the Refresh Watcher (Start Refresh Watcher.command) and try again.";
+    return "Nothing picked up the refresh. Check Coop Agent is running on the venue computer (Settings → Sync Agents shows which are online).";
   if (res.error === "timeout")
-    return "Refresh is taking too long — check the Refresh Watcher window on your Mac for errors.";
+    return "Refresh is taking too long — check Settings → Sync Agents, or the Coop Agent window on the venue computer.";
   return res.error || "Refresh failed";
 }

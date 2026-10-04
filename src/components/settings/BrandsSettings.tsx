@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Tags, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Tags, Plus, Pencil, Trash2, Loader2, SlidersHorizontal } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -20,7 +20,9 @@ import {
   DEFAULT_BRAND_COLOR,
   DEFAULT_BRAND_ICON,
 } from "@/lib/brand";
-import type { Brand } from "@/types";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MODULES, REPORTS } from "@/lib/brandFeatures";
+import type { Brand, BrandFeatures } from "@/types";
 
 function BrandDialog({
   open,
@@ -135,9 +137,139 @@ function BrandDialog({
   );
 }
 
+// ── Reports & modules per brand ─────────────────────────────────────────────
+
+function featureSummary(b: Brand) {
+  const offReports = new Set(b.features?.disabled_reports ?? []);
+  const offModules = new Set(b.features?.disabled_modules ?? []);
+  const reportsOn = REPORTS.filter((r) => !offReports.has(r.key)).length;
+  const modulesOn = MODULES.filter((m) => !offModules.has(m.key)).length;
+  return `${reportsOn}/${REPORTS.length} reports · ${modulesOn}/${MODULES.length} modules`;
+}
+
+function FeatureGroup({
+  title,
+  items,
+  off,
+  onChange,
+}: {
+  title: string;
+  items: { key: string; label: string }[];
+  off: Set<string>;
+  onChange: (next: Set<string>) => void;
+}) {
+  const onCount = items.filter((i) => !off.has(i.key)).length;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="eyebrow">
+          {title} · {onCount}/{items.length} on
+        </p>
+        <div className="flex gap-2 text-xs">
+          <button
+            type="button"
+            className="text-primary hover:underline"
+            onClick={() => onChange(new Set())}
+          >
+            All on
+          </button>
+          <button
+            type="button"
+            className="text-muted-foreground hover:underline"
+            onClick={() => onChange(new Set(items.map((i) => i.key)))}
+          >
+            All off
+          </button>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 rounded-lg border border-border p-3 sm:grid-cols-2">
+        {items.map((i) => (
+          <label key={i.key} className="flex cursor-pointer items-center gap-2.5 text-sm">
+            <Checkbox
+              checked={!off.has(i.key)}
+              onCheckedChange={(c) => {
+                const next = new Set(off);
+                if (c) next.delete(i.key);
+                else next.add(i.key);
+                onChange(next);
+              }}
+            />
+            {i.label}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BrandFeaturesDialog({ brand, onClose }: { brand: Brand; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [offReports, setOffReports] = useState(
+    () => new Set(brand.features?.disabled_reports ?? [])
+  );
+  const [offModules, setOffModules] = useState(
+    () => new Set(brand.features?.disabled_modules ?? [])
+  );
+
+  const save = useMutation({
+    mutationFn: async () => {
+      // Only keep keys that still exist, so removed reports don't linger.
+      const features: BrandFeatures = {
+        ...(brand.features ?? {}),
+        disabled_reports: REPORTS.map((r) => r.key).filter((k) => offReports.has(k)),
+        disabled_modules: MODULES.map((m) => m.key).filter((k) => offModules.has(k)),
+      };
+      const { error } = await supabase.from("brands").update({ features }).eq("id", brand.id);
+      if (error) {
+        if (/features/.test(error.message)) {
+          throw new Error("Run migration 084_brand_features.sql in Supabase first.");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["brands"] });
+      toast.success(`${brand.name} updated`);
+      onClose();
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Failed to save"),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{brand.name} — reports &amp; modules</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Untick anything this brand doesn't use. It disappears from the sidebar, the Reports
+          tabs and the mobile menu while this brand is selected, and its pages are blocked. With
+          all brands selected, anything on for at least one brand stays visible. Dashboard,
+          Team and Settings are always on.
+        </p>
+        <div className="space-y-5">
+          <FeatureGroup title="Reports" items={REPORTS} off={offReports} onChange={setOffReports} />
+          <FeatureGroup title="Modules" items={MODULES} off={offModules} onChange={setOffModules} />
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={() => save.mutate()} disabled={save.isPending}>
+            {save.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function BrandsSettings() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editBrand, setEditBrand] = useState<Brand | null>(null);
+  const [featuresBrand, setFeaturesBrand] = useState<Brand | null>(null);
   const queryClient = useQueryClient();
 
   const { data: brands = [], isLoading } = useQuery({
@@ -192,7 +324,7 @@ export default function BrandsSettings() {
 
       <p className="text-sm text-muted-foreground mb-4">
         Brands group your venues. Assign each venue to a brand under Settings → Venues. The active
-        brand sets the app's name, icon and accent colour.
+        brand sets the app's name, icon and accent colour, and which reports and modules show.
       </p>
 
       {isLoading ? (
@@ -225,8 +357,18 @@ export default function BrandsSettings() {
                   <p className="text-sm font-medium text-foreground">{b.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {count} venue{count !== 1 ? "s" : ""} · <span className="font-mono">{b.color}</span>
+                    {" · "}
+                    {featureSummary(b)}
                   </p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFeaturesBrand(b)}
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
+                  Reports &amp; modules
+                </Button>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                   <Button
                     variant="ghost"
@@ -260,6 +402,13 @@ export default function BrandsSettings() {
       )}
 
       <BrandDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      {featuresBrand && (
+        <BrandFeaturesDialog
+          key={featuresBrand.id}
+          brand={featuresBrand}
+          onClose={() => setFeaturesBrand(null)}
+        />
+      )}
       {editBrand && (
         <BrandDialog open={!!editBrand} onClose={() => setEditBrand(null)} initial={editBrand} />
       )}

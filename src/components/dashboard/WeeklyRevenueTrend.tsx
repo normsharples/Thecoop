@@ -19,7 +19,7 @@ import {
 } from "recharts";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useScopedRestaurantIds } from "@/contexts/WidgetScope";
 
 function fmtK(value: number) {
   if (value === 0) return "$0";
@@ -62,7 +62,7 @@ function CustomTooltip({
 
 export function WeeklyRevenueTrend({ date }: { date?: string }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const selectedRestaurantIds = useScopedRestaurantIds();
 
   const anchor = date ? parseISO(date) : new Date();
   const weekEnd = endOfWeek(anchor, { weekStartsOn: 1 });

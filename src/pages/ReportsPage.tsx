@@ -2,8 +2,15 @@ import { NavLink, Outlet } from "react-router-dom";
 import { BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { REPORT_NAV } from "@/lib/reportNav";
+import { useBrandFeatures } from "@/hooks/useBrandFeatures";
 
 export default function ReportsPage() {
+  const { isPathEnabled } = useBrandFeatures();
+  // A report with sub-reports stays while any of them is on.
+  const tabs = REPORT_NAV.filter((r) =>
+    r.children ? r.children.some((c) => isPathEnabled(c.path)) : isPathEnabled(r.path)
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -12,7 +19,7 @@ export default function ReportsPage() {
       </div>
 
       <nav className="flex gap-1 rounded-xl border border-border bg-card p-1 overflow-x-auto">
-        {REPORT_NAV.map((tab) => (
+        {tabs.map((tab) => (
           <NavLink
             key={tab.path}
             to={tab.path}

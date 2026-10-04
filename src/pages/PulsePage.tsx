@@ -350,7 +350,7 @@ export default function PulsePage() {
         <div className="flex items-center justify-between sm:justify-start sm:gap-2">
           <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-success" />
-            <h1 className="text-lg font-semibold text-foreground sm:text-xl">Pulse</h1>
+            <h1 className="text-lg font-semibold text-foreground sm:text-xl">Daily Activity Report</h1>
             {isToday && (
               <span className="flex items-center gap-1.5 rounded-full bg-success-soft px-2 py-0.5 text-[11px] font-semibold text-success">
                 <span className="h-1.5 w-1.5 rounded-full bg-success" />

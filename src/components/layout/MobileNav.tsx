@@ -8,6 +8,7 @@ import {
   Menu,
   X,
   ClipboardList,
+  ShoppingCart,
   Wrench,
   Banknote,
   AlertTriangle,
@@ -25,11 +26,13 @@ import {
   ChefHat,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useBrandFeatures } from "@/hooks/useBrandFeatures";
+import { REPORT_SIDEBAR_LINKS } from "@/lib/reportNav";
 import { cn } from "@/lib/utils";
 
 const mobileTabItems = [
   { label: "Home",     path: "/",              icon: LayoutDashboard },
-  { label: "Pulse",    path: "/pulse",         icon: Activity        },
+  { label: "Activity", path: "/pulse",         icon: Activity        },
   { label: "Reports",  path: "/reports",       icon: BarChart3       },
   { label: "Calendar", path: "/calendar",      icon: CalendarDays    },
 ];
@@ -67,7 +70,7 @@ const moreItems = [
   { label: "My Profile",      path: "/my-profile",              icon: UserRound },
   { label: "WHS Audits",      path: "/admin/whs-audits",       icon: Shield },
   { label: "Banking", path: "/admin/cash",             icon: Banknote },
-  { label: "Purchase Orders", path: "/admin/purchase-orders",  icon: ClipboardList },
+  { label: "Ordering",        path: "/ordering",                icon: ShoppingCart },
   { label: "Expenses",        path: "/admin/expenses",         icon: Wallet },
   { label: "Stock Counts",    path: "/admin/stock-counts",     icon: ClipboardList },
   { label: "Maintenance",     path: "/admin/maintenance",      icon: Wrench },
@@ -82,18 +85,23 @@ export function MobileNav() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const location = useLocation();
   const { isSuperadmin, isStaff, isTeamMember, isShiftSupervisor } = usePermissions();
+  const { isPathEnabled } = useBrandFeatures();
 
-  const filteredTabItems = isTeamMember
+  const roleTabItems = isTeamMember
     ? teamMemberTabItems
     : isShiftSupervisor
     ? supervisorTabItems
     : isStaff
     ? staffTabItems
     : mobileTabItems;
+  // Reports tab points at /reports — keep it while any report is on.
+  const filteredTabItems = roleTabItems.filter((item) =>
+    item.path === "/reports" ? REPORT_SIDEBAR_LINKS.some((r) => isPathEnabled(r.path)) : isPathEnabled(item.path)
+  );
   const hideMore = isStaff || isTeamMember || isShiftSupervisor;
 
   const filteredMoreItems = moreItems.filter(
-    (item) => !item.superadminOnly || isSuperadmin
+    (item) => (!item.superadminOnly || isSuperadmin) && isPathEnabled(item.path)
   );
 
   return (

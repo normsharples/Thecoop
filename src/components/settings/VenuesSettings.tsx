@@ -45,12 +45,17 @@ function VenueDialog({
   const [lightspeedId, setLightspeedId] = useState(initial?.lightspeed_id ?? "");
   const [deputyId, setDeputyId] = useState(initial?.deputy_id ?? "");
   const [placeId, setPlaceId] = useState(initial?.google_place_id ?? "");
+  const [ordersEmail, setOrdersEmail] = useState(initial?.orders_email ?? "");
 
   const save = useMutation({
     mutationFn: async () => {
       const trimmed = name.trim();
       if (!trimmed) throw new Error("Venue name is required");
-      const payload = {
+      const email = ordersEmail.trim();
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        throw new Error("Ordering email doesn't look right");
+      }
+      const payload: Record<string, unknown> = {
         name: trimmed,
         address: address.trim() || null,
         brand_id: brandId === NO_BRAND ? null : brandId,
@@ -59,6 +64,9 @@ function VenueDialog({
         deputy_id: deputyId.trim() || null,
         google_place_id: placeId.trim() || null,
       };
+      // Only send the column when it's in play, so venue edits still work
+      // before migration 086 has been run.
+      if (email !== (initial?.orders_email ?? "")) payload.orders_email = email || null;
       if (initial) {
         const { error } = await supabase.from("restaurants").update(payload).eq("id", initial.id);
         if (error) throw error;
@@ -143,6 +151,22 @@ function VenueDialog({
             <div className="col-span-2 space-y-1.5">
               <Label htmlFor="v-gp">Google Place ID</Label>
               <Input id="v-gp" value={placeId} onChange={(e) => setPlaceId(e.target.value)} placeholder="Optional" />
+            </div>
+
+            <div className="col-span-2 space-y-1.5">
+              <Label htmlFor="v-orders">Ordering reply email</Label>
+              <Input
+                id="v-orders"
+                type="email"
+                value={ordersEmail}
+                onChange={(e) => setOrdersEmail(e.target.value)}
+                placeholder="e.g. torquay@pollorotisserie.com.au"
+              />
+              <p className="text-xs text-muted-foreground">
+                Purchase orders are sent from the app's orders address with this venue's name on them.
+                Supplier replies come back here, and this inbox gets a copy of every order. Any email
+                works — Gmail, Outlook, anything. Leave blank and replies go to whoever placed the order.
+              </p>
             </div>
           </div>
         </div>
@@ -234,6 +258,7 @@ export default function VenuesSettings() {
                   <p className="text-xs text-muted-foreground">
                     {brand?.name ?? "No brand"}
                     {v.address ? ` · ${v.address}` : ""}
+                    {v.orders_email ? ` · Order replies to ${v.orders_email}` : ""}
                   </p>
                 </div>
                 <Button

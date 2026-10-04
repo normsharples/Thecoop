@@ -3,12 +3,12 @@ import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useScopedRestaurantIds } from "@/contexts/WidgetScope";
 import { format, subDays, parseISO } from "date-fns";
 
 export function TrendSparklines({ date }: { date?: string }) {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const selectedRestaurantIds = useScopedRestaurantIds();
 
   const restaurantIds = selectedRestaurantIds.length
     ? selectedRestaurantIds

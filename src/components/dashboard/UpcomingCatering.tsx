@@ -3,7 +3,7 @@ import { Calendar, Users, UtensilsCrossed } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { useRestaurants } from "@/hooks/useRestaurants";
-import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
+import { useScopedRestaurantIds } from "@/contexts/WidgetScope";
 import { format } from "date-fns";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -17,7 +17,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 export function UpcomingCatering() {
   const { data: restaurants } = useRestaurants();
-  const { selectedRestaurantIds } = useSelectedRestaurant();
+  const selectedRestaurantIds = useScopedRestaurantIds();
   const today = format(new Date(), "yyyy-MM-dd");
 
   const restaurantIds = selectedRestaurantIds.length

@@ -21,6 +21,7 @@ import {
   Activity,
   BookOpen,
   ChefHat,
+  ShoppingCart,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -34,6 +35,7 @@ import { useActiveBrand } from "@/hooks/useActiveBrand";
 import { useAuth } from "@/hooks/useAuth";
 import { cn, getInitials } from "@/lib/utils";
 import { REPORT_SIDEBAR_LINKS } from "@/lib/reportNav";
+import { useBrandFeatures } from "@/hooks/useBrandFeatures";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
@@ -56,6 +58,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Activity,
   BookOpen,
   ChefHat,
+  ShoppingCart,
   Menu,
 };
 
@@ -79,7 +82,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", path: "/", icon: "LayoutDashboard", section: "Today" },
-  { label: "Pulse", path: "/pulse", icon: "Activity", section: "Today" },
+  { label: "Daily Activity", path: "/pulse", icon: "Activity", section: "Today" },
   { label: "Tasks", path: "/tasks", icon: "ListChecks", section: "Today" },
   {
     label: "Reports",
@@ -92,6 +95,7 @@ const navItems: NavItem[] = [
   // { label: "Leaderboard", path: "/leaderboard", icon: "Trophy" },
   { label: "Prep list", path: "/prep", icon: "ChefHat", section: "Operate" },
   { label: "Recipes", path: "/recipes", icon: "BookOpen", section: "Operate" },
+  { label: "Ordering", path: "/ordering", icon: "ShoppingCart", section: "Operate" },
   { label: "Rostering", path: "/rostering", icon: "CalendarRange", section: "Operate" },
   { label: "Calendar",  path: "/calendar", icon: "CalendarDays", section: "Operate" },
   {
@@ -150,7 +154,9 @@ export function Sidebar() {
   const { name: brandName, Icon: BrandLogo } = useActiveBrand();
   const location = useLocation();
 
-  const filteredItems = isTeamMember
+  const { isPathEnabled } = useBrandFeatures();
+
+  const roleItems = isTeamMember
     ? teamMemberNavItems
     : isShiftSupervisor
     ? supervisorNavItems
@@ -160,6 +166,14 @@ export function Sidebar() {
         if (item.superadminOnly && !isSuperadmin) return false;
         return true;
       });
+
+  // Drop reports/modules the brand in view has switched off (Settings →
+  // Brands). A parent whose children are all off goes too.
+  const filteredItems = roleItems.flatMap((item) => {
+    if (!item.children) return isPathEnabled(item.path) ? [item] : [];
+    const children = item.children.filter((c) => isPathEnabled(c.path));
+    return children.length ? [{ ...item, children }] : [];
+  });
 
   return (
     <aside
