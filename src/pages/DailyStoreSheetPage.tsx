@@ -8,14 +8,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
-<<<<<<< HEAD
   Calculator,
   PlusCircle,
   Trash2,
   ChevronDown,
   ChevronUp,
-=======
->>>>>>> feature/daily-store-sheet
 } from "lucide-react";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
 import { useRestaurants } from "@/hooks/useRestaurants";
@@ -24,7 +21,6 @@ import {
   useDailyStoreSheets,
   useDailyStoreSheet,
 } from "@/hooks/useDailyStoreSheets";
-<<<<<<< HEAD
 import { useCashUps, DENOMINATIONS, tillTotalFromCounts } from "@/hooks/useCashUps";
 import { cn, formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
@@ -33,10 +29,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import type { CashOutItem } from "@/types";
-=======
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
->>>>>>> feature/daily-store-sheet
 
 export default function DailyStoreSheetPage() {
   const { selectedRestaurantId } = useSelectedRestaurant();
@@ -63,7 +55,6 @@ export default function DailyStoreSheetPage() {
   );
   const { upsert, isUpserting } = useDailyStoreSheets(selectedRestaurantId);
 
-<<<<<<< HEAD
   // ── Cash Up state ──────────────────────────────────────────────────────────
   const { cashUps, isLoading: cashUpsLoading, upsert: upsertCashUp, isUpserting: isCashUpSaving } = useCashUps(selectedRestaurantId);
   const [cashUpOpen, setCashUpOpen] = useState(true);
@@ -73,6 +64,15 @@ export default function DailyStoreSheetPage() {
   const [cashOuts, setCashOuts] = useState<CashOutItem[]>([]);
   const [cashUpNotes, setCashUpNotes] = useState("");
   const [cashUpSaved, setCashUpSaved] = useState(false);
+
+  // Exact currency formatter for cash up — shows cents (e.g. $1.50 not $2)
+  const fmtExact = (n: number) =>
+    new Intl.NumberFormat("en-AU", {
+      style: "currency",
+      currency: "AUD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(n);
 
   const FLOAT_AMOUNT = 200;
   const parsedCounts = Object.fromEntries(
@@ -88,8 +88,6 @@ export default function DailyStoreSheetPage() {
   // Find today's cash up record
   const todayCashUp = cashUps.find((cu) => cu.cash_up_date === selectedDate);
 
-=======
->>>>>>> feature/daily-store-sheet
   // Populate form when sheet loads
   useEffect(() => {
     if (sheet) {
@@ -101,7 +99,6 @@ export default function DailyStoreSheetPage() {
     }
   }, [sheet]);
 
-<<<<<<< HEAD
   // Populate cash up form when existing record loads
   useEffect(() => {
     if (todayCashUp) {
@@ -125,8 +122,6 @@ export default function DailyStoreSheetPage() {
     }
   }, [todayCashUp, selectedDate]);
 
-=======
->>>>>>> feature/daily-store-sheet
   function shiftDate(days: number) {
     const d = new Date(selectedDate + "T00:00:00");
     d.setDate(d.getDate() + days);
@@ -152,7 +147,6 @@ export default function DailyStoreSheetPage() {
     }
   }
 
-<<<<<<< HEAD
   // ── Cash Up handlers ───────────────────────────────────────────────────────
   function updateDenominationCount(key: string, value: string) {
     setDenominationCounts((prev) => ({ ...prev, [key]: value }));
@@ -197,8 +191,6 @@ export default function DailyStoreSheetPage() {
     }
   }
 
-=======
->>>>>>> feature/daily-store-sheet
   // Recent sheets for the sidebar/list
   const recentDates = Array.from({ length: 7 }, (_, i) =>
     format(subDays(new Date(), i), "yyyy-MM-dd")
@@ -333,7 +325,6 @@ export default function DailyStoreSheetPage() {
               )}
             </div>
           )}
-<<<<<<< HEAD
 
           {/* ── Cash Up section ────────────────────────────────── */}
           {!sheetLoading && (
@@ -385,7 +376,7 @@ export default function DailyStoreSheetPage() {
                               onChange={(e) => updateDenominationCount(d.key, e.target.value)}
                             />
                             <span className="w-16 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
-                              {formatCurrency(((parseInt(denominationCounts[d.key], 10) || 0) * d.cents) / 100)}
+                              {fmtExact(((parseInt(denominationCounts[d.key], 10) || 0) * d.cents) / 100)}
                             </span>
                           </div>
                         ))}
@@ -406,7 +397,7 @@ export default function DailyStoreSheetPage() {
                               onChange={(e) => updateDenominationCount(d.key, e.target.value)}
                             />
                             <span className="w-16 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
-                              {formatCurrency(((parseInt(denominationCounts[d.key], 10) || 0) * d.cents) / 100)}
+                              {fmtExact(((parseInt(denominationCounts[d.key], 10) || 0) * d.cents) / 100)}
                             </span>
                           </div>
                         ))}
@@ -415,11 +406,11 @@ export default function DailyStoreSheetPage() {
 
                     <div className="flex items-center justify-between text-sm pt-2 border-t border-border">
                       <span className="text-muted-foreground">Till total</span>
-                      <span className="font-semibold tabular-nums text-foreground">{formatCurrency(tillCountNum)}</span>
+                      <span className="font-semibold tabular-nums text-foreground">{fmtExact(tillCountNum)}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Less $200 float</span>
-                      <span className="font-semibold tabular-nums text-foreground">{formatCurrency(amountToBank)} to bank</span>
+                      <span className="font-semibold tabular-nums text-foreground">{fmtExact(amountToBank)} to bank</span>
                     </div>
                   </div>
 
@@ -471,7 +462,7 @@ export default function DailyStoreSheetPage() {
                           "font-semibold tabular-nums",
                           Math.abs(cashVariance) < 1 ? "text-foreground" : cashVariance >= 0 ? "text-green-600" : "text-red-600"
                         )}>
-                          {cashVariance >= 0 ? "+" : ""}{formatCurrency(cashVariance)}
+                          {cashVariance >= 0 ? "+" : ""}{fmtExact(cashVariance)}
                         </span>
                       </div>
                     </div>
@@ -531,7 +522,7 @@ export default function DailyStoreSheetPage() {
                         ))}
                         <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
                           <span>Total cash outs</span>
-                          <span className="font-medium tabular-nums">{formatCurrency(cashOutsTotal)}</span>
+                          <span className="font-medium tabular-nums">{fmtExact(cashOutsTotal)}</span>
                         </div>
                       </div>
                     )}
@@ -586,8 +577,6 @@ export default function DailyStoreSheetPage() {
               )}
             </div>
           )}
-=======
->>>>>>> feature/daily-store-sheet
         </div>
 
         {/* ── Recent sheets sidebar ─────────────────────────── */}
