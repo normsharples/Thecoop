@@ -69,7 +69,7 @@ serve(async (req) => {
   );
 
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  const FROM_EMAIL = Deno.env.get("ALERT_FROM_EMAIL") ?? "a1245789654123@gmail.com";
+  const FROM_EMAIL = Deno.env.get("ALERT_FROM_EMAIL") ?? "The Coop <onboarding@resend.dev>";
   const APP_URL = Deno.env.get("APP_URL") ?? "";
 
   const today = todayAEST();
