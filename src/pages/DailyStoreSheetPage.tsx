@@ -8,11 +8,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
+<<<<<<< HEAD
   Calculator,
   PlusCircle,
   Trash2,
   ChevronDown,
   ChevronUp,
+=======
+>>>>>>> feature/daily-store-sheet
 } from "lucide-react";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
 import { useRestaurants } from "@/hooks/useRestaurants";
@@ -21,6 +24,7 @@ import {
   useDailyStoreSheets,
   useDailyStoreSheet,
 } from "@/hooks/useDailyStoreSheets";
+<<<<<<< HEAD
 import { useCashUps, DENOMINATIONS, tillTotalFromCounts } from "@/hooks/useCashUps";
 import { cn, formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
@@ -29,6 +33,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import type { CashOutItem } from "@/types";
+=======
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+>>>>>>> feature/daily-store-sheet
 
 export default function DailyStoreSheetPage() {
   const { selectedRestaurantId } = useSelectedRestaurant();
@@ -55,6 +63,7 @@ export default function DailyStoreSheetPage() {
   );
   const { upsert, isUpserting } = useDailyStoreSheets(selectedRestaurantId);
 
+<<<<<<< HEAD
   // ── Cash Up state ──────────────────────────────────────────────────────────
   const { cashUps, isLoading: cashUpsLoading, upsert: upsertCashUp, isUpserting: isCashUpSaving } = useCashUps(selectedRestaurantId);
   const [cashUpOpen, setCashUpOpen] = useState(true);
@@ -79,6 +88,8 @@ export default function DailyStoreSheetPage() {
   // Find today's cash up record
   const todayCashUp = cashUps.find((cu) => cu.cash_up_date === selectedDate);
 
+=======
+>>>>>>> feature/daily-store-sheet
   // Populate form when sheet loads
   useEffect(() => {
     if (sheet) {
@@ -90,6 +101,7 @@ export default function DailyStoreSheetPage() {
     }
   }, [sheet]);
 
+<<<<<<< HEAD
   // Populate cash up form when existing record loads
   useEffect(() => {
     if (todayCashUp) {
@@ -113,6 +125,8 @@ export default function DailyStoreSheetPage() {
     }
   }, [todayCashUp, selectedDate]);
 
+=======
+>>>>>>> feature/daily-store-sheet
   function shiftDate(days: number) {
     const d = new Date(selectedDate + "T00:00:00");
     d.setDate(d.getDate() + days);
@@ -138,6 +152,7 @@ export default function DailyStoreSheetPage() {
     }
   }
 
+<<<<<<< HEAD
   // ── Cash Up handlers ───────────────────────────────────────────────────────
   function updateDenominationCount(key: string, value: string) {
     setDenominationCounts((prev) => ({ ...prev, [key]: value }));
@@ -182,6 +197,8 @@ export default function DailyStoreSheetPage() {
     }
   }
 
+=======
+>>>>>>> feature/daily-store-sheet
   // Recent sheets for the sidebar/list
   const recentDates = Array.from({ length: 7 }, (_, i) =>
     format(subDays(new Date(), i), "yyyy-MM-dd")
@@ -316,6 +333,7 @@ export default function DailyStoreSheetPage() {
               )}
             </div>
           )}
+<<<<<<< HEAD
 
           {/* ── Cash Up section ────────────────────────────────── */}
           {!sheetLoading && (
@@ -568,6 +586,8 @@ export default function DailyStoreSheetPage() {
               )}
             </div>
           )}
+=======
+>>>>>>> feature/daily-store-sheet
         </div>
 
         {/* ── Recent sheets sidebar ─────────────────────────── */}

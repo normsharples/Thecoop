@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
+  Send,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -87,6 +88,11 @@ export default function DailyStoreSheetSettings() {
     include_reviews: true,
   });
   const [localLookback, setLocalLookback] = useState(7);
+  const [isSending, setIsSending] = useState(false);
+  const [sendDate, setSendDate] = useState(() => {
+    const d = new Date();
+    return d.toISOString().split("T")[0];
+  });
 
   // Sync local state when settings load
   useEffect(() => {
@@ -145,6 +151,27 @@ export default function DailyStoreSheetSettings() {
   async function handleLookbackChange(days: number) {
     setLocalLookback(days);
     await save({ review_lookback_days: days });
+  }
+
+  async function handleSendManual() {
+    setIsSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "send-daily-store-sheet",
+        { body: { date: sendDate, force: true } }
+      );
+      if (error) throw error;
+      const result = typeof data === "string" ? JSON.parse(data) : data;
+      if (result.status === "success") {
+        toast.success(`Email sent for ${sendDate} (${result.emailsSent} email${result.emailsSent === 1 ? "" : "s"})`);
+      } else {
+        toast.error(`Send failed: ${result.reason ?? result.error ?? "unknown"}`);
+      }
+    } catch (err) {
+      toast.error("Failed to send: " + (err as Error).message);
+    } finally {
+      setIsSending(false);
+    }
   }
 
   if (isLoading) {
@@ -216,6 +243,47 @@ export default function DailyStoreSheetSettings() {
         </div>
       </div>
 
+      {/* Send manual test email */}
+      <div className="rounded-xl border border-border bg-card px-5 py-4">
+        <div className="flex items-center gap-3 mb-3">
+          <Send className="h-4 w-4 text-primary" />
+          <div>
+            <p className="text-sm font-semibold text-card-foreground">
+              Send Test Email
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Manually send the daily store sheet email for a specific date.
+              Sends to all superadmins.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="date"
+            value={sendDate}
+            onChange={(e) => setSendDate(e.target.value)}
+            disabled={isSending}
+            className="rounded-md border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <button
+            onClick={handleSendManual}
+            disabled={isSending || !sendDate}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors",
+              "bg-primary text-primary-foreground hover:bg-primary-hover",
+              "disabled:opacity-50 disabled:cursor-not-allowed"
+            )}
+          >
+            {isSending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            Send Now
+          </button>
+        </div>
+      </div>
+
       {localEnabled && (
         <>
           {/* Send time */}
@@ -251,7 +319,8 @@ export default function DailyStoreSheetSettings() {
               Email Recipients
             </label>
             <p className="text-xs text-muted-foreground mb-3">
-              Managers, area managers, and admins who receive the nightly email.
+              The nightly email is sent to all superadmins (using their personal / contact email if set).
+              The checkboxes below are kept for reference.
             </p>
             {eligibleProfiles.length === 0 ? (
               <p className="text-xs text-muted-foreground italic">
