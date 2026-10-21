@@ -69,7 +69,7 @@ serve(async (req) => {
   );
 
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  const FROM_EMAIL = Deno.env.get("ALERT_FROM_EMAIL") ?? "alerts@thecoopops.com.au";
+  const FROM_EMAIL = Deno.env.get("ALERT_FROM_EMAIL") ?? "a1245789654123@gmail.com";
   const APP_URL = Deno.env.get("APP_URL") ?? "";
 
   const today = todayAEST();
@@ -123,12 +123,6 @@ serve(async (req) => {
 
     for (const settings of dueSettings) {
       const brandId = settings.brand_id as string;
-      const recipients = (settings.recipients ?? []) as string[];
-
-      if (!recipients.length) {
-        console.log(`[daily-store-sheet] Brand ${brandId}: no recipients, skipping.`);
-        continue;
-      }
 
       // ── 2. Fetch brand restaurants ──────────────────────────────────────
       const { data: restaurants } = await supabase
@@ -155,7 +149,7 @@ serve(async (req) => {
         { data: cashUpRows },
         { data: sheetRows },
         { data: reviewRows },
-        { data: profileRows },
+        { data: superadminRows },
       ] = await Promise.all([
         supabase
           .from("sales_daily")
@@ -189,14 +183,16 @@ serve(async (req) => {
           .gte("review_date", lookbackStr)
           .lte("review_date", targetDate)
           .order("review_date", { ascending: false }),
+        // Send to superadmins' personal email (contact_email) instead of
+        // the recipients list's local/auth email.
         supabase
           .from("profiles")
-          .select("id, email")
-          .in("id", recipients),
+          .select("id, email, contact_email")
+          .eq("role", "superadmin"),
       ]);
 
-      const recipientEmails = (profileRows ?? [])
-        .map((p: { email: string }) => p.email)
+      const recipientEmails = (superadminRows ?? [])
+        .map((p: { email: string; contact_email?: string | null }) => p.contact_email || p.email)
         .filter(Boolean);
 
       if (!recipientEmails.length) {
