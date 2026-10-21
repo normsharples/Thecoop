@@ -364,8 +364,13 @@ export default function VenueSyncSetup({
 
   const [copied, setCopied] = useState<boolean | null>(null);
 
-  const download = async (platform: "windows" | "mac") => {
-    if (!venue || !release) return;
+  const [addedToExisting, setAddedToExisting] = useState(false);
+
+  // Copies a fresh pairing code as "ORBIT-AGENT-PAIR:XXXX-XXXX". With a platform
+  // it then downloads the installer; without one (the computer already runs
+  // ORBIT Agent for another venue) switching back to the app adds this venue.
+  const download = async (platform: "windows" | "mac" | null) => {
+    if (!venue || (platform && !release)) return;
     // Put the pairing code on the clipboard so the app can pair itself when it
     // first opens. The clipboard write has to start inside the click, so with
     // ClipboardItem (Safari, Chrome) it's handed a promise for the code.
@@ -391,7 +396,14 @@ export default function VenueSyncSetup({
     }
     const got = await codePromise;
     if (!got) return;
-    setCopied(await clip.then(() => true, () => false));
+    const ok = await clip.then(() => true, () => false);
+    setCopied(ok);
+    if (!platform) {
+      setAddedToExisting(true);
+      if (ok) toast.success(`Code copied — switch to ORBIT Agent and it adds ${venue.name}.`);
+      return;
+    }
+    if (!release) return;
     const url = installerUrl(release, platform, venue.name, got.code);
     if (url) window.location.href = url;
   };
@@ -568,6 +580,22 @@ export default function VenueSyncSetup({
                   );
                 })}
               </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2.5 text-sm">
+              <span className="text-muted-foreground">
+                This computer already runs ORBIT Agent for another venue? One agent can run several.
+              </span>
+              <Button variant="outline" size="sm" disabled={issue.isPending} onClick={() => download(null)}>
+                {addedToExisting ? <Check className="mr-1.5 h-3.5 w-3.5" /> : null}
+                Add to ORBIT Agent here
+              </Button>
+            </div>
+            {addedToExisting && (
+              <p className="-mt-3 text-xs text-muted-foreground">
+                Now click the ORBIT Agent window (or its menu-bar icon → Open ORBIT Agent). It picks the code up and adds{" "}
+                {venue.name}. Or use <em>+ Add a venue</em> in the app and type the code below.
+              </p>
             )}
 
             <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">

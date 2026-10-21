@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Tags, Plus, Pencil, Trash2, Loader2, SlidersHorizontal } from "lucide-react";
+import { Tags, Plus, Pencil, Trash2, Loader2, SlidersHorizontal, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ import {
 } from "@/lib/brand";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MODULES, REPORTS } from "@/lib/brandFeatures";
+import { BrandTeamSettings } from "./BrandTeamSettings";
 import type { Brand, BrandFeatures } from "@/types";
 
 function BrandDialog({
@@ -270,6 +271,7 @@ export default function BrandsSettings() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editBrand, setEditBrand] = useState<Brand | null>(null);
   const [featuresBrand, setFeaturesBrand] = useState<Brand | null>(null);
+  const [teamBrand, setTeamBrand] = useState<Brand | null>(null);
   const queryClient = useQueryClient();
 
   const { data: brands = [], isLoading } = useQuery({
@@ -324,7 +326,8 @@ export default function BrandsSettings() {
 
       <p className="text-sm text-muted-foreground mb-4">
         Brands group your venues. Assign each venue to a brand under Settings → Venues. The active
-        brand sets the app's name, icon and accent colour, and which reports and modules show.
+        brand sets the app's name, icon and accent colour, and which reports and modules show. Team
+        holds this brand's Pulse questions, policy documents, checklists and payroll link.
       </p>
 
       {isLoading ? (
@@ -361,6 +364,14 @@ export default function BrandsSettings() {
                     {featureSummary(b)}
                   </p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTeamBrand(b)}
+                >
+                  <Users className="h-3.5 w-3.5 mr-1.5" />
+                  Team
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -402,6 +413,13 @@ export default function BrandsSettings() {
       )}
 
       <BrandDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      {teamBrand && (
+        <BrandTeamSettings
+          key={teamBrand.id}
+          brand={teamBrand}
+          onClose={() => setTeamBrand(null)}
+        />
+      )}
       {featuresBrand && (
         <BrandFeaturesDialog
           key={featuresBrand.id}

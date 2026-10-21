@@ -24,10 +24,15 @@ import {
   UserRound,
   BookOpen,
   ChefHat,
+  HeartPulse,
+  UserPlus,
+  UserMinus,
+  FileText,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useBrandFeatures } from "@/hooks/useBrandFeatures";
 import { REPORT_SIDEBAR_LINKS } from "@/lib/reportNav";
+import { usePulseOpenForMe } from "@/hooks/usePulseSurveys";
 import { cn } from "@/lib/utils";
 
 const mobileTabItems = [
@@ -40,6 +45,7 @@ const mobileTabItems = [
 // Staff can only ever reach these three pages — shown directly in the tab
 // bar since there's no "More" sheet needed for just three destinations.
 const staffTabItems = [
+  { label: "Check-in",    path: "/team/surveys",    icon: HeartPulse },
   { label: "Recipes",     path: "/recipes",         icon: BookOpen },
   { label: "Prep list",   path: "/prep",            icon: ChefHat },
   { label: "Incidents",   path: "/admin/incidents", icon: AlertTriangle },
@@ -50,12 +56,15 @@ const staffTabItems = [
 
 const teamMemberTabItems = [
   { label: "My Roster", path: "/my-roster", icon: CalendarRange },
+  { label: "Check-in", path: "/team/surveys", icon: HeartPulse },
   { label: "My Profile", path: "/my-profile", icon: UserRound },
 ];
 
 const supervisorTabItems = [
+  { label: "Check-in",     path: "/team/surveys",    icon: HeartPulse },
   { label: "Recipes",      path: "/recipes",         icon: BookOpen },
   { label: "Prep list",    path: "/prep",            icon: ChefHat },
+  { label: "Daily Sheet",  path: "/daily-sheet",     icon: FileText },
   { label: "Roster",       path: "/roster-view",     icon: CalendarRange },
   { label: "My Roster",    path: "/my-roster",       icon: CalendarDays },
   { label: "Incidents",    path: "/admin/incidents", icon: AlertTriangle },
@@ -63,6 +72,10 @@ const supervisorTabItems = [
 ];
 
 const moreItems = [
+  { label: "Daily Sheet",     path: "/daily-sheet",             icon: FileText },
+  { label: "Pulse Surveys",   path: "/team/surveys",            icon: HeartPulse },
+  { label: "Onboarding",      path: "/team/onboarding",         icon: UserPlus },
+  { label: "Offboarding",     path: "/team/offboarding",        icon: UserMinus },
   { label: "Recipes",         path: "/recipes",                 icon: BookOpen },
   { label: "Prep list",       path: "/prep",                    icon: ChefHat },
   { label: "Rostering",       path: "/rostering",               icon: CalendarRange },
@@ -86,6 +99,8 @@ export function MobileNav() {
   const location = useLocation();
   const { isSuperadmin, isStaff, isTeamMember, isShiftSupervisor } = usePermissions();
   const { isPathEnabled } = useBrandFeatures();
+  const { data: openCheckIns = [] } = usePulseOpenForMe();
+  const checkInCount = openCheckIns.length;
 
   const roleTabItems = isTeamMember
     ? teamMemberTabItems
@@ -122,7 +137,15 @@ export function MobileNav() {
                 isActive ? "text-primary" : "text-muted-foreground"
               )}
             >
-              <item.icon className="h-5 w-5" />
+              <span className="relative">
+                <item.icon className="h-5 w-5" />
+                {item.path === "/team/surveys" && checkInCount > 0 && (
+                  <span
+                    className="absolute -right-1.5 -top-0.5 h-2 w-2 rounded-full bg-brand-accent"
+                    aria-label={`${checkInCount} waiting`}
+                  />
+                )}
+              </span>
               {item.label}
             </NavLink>
           );

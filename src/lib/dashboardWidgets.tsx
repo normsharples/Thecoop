@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import {
-  AlertTriangle, BarChart3, CalendarClock, ExternalLink, Gauge, LayoutDashboard,
-  LineChart, Smartphone, Star, Truck, type LucideIcon,
+  AlertTriangle, BarChart3, CalendarClock, ExternalLink, FileCheck2, Gauge,
+  HeartPulse, LayoutDashboard, LineChart, Smartphone, Star, Truck,
+  type LucideIcon,
 } from "lucide-react";
 import { AlertsBanner } from "@/components/dashboard/AlertsBanner";
 import { DailySnapshot } from "@/components/dashboard/DailySnapshot";
@@ -15,6 +16,8 @@ import { WeeklyRevenueTrend } from "@/components/dashboard/WeeklyRevenueTrend";
 import { RecentReviews } from "@/components/dashboard/RecentReviews";
 import { QuickLinks } from "@/components/dashboard/QuickLinks";
 import { UpcomingCatering } from "@/components/dashboard/UpcomingCatering";
+import { TeamPulseWidget } from "@/components/dashboard/TeamPulseWidget";
+import { CertComplianceWidget } from "@/components/dashboard/CertComplianceWidget";
 
 // ============================================================================
 // DASHBOARD WIDGETS
@@ -209,6 +212,24 @@ export const WIDGETS = {
     defaultSize: "md",
     venueScoped: true,
     render: () => <UpcomingCatering />,
+  },
+  team_pulse: {
+    label: "Team Pulse",
+    description: "Your venue's latest check-in scores. Suppressed below five responses.",
+    icon: HeartPulse,
+    sizes: ["sm", "md"],
+    defaultSize: "md",
+    venueScoped: true,
+    render: (_p, s) => <TeamPulseWidget restaurantIds={s.restaurantIds} />,
+  },
+  cert_compliance: {
+    label: "Certificate compliance",
+    description: "RSAs, food handler tickets and licences that have expired or are about to.",
+    icon: FileCheck2,
+    sizes: ["sm", "md"],
+    defaultSize: "md",
+    venueScoped: true,
+    render: (_p, s) => <CertComplianceWidget restaurantIds={s.restaurantIds} />,
   },
   quick_links: {
     label: "Quick links",
