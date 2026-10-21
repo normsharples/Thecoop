@@ -85,6 +85,7 @@ const RecipesPage = lazy(() => import("@/pages/RecipesPage"));
 const RecipeDetailPage = lazy(() => import("@/pages/RecipeDetailPage"));
 const PrepListPage = lazy(() => import("@/pages/PrepListPage"));
 
+const PublicStoreSheetPage = lazy(() => import("@/pages/PublicStoreSheetPage"));
 const SalesManualEntryPage = lazy(() => import("@/pages/SalesManualEntryPage"));
 const LabourManualEntryPage = lazy(() => import("@/pages/LabourManualEntryPage"));
 const DataManagementPage = lazy(() => import("@/pages/DataManagementPage"));
@@ -117,6 +118,12 @@ const router = createBrowserRouter([
     // because there is no session for the auth guard to find.
     path: "/join/:token",
     element: <NewHireIntakePage />,
+  },
+  {
+    // Public daily store sheet. No login: the venue token in the URL is the
+    // credential, and every call uses anon-key RPCs (migration 097).
+    path: "/store-sheet/:token",
+    element: <PublicStoreSheetPage />,
   },
   {
     element: <AppLayout />,

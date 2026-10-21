@@ -1,17 +1,22 @@
 import { useState, useEffect } from "react";
 import {
   ClipboardList,
+  Copy,
+  ExternalLink,
+  Link,
   Loader2,
   Mail,
   Clock,
   Eye,
   EyeOff,
+  RefreshCw,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useActiveBrand } from "@/hooks/useActiveBrand";
 import { useBrands } from "@/hooks/useBrands";
 import { useDailyStoreSheetSettings } from "@/hooks/useDailyStoreSheetSettings";
+import { useVenuePublicTokens } from "@/hooks/useVenuePublicTokens";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Profile } from "@/types";
@@ -360,6 +365,179 @@ export default function DailyStoreSheetSettings() {
             </div>
           )}
         </>
+      )}
+
+      {/* ── Public share links ──────────────────────────────────── */}
+      <PublicLinksSection brandId={activeBrandId} />
+    </div>
+  );
+}
+
+// ── Public share links for each venue ─────────────────────────────────────
+
+function PublicLinksSection({ brandId }: { brandId: string }) {
+  const { tokens, isLoading, createOrEnable, toggle, regenerate, isMutating } =
+    useVenuePublicTokens(brandId);
+
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+
+  function linkFor(tokenValue: string) {
+    return `${origin}/store-sheet/${tokenValue}`;
+  }
+
+  async function copyLink(tokenValue: string) {
+    try {
+      await navigator.clipboard.writeText(linkFor(tokenValue));
+      toast.success("Link copied");
+    } catch {
+      toast.error("Failed to copy");
+    }
+  }
+
+  async function handleCreateOrEnable(restaurantId: string) {
+    try {
+      await createOrEnable(restaurantId);
+      toast.success("Public link enabled");
+    } catch {
+      toast.error("Failed to enable link");
+    }
+  }
+
+  async function handleToggle(id: string, enabled: boolean) {
+    try {
+      await toggle({ id, enabled });
+      toast.success(enabled ? "Link enabled" : "Link disabled");
+    } catch {
+      toast.error("Failed to update");
+    }
+  }
+
+  async function handleRegenerate(restaurantId: string) {
+    if (
+      !window.confirm(
+        "Regenerate link? The old link will stop working immediately."
+      )
+    )
+      return;
+    try {
+      await regenerate(restaurantId);
+      toast.success("New link generated");
+    } catch {
+      toast.error("Failed to regenerate");
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card px-5 py-4">
+      <div className="flex items-center gap-3 mb-1">
+        <Link className="h-4 w-4 text-primary" />
+        <div>
+          <p className="text-sm font-semibold text-card-foreground">
+            Public Share Links
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Let shift supervisors fill in the daily sheet without an ORBIT
+            account. Each venue gets its own link.
+          </p>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : tokens.length === 0 ? (
+        <p className="text-xs text-muted-foreground italic mt-3">
+          No venues found for this brand.
+        </p>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {tokens.map((row) => (
+            <div
+              key={row.restaurant_id}
+              className="rounded-lg border border-border bg-background p-3 space-y-2"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-foreground">
+                  {row.restaurant_name}
+                </span>
+
+                {row.token ? (
+                  <button
+                    disabled={isMutating}
+                    onClick={() =>
+                      handleToggle(row.token!.id, !row.token!.enabled)
+                    }
+                    className={cn(
+                      "relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                      row.token.enabled ? "bg-primary" : "bg-muted",
+                      isMutating && "cursor-not-allowed opacity-60"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow ring-0 transition-transform",
+                        row.token.enabled
+                          ? "translate-x-4"
+                          : "translate-x-0"
+                      )}
+                    />
+                  </button>
+                ) : (
+                  <button
+                    disabled={isMutating}
+                    onClick={() => handleCreateOrEnable(row.restaurant_id)}
+                    className="text-xs font-medium text-primary hover:text-primary-hover disabled:opacity-50"
+                  >
+                    Enable link
+                  </button>
+                )}
+              </div>
+
+              {row.token && row.token.enabled && (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    readOnly
+                    value={linkFor(row.token.token)}
+                    className="flex-1 min-w-0 truncate rounded-md border border-input bg-surface-sunken px-2 py-1 text-xs text-muted-foreground font-mono"
+                    onFocus={(e) => e.target.select()}
+                  />
+                  <button
+                    onClick={() => copyLink(row.token!.token)}
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                    title="Copy link"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                  <a
+                    href={linkFor(row.token.token)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                    title="Open in new tab"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                  <button
+                    onClick={() => handleRegenerate(row.restaurant_id)}
+                    disabled={isMutating}
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50"
+                    title="Regenerate link (invalidates old link)"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {row.token && !row.token.enabled && (
+                <p className="text-xs text-muted-foreground italic">
+                  Link disabled — submissions blocked
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

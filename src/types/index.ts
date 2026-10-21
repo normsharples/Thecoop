@@ -1889,8 +1889,17 @@ export interface DailyStoreSheet {
   sheet_date: string;
   shift_notes: string | null;
   recorded_by: string | null;
+  submitted_by_name: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface VenuePublicToken {
+  id: string;
+  restaurant_id: string;
+  token: string;
+  enabled: boolean;
+  created_at: string;
 }
 
 export interface DailyStoreSheetSettings {
