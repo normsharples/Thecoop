@@ -1,6 +1,8 @@
 // nightly-sync
 // Master orchestrator running at 4:00 AM AEST.
-// Runs: Lightspeed → Square → Deputy → Google Reviews → process-alerts in sequence.
+// Runs: Lightspeed → Square → Deputy → Google Reviews → process-alerts → the
+// daily people jobs (onboarding reminders, document expiry, Pulse survey
+// statuses, scheduled offboarding access revocation) in sequence.
 // Continues on failure, logs each step, sends summary if errors occurred.
 // Schedule via Supabase cron: "0 17 * * *" (UTC = 4 AM AEDT / 3 AM AEST)
 
@@ -141,6 +143,48 @@ serve(async (req) => {
     steps.push(result);
     if (error) errors.push(`Alerts: ${error}`);
     console.log(`[nightly-sync] Alerts done in ${result.duration_ms}ms — ${result.status}`);
+  }
+
+  // ── Step 5: daily people jobs ────────────────────────────────────────────
+  // Four idempotent SQL functions, safe to call more than once a day. This is
+  // the pattern migration 064 set out ("…or by adding two supabase.rpc() calls
+  // to the nightly-sync edge function") — 093 and 095 added two more:
+  //
+  //   onboarding_send_reminders()        064 — chase unfinished onboarding
+  //   document_expiry_alerts()           064 — 30-day certificate warnings
+  //   pulse_refresh_statuses()           093 — open/close scheduled check-ins
+  //   offboarding_process_revocations()  095 — end access after the last shift
+  //
+  // Running them here rather than under pg_cron keeps every scheduled job in
+  // one place, and means a failure shows up in sync_logs like any other step.
+  {
+    const peopleJobs: { name: string; label: string }[] = [
+      { name: "onboarding_send_reminders", label: "Onboarding reminders" },
+      { name: "document_expiry_alerts", label: "Document expiry alerts" },
+      { name: "pulse_refresh_statuses", label: "Pulse survey statuses" },
+      { name: "offboarding_process_revocations", label: "Offboarding revocations" },
+    ];
+
+    for (const job of peopleJobs) {
+      const t = Date.now();
+      console.log(`[nightly-sync] Running ${job.name}...`);
+      const { data, error } = await supabase.rpc(job.name);
+      const result: StepResult = {
+        step: job.name,
+        status: error ? "error" : "success",
+        data,
+        error: error?.message ?? undefined,
+        duration_ms: Date.now() - t,
+      };
+      steps.push(result);
+      // A missing function means the migration has not been applied yet. Note
+      // it and carry on rather than failing the whole run.
+      if (error) errors.push(`${job.label}: ${error.message}`);
+      console.log(
+        `[nightly-sync] ${job.name} done in ${result.duration_ms}ms — ${result.status}` +
+          (typeof data === "number" ? ` (${data} affected)` : "")
+      );
+    }
   }
 
   const totalDuration = Date.now() - overallStart;

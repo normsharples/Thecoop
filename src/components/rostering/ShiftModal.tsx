@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import type { Profile, Position } from "@/types";
 import type { ShiftInput } from "@/hooks/useShifts";
 import { shiftHours } from "@/lib/roster";
+import { useRosterBlocked } from "@/hooks/useNewHires";
 
 export interface ShiftDraft {
   id?: string;
@@ -68,6 +69,13 @@ export function ShiftModal({
   const [note, setNote] = useState(draft.note ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Anyone mid-onboarding cannot be rostered. The database refuses it too
+  // (trigger on shifts, migration 094), but refusing without saying what is
+  // missing just leaves the manager guessing — so the reasons come back with it.
+  const { data: blocked = [] } = useRosterBlocked(restaurantId);
+  const blockedFor = (id: string) => blocked.find((b) => b.employee_id === id);
+  const blockedChoice = employeeId ? blockedFor(employeeId) : undefined;
+
   const isEdit = Boolean(draft.id);
   const hours =
     startTime && endTime ? shiftHours(startTime, endTime, breakMins) : 0;
@@ -76,6 +84,11 @@ export function ShiftModal({
   const handleSave = async () => {
     if (!date) return toast.error("Pick a day");
     if (!startTime || !endTime) return toast.error("Set start and end times");
+    if (blockedChoice) {
+      return toast.error(
+        `${blockedChoice.full_name} can't be rostered until their onboarding is finished.`
+      );
+    }
     try {
       await onSave({
         id: draft.id,
@@ -127,11 +140,15 @@ export function ShiftModal({
               className={selectCls}
             >
               <option value="">Unassigned (open shift)</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.full_name}
-                </option>
-              ))}
+              {employees.map((e) => {
+                const block = blockedFor(e.id);
+                return (
+                  <option key={e.id} value={e.id} disabled={!!block}>
+                    {e.full_name}
+                    {block ? " — onboarding not finished" : ""}
+                  </option>
+                );
+              })}
             </select>
           </Field>
 
@@ -148,6 +165,20 @@ export function ShiftModal({
               ))}
             </select>
           </Field>
+
+          {blockedChoice && (
+            <div className="space-y-1 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              <p className="flex items-center gap-2 font-medium">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {blockedChoice.full_name} can't be rostered yet
+              </p>
+              <ul className="list-inside list-disc pl-6">
+                {blockedChoice.reasons.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {conflict && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">

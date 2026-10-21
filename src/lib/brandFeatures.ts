@@ -22,7 +22,13 @@ export interface ModuleDef {
 
 export const MODULES: ModuleDef[] = [
   { key: "pulse",           label: "Daily Activity Report", paths: ["/pulse"] },
+  // Team modules (migrations 093–095). Keys are distinct from "pulse" above,
+  // which is the Daily Activity Report and nothing to do with Pulse Surveys.
+  { key: "pulse_surveys",   label: "Pulse Surveys",    paths: ["/team/surveys"] },
+  { key: "onboarding",      label: "Onboarding",       paths: ["/team/onboarding"] },
+  { key: "offboarding",     label: "Offboarding",      paths: ["/team/offboarding"] },
   { key: "tasks",           label: "Tasks",            paths: ["/tasks"] },
+  { key: "daily_sheet",     label: "Daily Store Sheet", paths: ["/daily-sheet"] },
   { key: "prep",            label: "Prep list",        paths: ["/prep"] },
   { key: "recipes",         label: "Recipes",          paths: ["/recipes"] },
   { key: "rostering",       label: "Rostering",        paths: ["/rostering", "/roster-view"] },

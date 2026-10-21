@@ -36,6 +36,13 @@ const ClockPage = lazy(() => import("@/pages/ClockPage"));
 const MyProfilePage = lazy(() => import("@/pages/MyProfilePage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 
+// Team modules (migrations 093–095)
+const PulseSurveysPage = lazy(() => import("@/pages/PulseSurveysPage"));
+const SurveyRunnerPage = lazy(() => import("@/pages/SurveyRunnerPage"));
+const TeamOnboardingPage = lazy(() => import("@/pages/TeamOnboardingPage"));
+const TeamOffboardingPage = lazy(() => import("@/pages/TeamOffboardingPage"));
+const NewHireIntakePage = lazy(() => import("@/pages/NewHireIntakePage"));
+
 const SalesReport = lazy(() => import("@/components/reports/SalesReport"));
 const SalesReportLayout = lazy(() => import("@/components/reports/SalesReportLayout"));
 const SalesByHourReport = lazy(() => import("@/components/reports/SalesByHourReport"));
@@ -71,6 +78,8 @@ const OrderingScheduleSettings = lazy(() => import("@/components/settings/Orderi
 const TimeClockSettings = lazy(() => import("@/components/settings/TimeClockSettings"));
 const SyncAgentSettings = lazy(() => import("@/components/settings/SyncAgentSettings"));
 const PrintersSettings = lazy(() => import("@/components/settings/PrintersSettings"));
+const DailyStoreSheetSettings = lazy(() => import("@/components/settings/DailyStoreSheetSettings"));
+const DailyStoreSheetPage = lazy(() => import("@/pages/DailyStoreSheetPage"));
 const TasksPage = lazy(() => import("@/pages/TasksPage"));
 const RecipesPage = lazy(() => import("@/pages/RecipesPage"));
 const RecipeDetailPage = lazy(() => import("@/pages/RecipeDetailPage"));
@@ -103,11 +112,19 @@ const router = createBrowserRouter([
     element: <ClockPage />,
   },
   {
+    // New-hire intake. No login: the invite token in the URL is the credential,
+    // and every call it makes is a token RPC (migration 094). Outside AppLayout
+    // because there is no session for the auth guard to find.
+    path: "/join/:token",
+    element: <NewHireIntakePage />,
+  },
+  {
     element: <AppLayout />,
     children: [
       { index: true, element: <DashboardPage /> },
       { path: "pulse", element: <PulsePage /> },
       { path: "tasks", element: <TasksPage /> },
+      { path: "daily-sheet", element: <DailyStoreSheetPage /> },
       { path: "recipes", element: <RecipesPage /> },
       { path: "recipes/:id", element: <RecipeDetailPage /> },
       { path: "prep", element: <PrepListPage /> },
@@ -118,6 +135,10 @@ const router = createBrowserRouter([
       { path: "my-availability", element: <MyAvailabilityPage /> },
       { path: "my-profile", element: <MyProfilePage /> },
       { path: "calendar", element: <CalendarPage /> },
+      { path: "team/surveys", element: <PulseSurveysPage /> },
+      { path: "team/surveys/:surveyId", element: <SurveyRunnerPage /> },
+      { path: "team/onboarding", element: <TeamOnboardingPage /> },
+      { path: "team/offboarding", element: <TeamOffboardingPage /> },
       { path: "reports/sales/manual-entry", element: <SalesManualEntryPage /> },
       { path: "reports/labour/manual-entry", element: <LabourManualEntryPage /> },
       {
@@ -208,6 +229,7 @@ const router = createBrowserRouter([
               { path: "time-clocks", element: <TimeClockSettings /> },
               { path: "sync-agents", element: <SyncAgentSettings /> },
               { path: "printers", element: <PrintersSettings /> },
+              { path: "daily-sheet", element: <DailyStoreSheetSettings /> },
               { path: "integrations", element: <IntegrationsSettings /> },
             ],
           },

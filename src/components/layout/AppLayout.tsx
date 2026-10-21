@@ -5,6 +5,9 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useMyOnboarding } from "@/hooks/useOnboarding";
 import { useMyOpenContract } from "@/hooks/useContracts";
 import { OnboardingBanner } from "./OnboardingBanner";
+import { ExitSurveyPrompt } from "@/components/team/ExitSurveyPrompt";
+import { PulseCheckInBanner } from "@/components/dashboard/PulseCheckInBanner";
+import { AccessRevokedScreen } from "@/components/team/AccessRevokedScreen";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { MobileNav } from "./MobileNav";
@@ -17,15 +20,15 @@ import { Eye, Loader2 } from "lucide-react";
 // The "staff" role can only ever see these sections — everything else
 // (Dashboard, Reports, Leaderboard, Calendar, other Admin pages, Settings)
 // surfaces sales/labour data or is otherwise out of scope for restaurant-level staff.
-const STAFF_ALLOWED_PREFIXES = ["/admin/incidents", "/admin/cash", "/admin/invoices", "/my-availability", "/my-profile"];
+const STAFF_ALLOWED_PREFIXES = ["/admin/incidents", "/admin/cash", "/admin/invoices", "/my-availability", "/my-profile", "/team/surveys"];
 const STAFF_HOME = "/admin/incidents";
 
 // team_member (roster-only) can reach their own roster + availability/leave.
-const TEAM_MEMBER_ALLOWED_PREFIXES = ["/my-roster", "/my-availability", "/my-profile"];
+const TEAM_MEMBER_ALLOWED_PREFIXES = ["/my-roster", "/my-availability", "/my-profile", "/team/surveys"];
 const TEAM_MEMBER_HOME = "/my-roster";
 
 // shift_supervisor: whole-week roster (read-only) + incidents + banking.
-const SUPERVISOR_ALLOWED_PREFIXES = ["/roster-view", "/my-roster", "/my-availability", "/my-profile", "/admin/incidents", "/admin/cash"];
+const SUPERVISOR_ALLOWED_PREFIXES = ["/roster-view", "/my-roster", "/my-availability", "/my-profile", "/admin/incidents", "/admin/cash", "/team/surveys"];
 const SUPERVISOR_HOME = "/roster-view";
 
 const pageTitles: Record<string, string> = {
@@ -44,6 +47,9 @@ const pageTitles: Record<string, string> = {
   "/reports/cash-ups": "Daily Cash Ups",
   "/leaderboard": "Leaderboard",
   "/calendar":    "Calendar",
+  "/team/surveys":     "Pulse Surveys",
+  "/team/onboarding":  "Onboarding",
+  "/team/offboarding": "Offboarding",
   "/ordering":    "Ordering",
   "/admin/cash": "Banking",
   "/admin/invoices": "Invoices",
@@ -94,6 +100,13 @@ export function AppLayout() {
   // Require both an auth session AND a profile row — no profile means no access
   if (!user || !profile) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Offboarding has revoked their access (migration 095). The auth user is left
+  // alone on purpose — payroll and timesheets reference the profile — so the
+  // app has to be the one to say no. Nothing below this line renders.
+  if (profile.access_revoked_at) {
+    return <AccessRevokedScreen />;
   }
 
   // ── Onboarding gate ────────────────────────────────────────────────────────
@@ -185,6 +198,16 @@ export function AppLayout() {
         )}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6">
           {onboardingOutstanding && onboarding && <OnboardingBanner onboarding={onboarding} />}
+          {/* "Quick 30-sec check-in". It sits here rather than inside
+              DashboardPage because staff are redirected away from the dashboard
+              in ORBIT — a banner only the dashboard rendered would never reach
+              the people it is for. Dismissal lasts the session, so it is back
+              on their next sign-in until the cycle closes or they answer. */}
+          <PulseCheckInBanner />
+          {/* Their last shift is behind them and access ends shortly — ask once,
+              on whatever page they land on, before the revocation runs. */}
+          <ExitSurveyPrompt />
+
           <Suspense
             fallback={
               <div className="flex items-center justify-center py-20">

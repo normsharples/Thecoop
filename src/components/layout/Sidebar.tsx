@@ -22,6 +22,10 @@ import {
   BookOpen,
   ChefHat,
   ShoppingCart,
+  Users,
+  HeartPulse,
+  UserPlus,
+  UserMinus,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -36,6 +40,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn, getInitials } from "@/lib/utils";
 import { REPORT_SIDEBAR_LINKS } from "@/lib/reportNav";
 import { useBrandFeatures } from "@/hooks/useBrandFeatures";
+import { usePulseOpenForMe } from "@/hooks/usePulseSurveys";
 import { OrbitRocket, OrbitWordmark } from "@/components/brand/OrbitLogo";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -60,6 +65,10 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   BookOpen,
   ChefHat,
   ShoppingCart,
+  Users,
+  HeartPulse,
+  UserPlus,
+  UserMinus,
   Menu,
 };
 
@@ -69,6 +78,8 @@ interface NavChild {
   superadminOnly?: boolean;
   /** Match the path exactly — for a link whose children nest beneath it. */
   end?: boolean;
+  /** Count shown as a pill. Set at render time, not in the static list. */
+  badge?: number;
 }
 
 interface NavItem {
@@ -79,12 +90,15 @@ interface NavItem {
   children?: NavChild[];
   /** Heading this item sits under. Repeat it on consecutive items. */
   section?: string;
+  /** Count shown as a pill. Set at render time, not in the static list. */
+  badge?: number;
 }
 
 const navItems: NavItem[] = [
   { label: "Dashboard", path: "/", icon: "LayoutDashboard", section: "Today" },
   { label: "Daily Activity", path: "/pulse", icon: "Activity", section: "Today" },
   { label: "Tasks", path: "/tasks", icon: "ListChecks", section: "Today" },
+  { label: "Daily Sheet", path: "/daily-sheet", icon: "ClipboardList", section: "Today" },
   {
     label: "Reports",
     path: "/reports",
@@ -99,6 +113,9 @@ const navItems: NavItem[] = [
   { label: "Ordering", path: "/ordering", icon: "ShoppingCart", section: "Operate" },
   { label: "Rostering", path: "/rostering", icon: "CalendarRange", section: "Operate" },
   { label: "Calendar",  path: "/calendar", icon: "CalendarDays", section: "Operate" },
+  { label: "Pulse Surveys", path: "/team/surveys",     icon: "HeartPulse", section: "Team" },
+  { label: "Onboarding",    path: "/team/onboarding",  icon: "UserPlus",   section: "Team" },
+  { label: "Offboarding",   path: "/team/offboarding", icon: "UserMinus",  section: "Team" },
   {
     label: "Admin",
     path: "/admin",
@@ -124,6 +141,7 @@ const navItems: NavItem[] = [
 // Staff can only ever reach Incidents, the daily Cash Up, and Invoices — no
 // Dashboard, Reports, Leaderboard, Calendar, or other Admin/Settings pages.
 const staffNavItems: NavItem[] = [
+  { label: "Check-in", path: "/team/surveys", icon: "HeartPulse" },
   { label: "Recipes", path: "/recipes", icon: "BookOpen" },
   { label: "Prep list", path: "/prep", icon: "ChefHat" },
   { label: "Incidents", path: "/admin/incidents", icon: "AlertTriangle" },
@@ -135,12 +153,15 @@ const staffNavItems: NavItem[] = [
 // team_member (roster-only) sees just their own roster.
 const teamMemberNavItems: NavItem[] = [
   { label: "My Roster", path: "/my-roster", icon: "CalendarRange" },
+  { label: "Check-in", path: "/team/surveys", icon: "HeartPulse" },
 ];
 
 // shift_supervisor: whole-week roster (read-only) + incidents + banking.
 const supervisorNavItems: NavItem[] = [
+  { label: "Check-in", path: "/team/surveys", icon: "HeartPulse" },
   { label: "Recipes", path: "/recipes", icon: "BookOpen" },
   { label: "Prep list", path: "/prep", icon: "ChefHat" },
+  { label: "Daily Sheet", path: "/daily-sheet", icon: "ClipboardList" },
   { label: "Roster", path: "/roster-view", icon: "CalendarRange" },
   { label: "My Roster", path: "/my-roster", icon: "CalendarDays" },
   { label: "Incidents", path: "/admin/incidents", icon: "AlertTriangle" },
@@ -157,6 +178,11 @@ export function Sidebar() {
 
   const { isPathEnabled } = useBrandFeatures();
 
+  // An open check-in nobody has answered yet badges the nav item that leads to
+  // it, so the prompt survives the dashboard banner being dismissed.
+  const { data: openCheckIns = [] } = usePulseOpenForMe();
+  const checkInCount = openCheckIns.length;
+
   const roleItems = isTeamMember
     ? teamMemberNavItems
     : isShiftSupervisor
@@ -171,9 +197,10 @@ export function Sidebar() {
   // Drop reports/modules the brand in view has switched off (Settings →
   // Brands). A parent whose children are all off goes too.
   const filteredItems = roleItems.flatMap((item) => {
-    if (!item.children) return isPathEnabled(item.path) ? [item] : [];
+    const badge = item.path === "/team/surveys" && checkInCount > 0 ? checkInCount : undefined;
+    if (!item.children) return isPathEnabled(item.path) ? [{ ...item, badge }] : [];
     const children = item.children.filter((c) => isPathEnabled(c.path));
-    return children.length ? [{ ...item, children }] : [];
+    return children.length ? [{ ...item, badge, children }] : [];
   });
 
   return (
@@ -294,6 +321,21 @@ function SidebarItem({
       <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-sidebar-mark" />
     ) : null;
 
+  // Collapsed down to icons there is no room for a count, so it becomes a dot.
+  const Badge = () =>
+    item.badge ? (
+      collapsed ? (
+        <span
+          className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-brand-accent"
+          aria-label={`${item.badge} waiting`}
+        />
+      ) : (
+        <span className="ml-auto rounded-full bg-brand-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white tnum">
+          {item.badge}
+        </span>
+      )
+    ) : null;
+
   if (visibleChildren && visibleChildren.length > 0 && !collapsed) {
     return (
       <div>
@@ -301,6 +343,7 @@ function SidebarItem({
           <Rail active={isActive} />
           <Icon className="h-[17px] w-[17px] shrink-0" />
           <span className="flex-1 text-left">{item.label}</span>
+          <Badge />
           <ChevronDown
             className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")}
           />
@@ -339,6 +382,7 @@ function SidebarItem({
       <Rail active={isActive && !collapsed} />
       <Icon className="h-[17px] w-[17px] shrink-0" />
       {!collapsed && <span>{item.label}</span>}
+      <Badge />
     </NavLink>
   );
 }

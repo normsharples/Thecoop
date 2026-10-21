@@ -28,6 +28,8 @@ export interface Brand {
   icon: string;
   /** Added in migration 084 — may be missing before it's applied. */
   features?: BrandFeatures | null;
+  /** Where new hires complete payroll onboarding. Added in migration 094. */
+  payroll_onboarding_url?: string | null;
   created_at: string;
 }
 
@@ -78,6 +80,8 @@ export interface Profile {
   signatory_title?: string | null;
   signature_image?: string | null;
   notification_prefs?: { email?: boolean; push?: boolean } | null;
+  /** Set by Offboarding when access is revoked (migration 092/095). */
+  access_revoked_at?: string | null;
   // pin_hash exists in DB but is never selected to the client
   created_at: string;
   updated_at: string;
@@ -1437,4 +1441,472 @@ export interface CompanySettings {
   signatory_name: string;
   signatory_title: string;
   signature_image: string;
+}
+
+// ============================================================================
+// TEAM MODULES — Pulse Surveys, Onboarding, Offboarding
+// (migrations 092–095)
+// ============================================================================
+
+export interface TeamAuditEntry {
+  id: string;
+  brand_id: string | null;
+  restaurant_id: string | null;
+  module: "pulse" | "onboarding" | "offboarding";
+  action: string;
+  subject_type: string;
+  subject_id: string | null;
+  subject_label: string | null;
+  from_value: string | null;
+  to_value: string | null;
+  detail: Record<string, unknown>;
+  actor_id: string | null;
+  actor_label: string | null;
+  created_at: string;
+}
+
+// ── Pulse Surveys ───────────────────────────────────────────────────────────
+
+export type PulseQuestionType = "scale_1_5" | "text";
+
+export interface PulseQuestion {
+  id: string;
+  brand_id: string;
+  text: string;
+  type: PulseQuestionType;
+  is_active: boolean;
+  sort_order: number;
+  version: number;
+  previous_version_id: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export type PulseRecurrence = "none" | "weekly" | "fortnightly" | "monthly";
+export type PulseStatus = "scheduled" | "open" | "closed";
+
+export interface PulseSurvey {
+  id: string;
+  brand_id: string;
+  title: string;
+  opens_at: string;
+  closes_at: string;
+  status: PulseStatus;
+  recurrence: PulseRecurrence;
+  target: "all_venues" | "selected";
+  target_venue_ids: string[];
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PulseSurveyQuestion {
+  survey_id: string;
+  question_id: string;
+  sort_order: number;
+}
+
+/** One row of public.pulse_open_for_me(). */
+export interface PulseOpenSurvey {
+  survey_id: string;
+  title: string;
+  cycle_start: string;
+  cycle_closes: string;
+  question_count: number;
+}
+
+/** One row of public.pulse_questions_for_survey(). */
+export interface PulseRunnerQuestion {
+  question_id: string;
+  text: string;
+  type: PulseQuestionType;
+  sort_order: number;
+}
+
+export interface PulseAnswer {
+  question_id: string;
+  value_int?: number;
+  value_text?: string;
+}
+
+export interface PulseCycle {
+  cycle_start: string;
+  cycle_opens: string;
+  cycle_closes: string;
+  is_live: boolean;
+}
+
+export interface PulseResponseRate {
+  venue_id: string;
+  venue_name: string;
+  responses: number;
+  eligible: number;
+  rate: number | null;
+  met_floor: boolean;
+}
+
+export interface PulseQuestionAverage {
+  question_id: string;
+  question_text: string;
+  question_type: PulseQuestionType;
+  sort_order: number;
+  responses: number;
+  average: number | null;
+  met_floor: boolean;
+}
+
+export interface PulseTrendRow {
+  cycle_start: string;
+  responses: number;
+  overall: number | null;
+  question_id: string;
+  question_text: string;
+  average: number | null;
+  met_floor: boolean;
+}
+
+export interface PulseBenchmarkRow {
+  venue_id: string;
+  venue_name: string;
+  responses: number;
+  eligible: number;
+  met_floor: boolean;
+  overall: number | null;
+  question_id: string;
+  question_text: string;
+  average: number | null;
+  flagged: boolean;
+  flag_reason: string | null;
+}
+
+// ── Brand templates (Settings → Brands → Team) ──────────────────────────────
+
+export interface BrandPolicyDocument {
+  id: string;
+  brand_id: string;
+  title: string;
+  body: string | null;
+  url: string | null;
+  version: number;
+  required: boolean;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BrandChecklistItem {
+  id: string;
+  brand_id: string;
+  label: string;
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface BrandCertificateRequirement {
+  id: string;
+  brand_id: string;
+  kind: string;
+  label: string;
+  required: boolean;
+  needs_expiry: boolean;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface BrandTrainingModule {
+  id: string;
+  brand_id: string;
+  name: string;
+  description: string | null;
+  url: string | null;
+  required: boolean;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface BrandExitQuestion {
+  id: string;
+  brand_id: string;
+  text: string;
+  type: PulseQuestionType;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+// ── Onboarding (new-hire intake) ────────────────────────────────────────────
+
+export type NewHireStatus = "invited" | "in_progress" | "ready" | "active";
+
+export interface NewHire {
+  id: string;
+  brand_id: string;
+  restaurant_id: string;
+  full_name: string;
+  mobile: string;
+  role: "team_member" | "staff" | "shift_supervisor" | "manager";
+  position_title: string | null;
+  start_date: string | null;
+  status: NewHireStatus;
+  invite_token: string;
+  invite_expires_at: string;
+  invite_opened_at: string | null;
+  preferred_name: string | null;
+  legal_first_name: string | null;
+  legal_last_name: string | null;
+  date_of_birth: string | null;
+  email: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  suburb: string | null;
+  address_state: string | null;
+  postcode: string | null;
+  emergency_name: string | null;
+  emergency_relationship: string | null;
+  emergency_phone: string | null;
+  details_complete: boolean;
+  certificates_complete: boolean;
+  policies_complete: boolean;
+  payroll_confirmed: boolean;
+  payroll_confirmed_at: string | null;
+  checklist_complete: boolean;
+  current_step: number;
+  submitted_at: string | null;
+  ready_at: string | null;
+  profile_id: string | null;
+  first_worked_date: string | null;
+  activated_at: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NewHireCertificate {
+  id: string;
+  new_hire_id: string;
+  kind: string;
+  label: string | null;
+  file_path: string | null;
+  issued_on: string | null;
+  expires_on: string | null;
+  created_at: string;
+}
+
+export interface NewHirePolicySignoff {
+  id: string;
+  new_hire_id: string;
+  document_id: string | null;
+  document_title: string;
+  document_version: number;
+  typed_name: string;
+  agreed: boolean;
+  signed_at: string;
+}
+
+export interface NewHireChecklistRow {
+  id: string;
+  new_hire_id: string;
+  item_id: string | null;
+  label: string;
+  sort_order: number;
+  done: boolean;
+  done_by: string | null;
+  done_at: string | null;
+  created_at: string;
+}
+
+export interface NewHireTrainingRow {
+  id: string;
+  new_hire_id: string;
+  module_id: string | null;
+  module_name: string;
+  url: string | null;
+  required: boolean;
+  status: "assigned" | "complete";
+  assigned_at: string;
+  completed_at: string | null;
+}
+
+/** The payload public.new_hire_fetch() returns to the token-authenticated form. */
+export interface NewHireIntake {
+  hire: {
+    id: string;
+    full_name: string;
+    mobile: string | null;
+    role: string;
+    position_title: string | null;
+    start_date: string | null;
+    status: NewHireStatus;
+    current_step: number;
+    preferred_name: string | null;
+    legal_first_name: string | null;
+    legal_last_name: string | null;
+    date_of_birth: string | null;
+    email: string | null;
+    address_line1: string | null;
+    address_line2: string | null;
+    suburb: string | null;
+    address_state: string | null;
+    postcode: string | null;
+    emergency_name: string | null;
+    emergency_relationship: string | null;
+    emergency_phone: string | null;
+    details_complete: boolean;
+    certificates_complete: boolean;
+    policies_complete: boolean;
+    payroll_confirmed: boolean;
+    submitted_at: string | null;
+  };
+  brand: {
+    name: string;
+    color: string;
+    icon: string;
+    payroll_onboarding_url: string | null;
+  } | null;
+  venue: string | null;
+  certificate_requirements: {
+    kind: string;
+    label: string;
+    required: boolean;
+    needs_expiry: boolean;
+  }[];
+  certificates: {
+    id: string;
+    kind: string;
+    label: string | null;
+    file_path: string | null;
+    issued_on: string | null;
+    expires_on: string | null;
+  }[];
+  policies: {
+    id: string;
+    title: string;
+    body: string | null;
+    url: string | null;
+    version: number;
+    required: boolean;
+    signed_at: string | null;
+    typed_name: string | null;
+  }[];
+}
+
+/** One row of public.team_certificate_compliance. */
+export interface CertificateComplianceRow {
+  source: "new_hire" | "employee";
+  subject_id: string;
+  profile_id: string | null;
+  person_name: string;
+  restaurant_id: string | null;
+  brand_id: string | null;
+  certificate_id: string;
+  kind: string;
+  label: string;
+  expires_on: string;
+  days_remaining: number;
+  compliance_status: "ok" | "expiring" | "expired";
+}
+
+/** One row of public.roster_blocked_at(). */
+export interface RosterBlockedEmployee {
+  employee_id: string;
+  full_name: string;
+  reasons: string[];
+}
+
+// ── Offboarding ─────────────────────────────────────────────────────────────
+
+export type ExitReason = "resigned" | "terminated" | "abandoned" | "end_of_contract";
+
+/** One row of public.offboarding_list (the manager-facing view — no notes). */
+export interface OffboardingRow {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  employee_role: Profile["role"];
+  avatar_url: string | null;
+  restaurant_id: string;
+  venue_name: string | null;
+  brand_id: string;
+  reason: ExitReason;
+  last_shift_date: string;
+  eligible_for_rehire: boolean;
+  shifts_unassigned: number;
+  access_revoke_at: string | null;
+  access_revoked_at: string | null;
+  status: "pending" | "revoked";
+  exit_survey_enabled: boolean;
+  exit_survey_completed_at: string | null;
+  checklist_complete: boolean;
+  superseded_at: string | null;
+  started_by: string | null;
+  started_by_name: string | null;
+  created_at: string;
+  can_view_notes: boolean;
+}
+
+export interface OffboardingChecklistRow {
+  id: string;
+  offboarding_id: string;
+  item_id: string | null;
+  label: string;
+  sort_order: number;
+  done: boolean;
+  done_by: string | null;
+  done_at: string | null;
+  created_at: string;
+}
+
+export interface ExitSurveyResponse {
+  id: string;
+  offboarding_id: string;
+  employee_id: string;
+  brand_id: string;
+  question_id: string | null;
+  question_text: string;
+  value_int: number | null;
+  value_text: string | null;
+  submitted_at: string;
+}
+
+/** What public.exit_survey_for_me() returns, or null when nothing is waiting. */
+export interface PendingExitSurvey {
+  offboarding_id: string;
+  last_shift_date: string;
+  questions: { id: string; text: string; type: PulseQuestionType }[];
+}
+
+// ── Daily Store Sheet ──────────────────────────────────────────────────────
+
+export interface DailyStoreSheet {
+  id: string;
+  restaurant_id: string;
+  sheet_date: string;
+  shift_notes: string | null;
+  recorded_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyStoreSheetSettings {
+  id: string;
+  brand_id: string;
+  enabled: boolean;
+  send_time: string;
+  recipients: string[];
+  include_sales: boolean;
+  include_delivery: boolean;
+  include_yoy: boolean;
+  include_projections: boolean;
+  include_cashup: boolean;
+  include_notes: boolean;
+  include_reviews: boolean;
+  review_lookback_days: number;
+  created_at: string;
+  updated_at: string;
 }
