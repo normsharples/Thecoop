@@ -28,22 +28,12 @@ export function useDailyStoreSheets(restaurantId: string | null) {
       restaurant_id: string;
       sheet_date: string;
       shift_notes: string | null;
-      total_sales?: number | null;
-      net_sales?: number | null;
-      transaction_count?: number | null;
-      delivery_sales?: number | null;
-      delivery_transaction_count?: number | null;
     }) => {
       const { error } = await supabase.from("daily_store_sheets").upsert(
         {
           restaurant_id: payload.restaurant_id,
           sheet_date: payload.sheet_date,
           shift_notes: payload.shift_notes,
-          total_sales: payload.total_sales ?? null,
-          net_sales: payload.net_sales ?? null,
-          transaction_count: payload.transaction_count ?? null,
-          delivery_sales: payload.delivery_sales ?? null,
-          delivery_transaction_count: payload.delivery_transaction_count ?? null,
           recorded_by: profile?.id ?? null,
         },
         { onConflict: "restaurant_id,sheet_date" }

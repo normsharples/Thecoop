@@ -1888,13 +1888,7 @@ export interface DailyStoreSheet {
   restaurant_id: string;
   sheet_date: string;
   shift_notes: string | null;
-  total_sales: number | null;
-  net_sales: number | null;
-  transaction_count: number | null;
-  delivery_sales: number | null;
-  delivery_transaction_count: number | null;
   recorded_by: string | null;
-  submitted_by_name: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -6,10 +6,13 @@ import {
   ClipboardList,
   Link2Off,
   Loader2,
+  PlusCircle,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { OrbitWordmark } from "@/components/brand/OrbitLogo";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import { DENOMINATIONS, tillTotalFromCounts } from "@/hooks/useCashUps";
 
 // ============================================================================
 // PUBLIC STORE SHEET
@@ -39,6 +42,20 @@ export default function PublicStoreSheetPage() {
   const [shiftNotes, setShiftNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Cash-up state
+  const FLOAT_AMOUNT = 200;
+  const [denominationCounts, setDenominationCounts] = useState<Record<string, string>>({});
+  const [posExpected, setPosExpected] = useState("");
+  const [amountDeposited, setAmountDeposited] = useState("");
+  const [cashOuts, setCashOuts] = useState<{ description: string; amount: number }[]>([]);
+
+  const parsedCounts = Object.fromEntries(
+    Object.entries(denominationCounts).map(([k, v]) => [k, parseInt(v, 10) || 0])
+  );
+  const tillCountNum = tillTotalFromCounts(parsedCounts);
+  const amountToBank = Math.max(0, tillCountNum - FLOAT_AMOUNT);
+  const cashOutsTotal = cashOuts.reduce((sum, c) => sum + (c.amount || 0), 0);
 
   // Look up venue by token on mount
   useEffect(() => {
@@ -88,6 +105,10 @@ export default function PublicStoreSheetPage() {
           p_date: sheetDate,
           p_submitted_by: submittedBy.trim(),
           p_shift_notes: shiftNotes.trim(),
+          p_denomination_counts: parsedCounts,
+          p_pos_expected_deposit: parseFloat(posExpected) || 0,
+          p_amount_deposited: parseFloat(amountDeposited) || 0,
+          p_cash_outs: cashOuts.filter((c) => c.description.trim() || c.amount),
         }
       );
       if (rpcError) throw rpcError;
@@ -168,6 +189,10 @@ export default function PublicStoreSheetPage() {
               setSubmitted(false);
               setShiftNotes("");
               setSheetDate(format(new Date(), "yyyy-MM-dd"));
+              setDenominationCounts({});
+              setPosExpected("");
+              setAmountDeposited("");
+              setCashOuts([]);
             }}
             className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
@@ -251,6 +276,202 @@ export default function PublicStoreSheetPage() {
             placeholder="How did the shift go today?"
             className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y min-h-[120px]"
           />
+        </div>
+
+        {/* ── Cash Up ─────────────────────────────────────────── */}
+        <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+          <p className="text-sm font-semibold text-card-foreground">Cash Up</p>
+
+          {/* Denomination counter */}
+          <div className="rounded-lg border border-border bg-background p-3 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Till Counter
+            </p>
+
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+              {/* Notes column */}
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Notes</p>
+                {DENOMINATIONS.filter((d) => d.type === "note").map((d) => (
+                  <div key={d.key} className="flex items-center gap-1.5">
+                    <span className="w-9 text-sm text-foreground shrink-0">{d.label}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={denominationCounts[d.key] ?? ""}
+                      onChange={(e) =>
+                        setDenominationCounts((prev) => ({ ...prev, [d.key]: e.target.value }))
+                      }
+                      className="w-full rounded-lg border border-input bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                    <span className="w-14 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                      {formatCurrency(((parseInt(denominationCounts[d.key], 10) || 0) * d.cents) / 100)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Coins column */}
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Coins</p>
+                {DENOMINATIONS.filter((d) => d.type === "coin").map((d) => (
+                  <div key={d.key} className="flex items-center gap-1.5">
+                    <span className="w-9 text-sm text-foreground shrink-0">{d.label}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={denominationCounts[d.key] ?? ""}
+                      onChange={(e) =>
+                        setDenominationCounts((prev) => ({ ...prev, [d.key]: e.target.value }))
+                      }
+                      className="w-full rounded-lg border border-input bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                    <span className="w-14 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                      {formatCurrency(((parseInt(denominationCounts[d.key], 10) || 0) * d.cents) / 100)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Till total + float */}
+            <div className="space-y-1 pt-2 border-t border-border">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Till total</span>
+                <span className="font-semibold tabular-nums text-foreground">{formatCurrency(tillCountNum)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Less $200 float</span>
+                <span className="font-semibold tabular-nums text-foreground">{formatCurrency(amountToBank)} to bank</span>
+              </div>
+            </div>
+          </div>
+
+          {/* POS Expected Deposit */}
+          <div className="space-y-1.5">
+            <label
+              htmlFor="pos-expected"
+              className="text-sm font-semibold text-card-foreground"
+            >
+              POS Expected Deposit
+            </label>
+            <p className="text-xs text-muted-foreground">
+              What the POS system expects should be banked today.
+            </p>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+              <input
+                id="pos-expected"
+                type="number"
+                step="0.01"
+                min="0"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={posExpected}
+                onChange={(e) => setPosExpected(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background pl-7 pr-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+          </div>
+
+          {/* Amount Deposited */}
+          <div className="space-y-1.5">
+            <label
+              htmlFor="amount-deposited"
+              className="text-sm font-semibold text-card-foreground"
+            >
+              Amount Deposited
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+              <input
+                id="amount-deposited"
+                type="number"
+                step="0.01"
+                min="0"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={amountDeposited}
+                onChange={(e) => setAmountDeposited(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background pl-7 pr-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+          </div>
+
+          {/* Cash Outs */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold text-card-foreground">
+                Cash Outs
+              </label>
+              <button
+                type="button"
+                onClick={() => setCashOuts((prev) => [...prev, { description: "", amount: 0 }])}
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                <PlusCircle className="h-3.5 w-3.5" />
+                Add
+              </button>
+            </div>
+            {cashOuts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No cash outs recorded.</p>
+            ) : (
+              <div className="space-y-2">
+                {cashOuts.map((cashOut, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      placeholder="Description"
+                      value={cashOut.description}
+                      onChange={(e) =>
+                        setCashOuts((prev) =>
+                          prev.map((c, idx) =>
+                            idx === i ? { ...c, description: e.target.value } : c
+                          )
+                        )
+                      }
+                      className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                    <div className="relative w-24 shrink-0">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        value={cashOut.amount || ""}
+                        onChange={(e) =>
+                          setCashOuts((prev) =>
+                            prev.map((c, idx) =>
+                              idx === i ? { ...c, amount: parseFloat(e.target.value) || 0 } : c
+                            )
+                          )
+                        }
+                        className="w-full rounded-lg border border-input bg-background pl-6 pr-2 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCashOuts((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                  <span>Total cash outs</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(cashOutsTotal)}</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Error */}

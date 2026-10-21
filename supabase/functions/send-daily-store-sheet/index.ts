@@ -168,24 +168,27 @@ serve(async (req) => {
       const lookbackStr = lookbackDate.toISOString().split("T")[0];
 
       const [
-        { data: salesRows },
-        { data: yoySalesRows },
+        { data: txRows },
+        { data: yoyTxRows },
         { data: projectionRows },
         { data: cashUpRows },
         { data: sheetRows },
         { data: reviewRows },
         { data: superadminRows },
       ] = await Promise.all([
+        // Fetch individual transactions for the target date from sales_transactions
+        // (same source as the Daily Activity Report / Pulse page)
         supabase
-          .from("sales_daily")
-          .select("restaurant_id, date, total_sales, net_sales, transaction_count, delivery_sales, delivery_transaction_count")
+          .from("sales_transactions")
+          .select("restaurant_id, amount, net_amount, order_type")
           .in("restaurant_id", restaurantIds)
-          .eq("date", targetDate),
+          .eq("business_date", targetDate),
+        // YoY: same-day-last-year transactions
         supabase
-          .from("sales_daily")
-          .select("restaurant_id, date, total_sales, net_sales, transaction_count")
+          .from("sales_transactions")
+          .select("restaurant_id, amount, net_amount")
           .in("restaurant_id", restaurantIds)
-          .eq("date", yoyDate),
+          .eq("business_date", yoyDate),
         supabase
           .from("daily_projections")
           .select("restaurant_id, date, projected_sales")
@@ -198,7 +201,7 @@ serve(async (req) => {
           .eq("cash_up_date", targetDate),
         supabase
           .from("daily_store_sheets")
-          .select("restaurant_id, sheet_date, shift_notes, total_sales, net_sales, transaction_count, delivery_sales, delivery_transaction_count")
+          .select("restaurant_id, sheet_date, shift_notes")
           .in("restaurant_id", restaurantIds)
           .eq("sheet_date", targetDate),
         supabase
@@ -225,9 +228,42 @@ serve(async (req) => {
         continue;
       }
 
-      // Index by restaurant_id
-      const salesMap = new Map((salesRows ?? []).map((r: Record<string, unknown>) => [r.restaurant_id, r]));
-      const yoySalesMap = new Map((yoySalesRows ?? []).map((r: Record<string, unknown>) => [r.restaurant_id, r]));
+      // ── Aggregate sales_transactions into per-restaurant daily totals ──
+      // This mirrors the Daily Activity Report (Pulse page) aggregation.
+      const salesMap = new Map<string, { total_sales: number; net_sales: number; transaction_count: number; delivery_sales: number; delivery_transaction_count: number }>();
+      for (const tx of (txRows ?? [])) {
+        const rid = tx.restaurant_id as string;
+        if (!salesMap.has(rid)) {
+          salesMap.set(rid, { total_sales: 0, net_sales: 0, transaction_count: 0, delivery_sales: 0, delivery_transaction_count: 0 });
+        }
+        const agg = salesMap.get(rid)!;
+        const amt = (tx.amount ?? 0) as number;
+        const net = (tx.net_amount ?? 0) as number;
+        agg.total_sales += amt;
+        agg.net_sales += net;
+        agg.transaction_count += 1;
+        // 'online' order_type = delivery / online orders
+        if (tx.order_type === "online") {
+          agg.delivery_sales += amt;
+          agg.delivery_transaction_count += 1;
+        }
+      }
+
+      // Aggregate YoY transactions
+      const yoySalesMap = new Map<string, { total_sales: number; net_sales: number; transaction_count: number }>();
+      for (const tx of (yoyTxRows ?? [])) {
+        const rid = tx.restaurant_id as string;
+        if (!yoySalesMap.has(rid)) {
+          yoySalesMap.set(rid, { total_sales: 0, net_sales: 0, transaction_count: 0 });
+        }
+        const agg = yoySalesMap.get(rid)!;
+        agg.total_sales += (tx.amount ?? 0) as number;
+        agg.net_sales += (tx.net_amount ?? 0) as number;
+        agg.transaction_count += 1;
+      }
+
+      console.log(`[daily-store-sheet] Brand ${brandId}: aggregated ${(txRows ?? []).length} transactions for ${targetDate}, ${(yoyTxRows ?? []).length} for YoY ${yoyDate}`);
+
       const projMap = new Map((projectionRows ?? []).map((r: Record<string, unknown>) => [r.restaurant_id, r]));
       const cashUpMap = new Map((cashUpRows ?? []).map((r: Record<string, unknown>) => [r.restaurant_id, r]));
       const sheetMap = new Map((sheetRows ?? []).map((r: Record<string, unknown>) => [r.restaurant_id, r]));
@@ -260,23 +296,18 @@ serve(async (req) => {
         const rid = restaurant.id as string;
         const name = restaurant.name as string;
 
-        const sales = salesMap.get(rid) as Record<string, unknown> | undefined;
-        const yoy = yoySalesMap.get(rid) as Record<string, unknown> | undefined;
+        const sales = salesMap.get(rid);
+        const yoy = yoySalesMap.get(rid);
         const proj = projMap.get(rid) as Record<string, unknown> | undefined;
         const cashUp = cashUpMap.get(rid) as Record<string, unknown> | undefined;
         const sheet = sheetMap.get(rid) as Record<string, unknown> | undefined;
         const reviews = reviewsByVenue.get(rid) ?? [];
 
-        // Prefer manually entered data from daily_store_sheets over auto-synced sales_daily
-        const sheetTotal = sheet?.total_sales as number | null | undefined;
-        const sheetNet = sheet?.net_sales as number | null | undefined;
-        const sheetTx = sheet?.transaction_count as number | null | undefined;
-        const sheetDelivery = sheet?.delivery_sales as number | null | undefined;
-
-        const totalSales = (sheetTotal ?? sales?.total_sales ?? 0) as number;
-        const netSales = (sheetNet ?? sales?.net_sales ?? totalSales) as number;
-        const txCount = (sheetTx ?? sales?.transaction_count ?? 0) as number;
-        const deliverySales = (sheetDelivery ?? sales?.delivery_sales ?? 0) as number;
+        // Sales data comes from sales_transactions (same source as the Pulse / Daily Activity Report)
+        const totalSales = sales?.total_sales ?? 0;
+        const netSales = sales?.net_sales ?? totalSales;
+        const txCount = sales?.transaction_count ?? 0;
+        const deliverySales = sales?.delivery_sales ?? 0;
 
         brandTotalSales += netSales;
         brandTotalDelivery += deliverySales;
@@ -284,7 +315,7 @@ serve(async (req) => {
 
         if (yoy) {
           brandTotalYoYExists = true;
-          brandTotalYoY += (yoy.net_sales ?? yoy.total_sales ?? 0) as number;
+          brandTotalYoY += yoy.net_sales ?? yoy.total_sales ?? 0;
         }
 
         let sections = "";
@@ -324,7 +355,7 @@ serve(async (req) => {
         // Delivery
         if (settings.include_delivery && deliverySales > 0) {
           const deliveryPct = totalSales > 0 ? (deliverySales / totalSales) * 100 : 0;
-          const deliveryTx = (sheet?.delivery_transaction_count ?? sales?.delivery_transaction_count ?? 0) as number;
+          const deliveryTx = sales?.delivery_transaction_count ?? 0;
           sections += `
           <tr>
             <td style="padding:8px 0;">
@@ -351,7 +382,7 @@ serve(async (req) => {
 
         // YoY
         if (settings.include_yoy && yoy) {
-          const yoyNet = (yoy.net_sales ?? yoy.total_sales ?? 0) as number;
+          const yoyNet = yoy.net_sales ?? yoy.total_sales ?? 0;
           const yoyDiff = netSales - yoyNet;
           const yoyPct = yoyNet > 0 ? (yoyDiff / yoyNet) * 100 : 0;
           const arrow = yoyDiff >= 0 ? "▲" : "▼";

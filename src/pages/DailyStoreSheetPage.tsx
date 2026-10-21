@@ -13,7 +13,6 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
-  DollarSign,
 } from "lucide-react";
 import { useSelectedRestaurant } from "@/hooks/useSelectedRestaurant";
 import { useRestaurants } from "@/hooks/useRestaurants";
@@ -40,12 +39,6 @@ export default function DailyStoreSheetPage() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [shiftNotes, setShiftNotes] = useState("");
   const [saved, setSaved] = useState(false);
-
-  // ── Sales entry state ─────────────────────────────────────────────────────
-  const [salesOpen, setSalesOpen] = useState(true);
-  const [totalSales, setTotalSales] = useState("");
-  const [netSales, setNetSales] = useState("");
-  const [transactionCount, setTransactionCount] = useState("");
 
   const restaurant = restaurants.find((r) => r.id === selectedRestaurantId);
   const canEdit =
@@ -99,15 +92,9 @@ export default function DailyStoreSheetPage() {
   useEffect(() => {
     if (sheet) {
       setShiftNotes(sheet.shift_notes ?? "");
-      setTotalSales(sheet.total_sales != null ? String(sheet.total_sales) : "");
-      setNetSales(sheet.net_sales != null ? String(sheet.net_sales) : "");
-      setTransactionCount(sheet.transaction_count != null ? String(sheet.transaction_count) : "");
       setSaved(true);
     } else {
       setShiftNotes("");
-      setTotalSales("");
-      setNetSales("");
-      setTransactionCount("");
       setSaved(false);
     }
   }, [sheet]);
@@ -152,9 +139,6 @@ export default function DailyStoreSheetPage() {
         restaurant_id: selectedRestaurantId,
         sheet_date: selectedDate,
         shift_notes: shiftNotes.trim() || null,
-        total_sales: totalSales ? parseFloat(totalSales) : null,
-        net_sales: netSales ? parseFloat(netSales) : null,
-        transaction_count: transactionCount ? parseInt(transactionCount, 10) : null,
       });
       setSaved(true);
       toast.success("Daily sheet saved");
@@ -337,90 +321,6 @@ export default function DailyStoreSheetPage() {
                     )}
                     Save
                   </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Sales section ─────────────────────────────────── */}
-          {!sheetLoading && (
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <button
-                onClick={() => setSalesOpen(!salesOpen)}
-                className="flex items-center justify-between w-full px-5 py-4 text-left hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold text-card-foreground">Sales &amp; Transactions</span>
-                  {saved && sheet?.total_sales != null && (
-                    <span className="flex items-center gap-1 text-xs text-success">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Recorded
-                    </span>
-                  )}
-                </div>
-                {salesOpen ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                )}
-              </button>
-
-              {salesOpen && (
-                <div className="border-t border-border px-5 pb-5 space-y-4 mt-0">
-                  <p className="text-xs text-muted-foreground pt-4">
-                    Enter today's sales figures from the POS. These will be included in the nightly email report.
-                  </p>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="total_sales">Total Sales</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                      <Input
-                        id="total_sales"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        className="pl-7"
-                        disabled={!canEdit}
-                        value={totalSales}
-                        onChange={(e) => { setTotalSales(e.target.value); setSaved(false); }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="net_sales">Net Sales</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                      <Input
-                        id="net_sales"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        className="pl-7"
-                        disabled={!canEdit}
-                        value={netSales}
-                        onChange={(e) => { setNetSales(e.target.value); setSaved(false); }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="transaction_count">Transaction Count</Label>
-                    <Input
-                      id="transaction_count"
-                      type="number"
-                      step="1"
-                      min="0"
-                      placeholder="0"
-                      disabled={!canEdit}
-                      value={transactionCount}
-                      onChange={(e) => { setTransactionCount(e.target.value); setSaved(false); }}
-                    />
-                  </div>
                 </div>
               )}
             </div>

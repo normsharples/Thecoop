@@ -109,12 +109,20 @@ grant execute on function public.get_venue_by_token(uuid) to anon;
 
 -- ── 5. RPC: submit_store_sheet ───────────────────────────────────────────────
 -- Called by the anon key to insert a daily_store_sheets row via public form.
+-- Also upserts a cash_ups row when denomination / deposit data is provided.
+
+-- Drop the old 4-arg signature so we can replace it with the 8-arg version
+drop function if exists public.submit_store_sheet(uuid, date, text, text);
 
 create or replace function public.submit_store_sheet(
-  p_token         uuid,
-  p_date          date,
-  p_submitted_by  text,
-  p_shift_notes   text
+  p_token                uuid,
+  p_date                 date,
+  p_submitted_by         text,
+  p_shift_notes          text,
+  p_denomination_counts  jsonb    default '{}'::jsonb,
+  p_pos_expected_deposit numeric  default 0,
+  p_amount_deposited     numeric  default 0,
+  p_cash_outs            jsonb    default '[]'::jsonb
 )
 returns json
 language plpgsql
@@ -123,6 +131,9 @@ set search_path = public
 as $$
 declare
   v_restaurant_id uuid;
+  v_till_count    numeric := 0;
+  v_key           text;
+  v_count         numeric;
 begin
   -- Validate token
   select vpt.restaurant_id
@@ -135,7 +146,7 @@ begin
     return json_build_object('ok', false, 'error', 'Invalid or disabled link');
   end if;
 
-  -- Upsert the sheet (so re-submitting the same day updates rather than errors)
+  -- Upsert the daily store sheet
   insert into public.daily_store_sheets (
     restaurant_id,
     sheet_date,
@@ -154,9 +165,44 @@ begin
     submitted_by_name = excluded.submitted_by_name,
     updated_at        = now();
 
+  -- Compute till_count from denomination_counts (keys are cents, values are qty)
+  for v_key, v_count in select * from jsonb_each_text(p_denomination_counts) loop
+    v_till_count := v_till_count + (v_key::numeric * v_count::numeric) / 100;
+  end loop;
+
+  -- Upsert cash_ups row
+  insert into public.cash_ups (
+    restaurant_id,
+    cash_up_date,
+    till_count,
+    float_amount,
+    denomination_counts,
+    amount_deposited,
+    pos_expected_deposit,
+    cash_outs,
+    recorded_by
+  ) values (
+    v_restaurant_id,
+    p_date,
+    v_till_count,
+    200,
+    p_denomination_counts,
+    p_amount_deposited,
+    p_pos_expected_deposit,
+    p_cash_outs,
+    null
+  )
+  on conflict (restaurant_id, cash_up_date) do update set
+    till_count           = excluded.till_count,
+    denomination_counts  = excluded.denomination_counts,
+    amount_deposited     = excluded.amount_deposited,
+    pos_expected_deposit = excluded.pos_expected_deposit,
+    cash_outs            = excluded.cash_outs,
+    updated_at           = now();
+
   return json_build_object('ok', true);
 end;
 $$;
 
 -- Allow anon to call it
-grant execute on function public.submit_store_sheet(uuid, date, text, text) to anon;
+grant execute on function public.submit_store_sheet(uuid, date, text, text, jsonb, numeric, numeric, jsonb) to anon;
