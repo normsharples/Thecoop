@@ -286,14 +286,15 @@ serve(async (req) => {
   );
 
   const started_at = new Date().toISOString();
-  let body: { restaurant_id?: string } = {};
+  let body: { restaurant_id?: string; date?: string } = {};
   try {
     body = await req.json();
   } catch {
     // no body
   }
 
-  const targetDate = getMelbourneDate(1);
+  // Accept an optional date param (YYYY-MM-DD) — defaults to yesterday
+  const targetDate = body.date ?? getMelbourneDate(1);
 
   // Fetch all (or one) Lightspeed credentials
   let credQuery = supabase

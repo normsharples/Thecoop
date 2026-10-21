@@ -119,6 +119,31 @@ serve(async (req) => {
       );
     }
 
+    // ── 1b. Trigger a fresh sales sync for the target date ─────────────
+    // The nightly sync only pulls yesterday's data, so if the email runs
+    // for today we need to sync today's sales from Lightspeed / Square
+    // first, otherwise the email shows $0.
+    console.log(`[daily-store-sheet] Triggering sales sync for ${targetDate}…`);
+    try {
+      const { error: lsErr } = await supabase.functions.invoke("sync-lightspeed-sales", {
+        body: JSON.stringify({ date: targetDate }),
+      });
+      if (lsErr) console.warn("[daily-store-sheet] Lightspeed sync warning:", lsErr.message);
+      else console.log("[daily-store-sheet] Lightspeed sync completed.");
+    } catch (e) {
+      console.warn("[daily-store-sheet] Lightspeed sync failed (continuing):", e);
+    }
+
+    try {
+      const { error: sqErr } = await supabase.functions.invoke("sync-square", {
+        body: JSON.stringify({ action: "sync", date: targetDate }),
+      });
+      if (sqErr) console.warn("[daily-store-sheet] Square sync warning:", sqErr.message);
+      else console.log("[daily-store-sheet] Square sync completed.");
+    } catch (e) {
+      console.warn("[daily-store-sheet] Square sync failed (continuing):", e);
+    }
+
     let emailsSent = 0;
 
     for (const settings of dueSettings) {
@@ -173,7 +198,7 @@ serve(async (req) => {
           .eq("cash_up_date", targetDate),
         supabase
           .from("daily_store_sheets")
-          .select("restaurant_id, sheet_date, shift_notes")
+          .select("restaurant_id, sheet_date, shift_notes, total_sales, net_sales, transaction_count, delivery_sales, delivery_transaction_count")
           .in("restaurant_id", restaurantIds)
           .eq("sheet_date", targetDate),
         supabase
@@ -242,10 +267,16 @@ serve(async (req) => {
         const sheet = sheetMap.get(rid) as Record<string, unknown> | undefined;
         const reviews = reviewsByVenue.get(rid) ?? [];
 
-        const netSales = (sales?.net_sales ?? sales?.total_sales ?? 0) as number;
-        const totalSales = (sales?.total_sales ?? 0) as number;
-        const txCount = (sales?.transaction_count ?? 0) as number;
-        const deliverySales = (sales?.delivery_sales ?? 0) as number;
+        // Prefer manually entered data from daily_store_sheets over auto-synced sales_daily
+        const sheetTotal = sheet?.total_sales as number | null | undefined;
+        const sheetNet = sheet?.net_sales as number | null | undefined;
+        const sheetTx = sheet?.transaction_count as number | null | undefined;
+        const sheetDelivery = sheet?.delivery_sales as number | null | undefined;
+
+        const totalSales = (sheetTotal ?? sales?.total_sales ?? 0) as number;
+        const netSales = (sheetNet ?? sales?.net_sales ?? totalSales) as number;
+        const txCount = (sheetTx ?? sales?.transaction_count ?? 0) as number;
+        const deliverySales = (sheetDelivery ?? sales?.delivery_sales ?? 0) as number;
 
         brandTotalSales += netSales;
         brandTotalDelivery += deliverySales;
@@ -293,7 +324,7 @@ serve(async (req) => {
         // Delivery
         if (settings.include_delivery && deliverySales > 0) {
           const deliveryPct = totalSales > 0 ? (deliverySales / totalSales) * 100 : 0;
-          const deliveryTx = (sales?.delivery_transaction_count ?? 0) as number;
+          const deliveryTx = (sheet?.delivery_transaction_count ?? sales?.delivery_transaction_count ?? 0) as number;
           sections += `
           <tr>
             <td style="padding:8px 0;">
