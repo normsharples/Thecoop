@@ -60,7 +60,7 @@ export default function DailyStoreSheetSettings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, email, role")
+        .select("id, full_name, email, contact_email, role")
         .order("full_name");
       if (error) throw error;
       return data as Profile[];
@@ -344,7 +344,7 @@ export default function DailyStoreSheetSettings() {
                       {p.full_name}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {p.email}
+                      {p.contact_email || p.email}
                     </span>
                     <span className="text-xs text-muted-foreground capitalize ml-auto">
                       {p.role.replace("_", " ")}
